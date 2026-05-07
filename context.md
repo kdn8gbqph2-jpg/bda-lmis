@@ -1622,6 +1622,305 @@ Paste this full document and say:
 
 ---
 
-*Document Version: 4.1 | Status: Ready for Implementation*
-*Note: Update colony names section from Google Sheet before data import.*
-*Sheet: https://docs.google.com/spreadsheets/d/18YQQE1ycKABtGVl-WXDNta2DXz9Z6LXYkCaiDHLJndE*
+*Document Version: 4.2 | Status: In Development*
+
+---
+
+## 14. ACTUAL DATA — PATTA LEDGER EXCEL ANALYSIS
+
+> Source: `Patta Ledger Format.xlsx` — the real ledger file used for data import.
+> Analysed: 2026-05-07
+
+### Excel Structure
+
+Each **sheet = one colony**. The workbook has **~72 colony sheets** (not 41 as originally estimated).
+Three sheets are empty placeholders (Sheet1, Sheet2, Sheet3).
+
+**Sheet header rows (rows 1–6) per colony:**
+
+| Row | Hindi Label | English | Example Value |
+|-----|-------------|---------|---------------|
+| 1 | योजना का नाम | Colony/Scheme Name | बौद्ध बिहार भरतपुर |
+| 2 | ग्राम का नाम | Village/Town | भरतपुर |
+| 3 | चक नम्बर | Chak (Block) Number | 1, 2, 3 |
+| 4 | लेआउट प्लान अनुमोदन दिनांक | Layout Approval Date | 01/04/2022 |
+| 5 | लेआउट प्लान अनुसार कुल भुखण्डों की संख्या | Total Plots per Layout | 61 |
+| 6 | खसरा नम्बर | Khasra Numbers (comma-separated) | 1448,1449,1450,1451,... |
+
+**Data columns (row 7 header, row 9+ data):**
+
+| Col | Hindi Header | English | DB Field |
+|-----|--------------|---------|----------|
+| A | क्र.सं. | Serial Number | — |
+| B | आवंटी का नाम | Allottee Name | `pattas_patta.allottee_name` |
+| C | आवंटी का पता | Allottee Address | `pattas_patta.allottee_address` *(new field)* |
+| D | खसरा नम्बर | Khasra Number(s) | `plots_plotkhasramapping` |
+| E | भूखण्ड संख्या | Plot Number | `plots_plot.plot_number` |
+| F | भूखण्ड का कुल क्षेत्रफल (वर्गगज) | Plot Area in **Square Yards** | `plots_plot.area_sqy` *(see note)* |
+| G | पट्टा संख्या | Patta Number (integer) | `pattas_patta.patta_number` |
+| H | पट्टा जारी करने की दिनांक | Patta Issue Date | `pattas_patta.issue_date` |
+| I | चालान संख्या | Challan Number | `pattas_patta.challan_number` *(new field)* |
+| J | चालान जारी करने की दिनांक | Challan Date | `pattas_patta.challan_date` *(new field)* |
+| K | लीज जमा का विवरण — राशि | Lease Amount Paid | `pattas_patta.lease_amount` *(new field)* |
+| L | लीज जमा का विवरण — अवधि | Lease Duration | `pattas_patta.lease_duration` *(new field)* |
+| M | नियमन पत्रावली उपस्थित | Regulation File Present (हाँ/नही) | `pattas_patta.regulation_file_present` *(new field)* |
+| N | DMS FILE NUMBER | DMS Scanned Doc Reference | `documents_document` linked via `pattas_patta` |
+| O | विशेष विवरण | Special Remarks | `pattas_patta.remarks` *(new field)* |
+
+### Critical Corrections to Original Data Model
+
+These differ from the original context.md assumptions:
+
+#### 1. Area Unit is Square Yards, NOT Square Metres
+```
+Excel stores area in वर्गगज (Square Yards).
+1 Square Yard = 0.836127 sqm
+
+Action: Add area_sqy DECIMAL(10,2) to plots_plot.
+        Keep area_sqm as a computed/stored column (area_sqy * 0.836127).
+        Import from Excel using area_sqy. Display both in UI.
+```
+
+#### 2. Patta Number is a Plain Integer, NOT "BDA/YYYY/XXXX"
+```
+Excel column G: 3498, 2578, 2984, 1509 ...
+The "BDA/2016/0001" format in original context was assumed — it does not exist.
+
+Action: Store patta_number as VARCHAR(20), import the raw integer as string.
+        Example stored values: "3498", "2578", "1509"
+```
+
+#### 3. DMS File Number Format is BHR + 6 digits
+```
+Column N: BHR102703, BHR102702, BHR103676, BHR105647 ...
+This is the scanned document reference in the DMS (Document Management System).
+Maps to documents_document linked to a patta.
+Some plots show "NO" — means not yet scanned/uploaded.
+```
+
+#### 4. Plot Numbers Can Be Alphanumeric with Sub-Plots
+```
+Examples seen: 27, 27A, 27B, 4A, 10, 10A, 10B, 17, 17A, 18, 18A
+These are genuine sub-divisions of a plot that were split between multiple allottees.
+VARCHAR(20) on plots_plot.plot_number is correct — already handled.
+```
+
+#### 5. Regulation File Present is a Boolean Field on the Patta
+```
+Column M values: हाँ (Yes), नही (No), None (blank)
+This directly tracks whether the paper file is physically present.
+Maps to regulation_file_present BOOLEAN on pattas_patta.
+This replaces the "missing patta" detection workflow (which is excluded from scope).
+```
+
+#### 6. Chak Number ≠ Zone
+```
+"चक नम्बर" (Chak Number) = revenue block identifier (1, 2, 3...)
+This is NOT the same as the zone (North/South/East/West etc.)
+Zones need to be assigned separately — not present in Excel.
+Chak number can be stored in colonies_colony as a separate field.
+```
+
+#### 7. Actual Colony Count is ~72, Not 41
+```
+The workbook contains ~72 data sheets (colony tabs), not 41.
+All colony names are in Hindi script.
+The zone assignment for each colony must be done manually or via a reference sheet.
+```
+
+#### 8. New Fields Needed on pattas_patta
+
+```sql
+ALTER TABLE pattas_patta ADD COLUMN allottee_address TEXT;
+ALTER TABLE pattas_patta ADD COLUMN challan_number    VARCHAR(50);
+ALTER TABLE pattas_patta ADD COLUMN challan_date      DATE;
+ALTER TABLE pattas_patta ADD COLUMN lease_amount      DECIMAL(12,2);
+ALTER TABLE pattas_patta ADD COLUMN lease_duration    VARCHAR(20);  -- e.g. "10 वर्ष"
+ALTER TABLE pattas_patta ADD COLUMN regulation_file_present BOOLEAN DEFAULT NULL;
+ALTER TABLE pattas_patta ADD COLUMN remarks           TEXT;
+```
+
+#### 9. New Field Needed on colonies_colony
+
+```sql
+ALTER TABLE colonies_colony ADD COLUMN chak_number INT;
+```
+
+#### 10. New Field Needed on plots_plot
+
+```sql
+ALTER TABLE plots_plot ADD COLUMN area_sqy DECIMAL(10,2);
+-- area_sqm = area_sqy * 0.836127 (computed on import)
+```
+
+### Actual Colony Names (from Excel Sheet Tabs)
+
+Full list of ~72 colonies in Hindi as they appear in the source file:
+
+```
+बौद्ध बिहार, जगन्नाथपुरी फेज-3, तेजसिंह नगर, विष्णु नगर,
+पुष्प विहार, शेरसिंह नगर सरकूलर रोड़, महेश्वरी नगर,
+कृष्णा बिहार (नई मण्डी), यश बिहार, चामुण्डा माता,
+नियर कृष्णा नगर, गोरखधाम, राधिका बिहार ब्लॉक-A,
+राधिका बिहार ब्लॉक-बी, राधिका बिहार कॉलोनी, राधा नगर फेज-3,
+राधा नगर, शेरसिंह नगर (इन्द्रा नगर), बौद्ध बिहार,
+सूर्या सिटी, एल.बी. शास्त्री नगर फेज-1, ओ.एम.जी. सिटी,
+ब्रिगेडियर घासीराम नगर, सेवर कलां खसरा न. 1829,
+कृष्णा वाटिका-2, मारूती नन्दन वाटिका फेज-1, कैनाल कॉलौनी,
+शास्त्री नगर खसरा न. 1110-1111, विमल कुन्ज कॉलौनी,
+बृज नगर फेज-7, जगन्नाथ पुरी फेज-4, सुभाष नगर फेज-10,
+आनन्द नगर, रन्जीत नगर एफसीआई गोदाम, हर्ष बिहार फेज-1,
+मोहन बिहार, बृज बिहार फेज-2, सुजान वाटिका,
+जगन्नाथ पुरी फेज-5, सुभाष नगर फेज-11, सुभाष नगर फेज-12,
+हरीकुन्ज फेज-2, बृज नगर नोर्थ जोन-2, तिलक नगर फेज-8,
+जसवन्त नगर फेज-10, आनन्द नगर फेज-4, जयन्ती नगर,
+जसवंत नगर हीरादास का नगला, पुष्पवाटिका कॉलौनी फेज-2,
+कृष्ण वाटिका, बापू नगर ईदगाह कॉलौनी फेज-2,
+बापू नगर ईदगाह कॉलौनी फेज-3, विश्व सूर्य नगर-A/B/C/D/E,
+विजय नगर (सारस चौराहा), रघुनाथ पुरी ब्लॉक-बी, प्रीती बिहार,
+रघुनाथपुरी, प्रिन्स नगर फेज-3, हरीकुन्ज फेज-3, कमल विला,
+हरीकुन्ज फेज-1, पदम बिहार फेज-2, रूद्र नगर,
+गोविन्द निवास (कृष्णा नगर), प्रिन्स नगर कॉलोनी फेज-3,
+राजेन्द्र सूरी नगर, गणेश नगर फेज-1, गणेश नगर फेज-2,
+गणेश नगर फेज-3, गणेश नगर फेज-4, देव बिहार,
+कृष्णा बिहार (जाटौली घना)
+```
+
+---
+
+## 15. IMPLEMENTATION STATUS & REMAINING WORK
+
+> Last updated: 2026-05-07
+
+### ✅ Completed
+
+| Task | Details |
+|------|---------|
+| Git repository setup | `bda-lmis` repo at github.com/kdn8gbqph2-jpg/bda-lmis |
+| Branch structure | `main` (stable), `develop` (active) |
+| Docker Compose | PostgreSQL+PostGIS 14/3.3, Redis 7, Django backend, Celery, Vite frontend |
+| `backend/Dockerfile` | Python 3.11-slim + GDAL/GEOS/PROJ for GeoDjango |
+| `frontend/Dockerfile` | Node 20 Alpine + Vite dev server |
+| `.env.example` | All environment variables templated |
+| `.dockerignore` | Excludes venv, node_modules from build context |
+| `config/settings.py` | Full rewrite: PostGIS, DRF, JWT, CORS, Redis cache, Celery, Asia/Kolkata TZ |
+| `config/celery.py` | Celery app with autodiscover |
+| `config/urls.py` | All `/api/` routes wired |
+| `audit` app | `AuditLog` model + stub middleware |
+| `documents` app | Placeholder (empty model, ready for implementation) |
+| `users`, `colonies`, `plots`, `pattas`, `gis`, `dashboard` | Placeholder apps with empty `urls.py` stubs |
+
+### 🔲 Remaining — Backend (in implementation order)
+
+#### 1. `users` app — FIRST (all other models depend on CustomUser)
+- [ ] `CustomUser` model (extend `AbstractBaseUser`)
+- [ ] `ColonyAssignment` model
+- [ ] `users/permissions.py` — `IsAdmin`, `IsAdminOrSuperintendent`, `IsStaffOrAbove`, `IsAssignedColony`
+- [ ] Serializers: `UserSerializer`, `UserDetailSerializer`
+- [ ] Views: list, create, update, delete, assign-colonies
+- [ ] JWT login/logout/me endpoints (extend simplejwt views)
+- [ ] Initial migration + `createsuperuser`
+
+#### 2. `colonies` app
+- [ ] `Colony` model (with PostGIS `MultiPolygon`, `chak_number` field)
+- [ ] `Khasra` model (with PostGIS `Polygon`)
+- [ ] Serializers with GeoJSON output
+- [ ] Views: CRUD + `/stats/` + `/geojson/` endpoints
+- [ ] Migrations
+
+#### 3. `plots` app
+- [ ] `Plot` model (with `area_sqy` + `area_sqm`, PostGIS `Polygon`)
+- [ ] `PlotKhasraMapping` model
+- [ ] Serializers (including GeoJSON FeatureCollection)
+- [ ] Views: CRUD, bulk-import (CSV), `/geojson/` endpoint, cursor pagination
+- [ ] `filters.py` for colony/khasra/status filtering
+- [ ] Migrations
+
+#### 4. `pattas` app
+- [ ] `Patta` model — add: `allottee_address`, `challan_number`, `challan_date`, `lease_amount`, `lease_duration`, `regulation_file_present`, `remarks`
+- [ ] `PlotPattaMapping` model
+- [ ] `PattaVersion` model (amendment history)
+- [ ] Serializers (with co-plots and share %)
+- [ ] Views: CRUD, link-document, versions, cursor pagination
+- [ ] Migrations
+
+#### 5. `documents` app
+- [ ] `Document` model (file_path for S3 or local, link to plot/patta)
+- [ ] `storage.py` — S3/local storage abstraction
+- [ ] Serializers
+- [ ] Views: upload (multipart), preview, verify, download
+- [ ] Migrations
+
+#### 6. `gis` app
+- [ ] `CustomLayer` model (PostGIS `GeometryCollection`)
+- [ ] `LayerFeature` model
+- [ ] `geo_utils.py` — shapefile parsing (fiona/shapely), GeoJSON helpers
+- [ ] Views: colony/khasra/plot GeoJSON endpoints, custom layer upload
+- [ ] Migrations
+
+#### 7. `dashboard` app
+- [ ] Views: global KPIs, colony-progress, zone-breakdown (no models, DB queries only)
+
+#### 8. `audit` app
+- [ ] Wire `AuditMiddleware` to model `post_save`/`post_delete` signals
+- [ ] Views: audit-log list with filters (admin only)
+
+#### 9. Data Import Script
+- [ ] Write `management/commands/import_patta_ledger.py`
+- [ ] Parse each sheet from `Patta Ledger Format.xlsx`
+- [ ] Create `Colony`, `Khasra`, `Plot`, `Patta`, `PlotPattaMapping` records
+- [ ] Handle: comma-separated khasra numbers, alphanumeric plot numbers, missing allottee rows
+- [ ] Convert area from वर्गगज (sqy) to sqm on import
+- [ ] Map DMS file number → `documents_document`
+
+#### 10. Celery Tasks
+- [ ] `generate_report_file` — async Excel/PDF report generation
+- [ ] `parse_uploaded_shapefile` — background shapefile processing
+
+#### 11. Reports
+- [ ] Patta ledger Excel export
+- [ ] Scanning status report
+- [ ] Colony summary report
+
+### 🔲 Remaining — Frontend (after backend API is ready)
+
+#### Priority order:
+1. [ ] Restructure `src/` folder (api/, context/, hooks/, lib/, components/, pages/)
+2. [ ] `src/api/client.js` — Axios + JWT refresh interceptor
+3. [ ] `src/api/endpoints.js` — all API URL constants
+4. [ ] Zustand stores (auth, filters, notifications) — replacing the Context API plan
+5. [ ] Custom hooks (useQuery, useMutation, useForm, useDebounce, usePagination)
+6. [ ] Shared components (Modal, DataTable, StatusBadge, FilterBar, Pagination)
+7. [ ] Layout (Sidebar, Topbar, MainLayout)
+8. [ ] **LoginPage** (JWT auth flow)
+9. [ ] **DashboardPage** (KPI cards, colony progress chart, zone breakdown)
+10. [ ] **ColoniesPage** + ColonyDetailModal
+11. [ ] **PlotsPage** + PlotDetailModal (cursor paginated)
+12. [ ] **PattaLedgerPage** + PattaDetailModal
+13. [ ] **MapPage** (Mapbox GL + MapMyIndia raster tiles + GeoJSON overlays)
+14. [ ] **DocumentsPage** (upload + gallery + viewer)
+15. [ ] **ReportsPage**
+16. [ ] **PublicMapPage** (no auth)
+17. [ ] **AdminPanel** (user management + audit logs)
+
+### Environment Setup Checklist (local dev)
+
+```
+[ ] Copy .env.example → .env and fill values
+[ ] docker compose up --build  (first run: 5-10 min)
+[ ] docker compose exec backend python manage.py migrate
+[ ] docker compose exec backend python manage.py createsuperuser
+[ ] Verify: http://localhost:8000/admin  (Django admin)
+[ ] Verify: http://localhost:5173        (React app)
+[ ] Obtain MapMyIndia API key from mappls.com
+```
+
+### Key Technical Notes for Next Sessions
+
+1. **React 19 + TanStack Query v5** — write all frontend code against v5 API (`isPending` not `isLoading`, `useMutation` shape changed)
+2. **Tailwind v4** — uses `@import "tailwindcss"` in CSS, no `tailwind.config.js`
+3. **Zustand** is installed — use it for auth/filter stores instead of React Context
+4. **`missing_cases` app is excluded** — no case tracking, no nightly Celery task; `patta_missing` status exists as a simple flag only
+5. **Auction tracking is excluded** from this phase
+6. **Area in Excel is वर्गगज (square yards)** — always convert to sqm for DB storage, display both in UI
+7. **Patta numbers from Excel are plain integers** — store as VARCHAR, no "BDA/YYYY/XXXX" formatting
