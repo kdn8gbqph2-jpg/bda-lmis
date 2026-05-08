@@ -1790,137 +1790,163 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 
 ## 15. IMPLEMENTATION STATUS & REMAINING WORK
 
-> Last updated: 2026-05-07
+> Last updated: 2026-05-08
 
 ### ✅ Completed
 
+#### Infrastructure
 | Task | Details |
 |------|---------|
-| Git repository setup | `bda-lmis` repo at github.com/kdn8gbqph2-jpg/bda-lmis |
-| Branch structure | `main` (stable), `develop` (active) |
-| Docker Compose | PostgreSQL+PostGIS 14/3.3, Redis 7, Django backend, Celery, Vite frontend |
+| Git repository | `bda-lmis` at github.com/kdn8gbqph2-jpg/bda-lmis |
+| Branch structure | `main` (stable baseline), `develop` (active work) |
+| Docker Compose | 5 services: PostgreSQL+PostGIS 14/3.3, Redis 7, Django backend, Celery worker, Vite frontend |
 | `backend/Dockerfile` | Python 3.11-slim + GDAL/GEOS/PROJ for GeoDjango |
-| `frontend/Dockerfile` | Node 20 Alpine + Vite dev server |
+| `frontend/Dockerfile` | Node 20 Alpine + Vite dev server with `--host` flag |
 | `.env.example` | All environment variables templated |
-| `.dockerignore` | Excludes venv, node_modules from build context |
-| `config/settings.py` | Full rewrite: PostGIS, DRF, JWT, CORS, Redis cache, Celery, Asia/Kolkata TZ |
-| `config/celery.py` | Celery app with autodiscover |
-| `config/urls.py` | All `/api/` routes wired |
-| `audit` app | `AuditLog` model + stub middleware |
-| `documents` app | Placeholder (empty model, ready for implementation) |
-| `users`, `colonies`, `plots`, `pattas`, `gis`, `dashboard` | Placeholder apps with empty `urls.py` stubs |
+| `.dockerignore` | Excludes `venv/` and `node_modules/` from build context |
+| `config/settings.py` | PostGIS DB, DRF + JWT (simplejwt), CORS, Redis cache, Celery, Asia/Kolkata TZ, S3 toggle |
+| `config/celery.py` + `__init__.py` | Celery app wired with `autodiscover_tasks` |
+| `config/urls.py` | Auth endpoints + all app routes under `/api/` |
 
-### 🔲 Remaining — Backend (in implementation order)
+#### Backend apps — fully implemented
+| App | Files | What's done |
+|-----|-------|-------------|
+| `users` | `managers.py`, `models.py`, `permissions.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py` | `CustomUser` (email login, role/emp_id), `ColonyAssignment`, RBAC permission classes, JWT login/logout/me/refresh, user CRUD + assign-colonies (admin only) |
+| `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
 
-#### 1. `users` app — FIRST (all other models depend on CustomUser)
-- [ ] `CustomUser` model (extend `AbstractBaseUser`)
-- [ ] `ColonyAssignment` model
-- [ ] `users/permissions.py` — `IsAdmin`, `IsAdminOrSuperintendent`, `IsStaffOrAbove`, `IsAssignedColony`
-- [ ] Serializers: `UserSerializer`, `UserDetailSerializer`
-- [ ] Views: list, create, update, delete, assign-colonies
-- [ ] JWT login/logout/me endpoints (extend simplejwt views)
-- [ ] Initial migration + `createsuperuser`
+#### Backend apps — placeholder only (urls.py stub exists, models/views empty)
+`colonies`, `plots`, `pattas`, `documents`, `gis`, `dashboard`
 
-#### 2. `colonies` app
-- [ ] `Colony` model (with PostGIS `MultiPolygon`, `chak_number` field)
-- [ ] `Khasra` model (with PostGIS `Polygon`)
-- [ ] Serializers with GeoJSON output
+#### Auth endpoints live (once Docker is up + migrations run)
+```
+POST /api/auth/login/    → {access, refresh, user{id,role,emp_id,...}}
+POST /api/auth/refresh/
+POST /api/auth/logout/   → blacklists refresh token
+GET  /api/auth/me/       → current user profile
+```
+
+---
+
+### 🔲 Remaining — Backend (in dependency order)
+
+#### 1. `colonies` app  ← NEXT
+- [ ] `Colony` model: PostGIS `MultiPolygonField`, + `chak_number INT NULL`, make `notified_area_bigha` / `conversion_date` / `dlc_file_number` nullable (not all colonies have these in Excel)
+- [ ] `Khasra` model: PostGIS `PolygonField`
+- [ ] Serializers: list, detail, GeoJSON FeatureCollection
 - [ ] Views: CRUD + `/stats/` + `/geojson/` endpoints
+- [ ] Admin with `GISModelAdmin`
 - [ ] Migrations
 
-#### 3. `plots` app
-- [ ] `Plot` model (with `area_sqy` + `area_sqm`, PostGIS `Polygon`)
-- [ ] `PlotKhasraMapping` model
-- [ ] Serializers (including GeoJSON FeatureCollection)
-- [ ] Views: CRUD, bulk-import (CSV), `/geojson/` endpoint, cursor pagination
-- [ ] `filters.py` for colony/khasra/status filtering
+#### 2. `plots` app
+- [ ] `Plot` model: `area_sqy DECIMAL(10,2)` (square yards from Excel) + `area_sqm DECIMAL(10,2)` (converted), PostGIS `PolygonField`, 7 status values
+- [ ] `PlotKhasraMapping` junction model
+- [ ] Serializers: list, detail, GeoJSON FeatureCollection (status color in properties)
+- [ ] Views: CRUD + cursor pagination + bulk-import (CSV) + `/geojson/` + `/pattas/` + `/documents/`
+- [ ] `filters.py` for colony / khasra / status / search filtering
 - [ ] Migrations
 
-#### 4. `pattas` app
-- [ ] `Patta` model — add: `allottee_address`, `challan_number`, `challan_date`, `lease_amount`, `lease_duration`, `regulation_file_present`, `remarks`
-- [ ] `PlotPattaMapping` model
+#### 3. `pattas` app
+- [ ] `Patta` model with **all Excel-derived fields**: `patta_number VARCHAR` (plain integer), `allottee_address`, `challan_number`, `challan_date`, `lease_amount DECIMAL(12,2)`, `lease_duration VARCHAR(20)`, `regulation_file_present BOOLEAN NULL`, `remarks`
+- [ ] `PlotPattaMapping` junction model (`ownership_share_pct`, `allottee_role`, `document_status`)
 - [ ] `PattaVersion` model (amendment history)
-- [ ] Serializers (with co-plots and share %)
-- [ ] Views: CRUD, link-document, versions, cursor pagination
+- [ ] Serializers: list, detail (with co-plots + share %), GeoJSON
+- [ ] Views: CRUD + cursor pagination + `/versions/` + `/link-document/`
 - [ ] Migrations
 
-#### 5. `documents` app
-- [ ] `Document` model (file_path for S3 or local, link to plot/patta)
-- [ ] `storage.py` — S3/local storage abstraction
-- [ ] Serializers
-- [ ] Views: upload (multipart), preview, verify, download
+#### 4. `documents` app
+- [ ] `Document` model: file path (S3 or local), type, status, links to plot + patta
+- [ ] `storage.py`: S3/local storage abstraction
+- [ ] Views: multipart upload, preview, verify (`superintendent+`), download
 - [ ] Migrations
 
-#### 6. `gis` app
-- [ ] `CustomLayer` model (PostGIS `GeometryCollection`)
+#### 5. `gis` app
+- [ ] `CustomLayer` model: PostGIS `GeometryCollectionField`, style JSONB
 - [ ] `LayerFeature` model
-- [ ] `geo_utils.py` — shapefile parsing (fiona/shapely), GeoJSON helpers
-- [ ] Views: colony/khasra/plot GeoJSON endpoints, custom layer upload
-- [ ] Migrations
+- [ ] `geo_utils.py`: shapefile parsing (fiona + shapely), GeoJSON helpers, CRS reprojection to EPSG:4326
+- [ ] Views: colony/khasra/plot GeoJSON endpoints, custom layer upload + validate
 
-#### 7. `dashboard` app
-- [ ] Views: global KPIs, colony-progress, zone-breakdown (no models, DB queries only)
+#### 6. `dashboard` app
+- [ ] Views only (no models): global KPIs, colony-progress list, zone-breakdown
 
-#### 8. `audit` app
-- [ ] Wire `AuditMiddleware` to model `post_save`/`post_delete` signals
-- [ ] Views: audit-log list with filters (admin only)
+#### 7. `audit` app — wire signals
+- [ ] Connect `AuditMiddleware` to thread-local for IP capture
+- [ ] `post_save` / `post_delete` signals for: plot, patta, document, colony
+- [ ] Admin-only list view at `/api/audit-logs/`
 
-#### 9. Data Import Script
-- [ ] Write `management/commands/import_patta_ledger.py`
-- [ ] Parse each sheet from `Patta Ledger Format.xlsx`
-- [ ] Create `Colony`, `Khasra`, `Plot`, `Patta`, `PlotPattaMapping` records
-- [ ] Handle: comma-separated khasra numbers, alphanumeric plot numbers, missing allottee rows
-- [ ] Convert area from वर्गगज (sqy) to sqm on import
-- [ ] Map DMS file number → `documents_document`
+#### 8. Migrations & first run
+- [ ] `docker compose up --build`
+- [ ] `docker compose exec backend python manage.py makemigrations`
+- [ ] `docker compose exec backend python manage.py migrate`
+- [ ] `docker compose exec backend python manage.py createsuperuser`
 
-#### 10. Celery Tasks
-- [ ] `generate_report_file` — async Excel/PDF report generation
-- [ ] `parse_uploaded_shapefile` — background shapefile processing
+#### 9. Data import command
+- [ ] `management/commands/import_patta_ledger.py`
+  - Parse each sheet of `Patta Ledger Format.xlsx`
+  - Header rows → `Colony` (name, chak_number, layout_approval_date, total plots)
+  - Row 6 khasra string → `Khasra` records (comma-separated, handle `1450/1887` format)
+  - Data rows → `Plot` (area_sqy → area_sqm conversion), `Patta`, `PlotPattaMapping`
+  - Column D comma-separated khasra → `PlotKhasraMapping` if multiple
+  - Column N (DMS file number `BHR102703`) → `Document` record linked to patta
+  - Handle: alphanumeric plot numbers (`27A`, `27B`), blank allottee rows, `"NO"` in DMS column
 
-#### 11. Reports
-- [ ] Patta ledger Excel export
-- [ ] Scanning status report
-- [ ] Colony summary report
+#### 10. Celery tasks
+- [ ] `generate_report_file(report_type, params, user_id)` — async Excel/PDF export
+- [ ] `parse_uploaded_shapefile(layer_id, file_path)` — background shapefile parsing
 
-### 🔲 Remaining — Frontend (after backend API is ready)
+#### 11. Reports endpoints
+- [ ] Patta ledger Excel export (`/api/reports/patta-ledger/`)
+- [ ] Scanning status report (`/api/reports/scanning-status/`)
+- [ ] Colony summary report (`/api/reports/colony-summary/`)
 
-#### Priority order:
-1. [ ] Restructure `src/` folder (api/, context/, hooks/, lib/, components/, pages/)
-2. [ ] `src/api/client.js` — Axios + JWT refresh interceptor
+---
+
+### 🔲 Remaining — Frontend
+
+#### Priority order (start after backend `/api/auth/` + `/api/colonies/` are ready)
+1. [ ] Consolidate `src/` structure: `api/`, `stores/`, `hooks/`, `lib/`, `components/`, `pages/`
+2. [ ] `src/api/client.js` — Axios instance with JWT Bearer header + silent refresh interceptor
 3. [ ] `src/api/endpoints.js` — all API URL constants
-4. [ ] Zustand stores (auth, filters, notifications) — replacing the Context API plan
-5. [ ] Custom hooks (useQuery, useMutation, useForm, useDebounce, usePagination)
-6. [ ] Shared components (Modal, DataTable, StatusBadge, FilterBar, Pagination)
-7. [ ] Layout (Sidebar, Topbar, MainLayout)
-8. [ ] **LoginPage** (JWT auth flow)
-9. [ ] **DashboardPage** (KPI cards, colony progress chart, zone breakdown)
-10. [ ] **ColoniesPage** + ColonyDetailModal
-11. [ ] **PlotsPage** + PlotDetailModal (cursor paginated)
-12. [ ] **PattaLedgerPage** + PattaDetailModal
-13. [ ] **MapPage** (Mapbox GL + MapMyIndia raster tiles + GeoJSON overlays)
-14. [ ] **DocumentsPage** (upload + gallery + viewer)
-15. [ ] **ReportsPage**
-16. [ ] **PublicMapPage** (no auth)
-17. [ ] **AdminPanel** (user management + audit logs)
+4. [ ] Zustand stores: `useAuthStore`, `useFilterStore`, `useNotificationStore`
+5. [ ] Custom hooks: `useQuery`, `useMutation`, `useForm`, `useDebounce`, `usePagination`
+6. [ ] `src/lib/plotStatus.js` — status → color/label map (used by table badges + map layer)
+7. [ ] Shared components: `Modal`, `DataTable`, `StatusBadge`, `FilterBar`, `Pagination`, `LoadingSpinner`
+8. [ ] Layout: `Sidebar` (role-aware nav), `Topbar`, `MainLayout`
+9. [ ] **LoginPage**
+10. [ ] **DashboardPage** (KPI cards, colony progress bar chart, zone pie chart)
+11. [ ] **ColoniesPage** + ColonyDetailModal
+12. [ ] **PlotsPage** + PlotDetailModal (cursor paginated, 2375+ rows)
+13. [ ] **PattaLedgerPage** + PattaDetailModal
+14. [ ] **MapPage** (Mapbox GL + MapMyIndia raster tiles + GeoJSON overlays + LayerControlPanel)
+15. [ ] **DocumentsPage** (drag-drop upload + gallery + PDF/image viewer)
+16. [ ] **ReportsPage**
+17. [ ] **PublicMapPage** (no auth, read-only colony view)
+18. [ ] **AdminPanel**: UserManagementPage + AuditLogViewer
+
+---
 
 ### Environment Setup Checklist (local dev)
 
 ```
-[ ] Copy .env.example → .env and fill values
-[ ] docker compose up --build  (first run: 5-10 min)
+[ ] Copy .env.example → .env and fill in DB_PASSWORD, SECRET_KEY
+[ ] docker compose up --build          (first run: ~10 min)
+[ ] docker compose exec backend python manage.py makemigrations
 [ ] docker compose exec backend python manage.py migrate
 [ ] docker compose exec backend python manage.py createsuperuser
-[ ] Verify: http://localhost:8000/admin  (Django admin)
-[ ] Verify: http://localhost:5173        (React app)
-[ ] Obtain MapMyIndia API key from mappls.com
+[ ] Verify: http://localhost:8000/admin   (Django admin)
+[ ] Verify: http://localhost:8000/api/auth/login/  (POST with email+password)
+[ ] Verify: http://localhost:5173          (React dev server)
+[ ] Obtain MapMyIndia API key from mappls.com and add to .env
 ```
 
-### Key Technical Notes for Next Sessions
+---
 
-1. **React 19 + TanStack Query v5** — write all frontend code against v5 API (`isPending` not `isLoading`, `useMutation` shape changed)
-2. **Tailwind v4** — uses `@import "tailwindcss"` in CSS, no `tailwind.config.js`
-3. **Zustand** is installed — use it for auth/filter stores instead of React Context
-4. **`missing_cases` app is excluded** — no case tracking, no nightly Celery task; `patta_missing` status exists as a simple flag only
-5. **Auction tracking is excluded** from this phase
-6. **Area in Excel is वर्गगज (square yards)** — always convert to sqm for DB storage, display both in UI
-7. **Patta numbers from Excel are plain integers** — store as VARCHAR, no "BDA/YYYY/XXXX" formatting
+### Key Technical Rules (read at start of every session)
+
+1. **`missing_cases` app is OUT OF SCOPE** — no model, no endpoints, no Celery task
+2. **Auction tracking is OUT OF SCOPE**
+3. **Area unit**: Excel stores in वर्गगज (sq yards). Store `area_sqy` (raw) + `area_sqm` (= sqy × 0.836127) in DB. Display both in UI
+4. **Patta number**: plain integer from Excel (e.g. `3498`). Store as `VARCHAR`, no `BDA/YYYY/XXXX` formatting
+5. **React 19 + TanStack Query v5**: use `isPending` (not `isLoading`); `useMutation` callback shape changed — check v5 docs
+6. **Tailwind v4**: uses `@import "tailwindcss"` in CSS — no `tailwind.config.js`
+7. **Zustand** is installed for state — do not use React Context for global state
+8. **PostGIS**: all geometry stored in EPSG:4326 (WGS 84). Bharatpur centre: `[77.4933, 27.2152]`
