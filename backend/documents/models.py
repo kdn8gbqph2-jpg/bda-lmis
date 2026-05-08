@@ -98,8 +98,8 @@ class Document(models.Model):
 
     @property
     def file_url(self):
-        """Absolute URL or S3 presigned URL depending on storage backend."""
+        """Relative URL under MEDIA_URL, served by Django dev server or Nginx."""
         try:
             return self.file.url
-        except Exception:
+        except ValueError:
             return None

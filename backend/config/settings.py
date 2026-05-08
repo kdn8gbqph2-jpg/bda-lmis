@@ -28,7 +28,6 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'django_filters',
     'drf_yasg',
-    'storages',
     'django_extensions',
 ]
 
@@ -158,18 +157,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.getenv('MEDIA_ROOT', str(BASE_DIR / 'media'))
 
-# ── File Storage ──────────────────────────────────────────────────────────────
-
-USE_S3 = os.getenv('USE_S3', 'False') == 'True'
-
-if USE_S3:
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    AWS_ACCESS_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
-    AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
-    AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'ap-south-1')
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None
+# ── File Storage (local filesystem only) ─────────────────────────────────────
+# Files are served from MEDIA_ROOT via Django's built-in FileSystemStorage.
+# In production, serve /media/ directly through Nginx (no S3 needed).
 
 # ── Internationalisation ──────────────────────────────────────────────────────
 

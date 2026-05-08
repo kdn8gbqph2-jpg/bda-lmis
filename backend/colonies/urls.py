@@ -13,6 +13,9 @@ colony_urlpatterns = [
     path('', include(router.urls)),
 ]
 
+# Required by include('colonies.urls') in config/urls.py
+urlpatterns = colony_urlpatterns
+
 # Khasra URLs:  /api/khasras/...
 khasra_urlpatterns = [
     path('', include(khasra_router.urls)),

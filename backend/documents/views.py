@@ -85,42 +85,32 @@ class DocumentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def preview(self, request, pk=None):
         """
-        Serve the file for browser rendering.
-        For S3 storage, returns a redirect to the presigned URL.
-        For local storage, streams the file.
+        Stream the file for browser rendering (inline, not as attachment).
+        Files are always stored on the local filesystem.
         """
         doc = self.get_object()
         if not doc.file:
             raise Http404('No file attached to this document.')
 
         try:
-            file_url = doc.file.url
-        except Exception:
-            raise Http404('File not accessible.')
-
-        # If the URL is an external URL (S3 presigned), redirect
-        if file_url.startswith('http'):
-            from django.shortcuts import redirect
-            return redirect(file_url)
-
-        # Local file: stream it
-        try:
             file_path = doc.file.path
-            if not os.path.exists(file_path):
-                raise Http404('File not found on disk.')
-            content_type = doc.mime_type or (
-                mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
-            )
-            response = FileResponse(
-                open(file_path, 'rb'),
-                content_type=content_type,
-            )
-            response['Content-Disposition'] = (
-                f'inline; filename="{doc.original_filename}"'
-            )
-            return response
-        except Exception as exc:
-            raise Http404(f'Could not serve file: {exc}')
+        except Exception:
+            raise Http404('File path not accessible.')
+
+        if not os.path.exists(file_path):
+            raise Http404('File not found on disk.')
+
+        content_type = doc.mime_type or (
+            mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+        )
+        response = FileResponse(
+            open(file_path, 'rb'),
+            content_type=content_type,
+        )
+        response['Content-Disposition'] = (
+            f'inline; filename="{doc.original_filename}"'
+        )
+        return response
 
     # ── /api/documents/{id}/verify/ ───────────────────────────────────────────
 
