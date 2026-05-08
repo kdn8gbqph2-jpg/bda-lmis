@@ -1,0 +1,98 @@
+import client from './client'
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export const auth = {
+  login:   (data) => client.post('/auth/login/', data),
+  refresh: (data) => client.post('/auth/refresh/', data),
+  logout:  (data) => client.post('/auth/logout/', data),
+  me:      ()     => client.get('/auth/me/'),
+}
+
+// ── Colonies ──────────────────────────────────────────────────────────────────
+export const colonies = {
+  list:    (params) => client.get('/colonies/', { params }),
+  detail:  (id)     => client.get(`/colonies/${id}/`),
+  stats:   (id)     => client.get(`/colonies/${id}/stats/`),
+  geojson: (id)     => client.get(`/colonies/${id}/geojson/`),
+  geojsonAll: (params) => client.get('/colonies/geojson/', { params }),
+  create:  (data)   => client.post('/colonies/', data),
+  update:  (id, data) => client.put(`/colonies/${id}/`, data),
+  destroy: (id)     => client.delete(`/colonies/${id}/`),
+}
+
+// ── Khasras ───────────────────────────────────────────────────────────────────
+export const khasras = {
+  list:   (params) => client.get('/khasras/', { params }),
+  detail: (id)     => client.get(`/khasras/${id}/`),
+  plots:  (id)     => client.get(`/khasras/${id}/plots/`),
+}
+
+// ── Plots ─────────────────────────────────────────────────────────────────────
+export const plots = {
+  list:     (params) => client.get('/plots/', { params }),
+  detail:   (id)     => client.get(`/plots/${id}/`),
+  pattas:   (id)     => client.get(`/plots/${id}/pattas/`),
+  documents:(id)     => client.get(`/plots/${id}/documents/`),
+  history:  (id)     => client.get(`/plots/${id}/history/`),
+  geojson:  (params) => client.get('/plots/geojson/', { params }),
+  create:   (data)   => client.post('/plots/', data),
+  update:   (id, d)  => client.put(`/plots/${id}/`, d),
+  destroy:  (id)     => client.delete(`/plots/${id}/`),
+  bulkImport: (form) => client.post('/plots/bulk-import/', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+}
+
+// ── Pattas ────────────────────────────────────────────────────────────────────
+export const pattas = {
+  list:         (params) => client.get('/pattas/', { params }),
+  detail:       (id)     => client.get(`/pattas/${id}/`),
+  versions:     (id)     => client.get(`/pattas/${id}/versions/`),
+  plotsCovered: (id)     => client.get(`/pattas/${id}/plots/`),
+  linkDocument: (id, data) => client.post(`/pattas/${id}/link-document/`, data),
+  create:       (data)   => client.post('/pattas/', data),
+  update:       (id, d)  => client.put(`/pattas/${id}/`, d),
+  destroy:      (id)     => client.delete(`/pattas/${id}/`),
+}
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+export const documents = {
+  list:    (params) => client.get('/documents/', { params }),
+  detail:  (id)     => client.get(`/documents/${id}/`),
+  preview: (id)     => `/api/documents/${id}/preview/`,  // used as <img src> or window.open
+  verify:  (id)     => client.post(`/documents/${id}/verify/`),
+  upload:  (form)   => client.post('/documents/', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+export const dashboard = {
+  stats:          () => client.get('/dashboard/stats/'),
+  colonyProgress: () => client.get('/dashboard/colony-progress/'),
+  zoneBreakdown:  () => client.get('/dashboard/zone-breakdown/'),
+}
+
+// ── GIS ───────────────────────────────────────────────────────────────────────
+export const gis = {
+  coloniesGeojson: ()       => client.get('/gis/colonies/geojson/'),
+  khasrasGeojson:  (params) => client.get('/gis/khasras/geojson/', { params }),
+  plotsGeojson:    (params) => client.get('/gis/plots/geojson/', { params }),
+  layers:          ()       => client.get('/gis/custom-layers/'),
+  layerGeojson:    (id)     => client.get(`/gis/custom-layers/${id}/geojson/`),
+}
+
+// ── Users (admin) ─────────────────────────────────────────────────────────────
+export const users = {
+  list:           (params) => client.get('/users/', { params }),
+  detail:         (id)     => client.get(`/users/${id}/`),
+  create:         (data)   => client.post('/users/', data),
+  update:         (id, d)  => client.put(`/users/${id}/`, d),
+  destroy:        (id)     => client.delete(`/users/${id}/`),
+  assignColonies: (id, d)  => client.post(`/users/${id}/assign-colonies/`, d),
+}
+
+// ── Audit logs (admin) ────────────────────────────────────────────────────────
+export const auditLogs = {
+  list: (params) => client.get('/audit-logs/', { params }),
+}
