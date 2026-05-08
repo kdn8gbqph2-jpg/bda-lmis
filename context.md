@@ -1812,10 +1812,11 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | App | Files | What's done |
 |-----|-------|-------------|
 | `users` | `managers.py`, `models.py`, `permissions.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py` | `CustomUser` (email login, role/emp_id), `ColonyAssignment`, RBAC permission classes, JWT login/logout/me/refresh, user CRUD + assign-colonies (admin only) |
+| `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, nullable fields), `Khasra` (PostGIS Polygon), list/detail/GeoJSON serializers, CRUD + `/stats/` + `/geojson/` endpoints, Redis caching on stats + geojson, `GISModelAdmin` |
 | `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
 
 #### Backend apps — placeholder only (urls.py stub exists, models/views empty)
-`colonies`, `plots`, `pattas`, `documents`, `gis`, `dashboard`
+`plots`, `pattas`, `documents`, `gis`, `dashboard`
 
 #### Auth endpoints live (once Docker is up + migrations run)
 ```

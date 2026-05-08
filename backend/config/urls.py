@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from users.views import CustomTokenObtainPairView, LogoutView, MeView
+from colonies.urls import khasra_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -18,6 +19,7 @@ urlpatterns = [
     # App routers
     path('api/users/',      include('users.urls')),
     path('api/colonies/',   include('colonies.urls')),
+    path('api/khasras/',    include(khasra_urlpatterns)),
     path('api/plots/',      include('plots.urls')),
     path('api/pattas/',     include('pattas.urls')),
     path('api/documents/',  include('documents.urls')),
