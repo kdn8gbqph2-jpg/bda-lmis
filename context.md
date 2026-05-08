@@ -1864,27 +1864,45 @@ docker compose exec backend python manage.py import_patta_ledger --file /app/...
 
 ---
 
+### ✅ Completed — Frontend (2026-05-08)
+
+All core SPA pages and infrastructure are implemented and committed to `develop`:
+
+| File | What's done |
+|------|-------------|
+| `src/api/client.js` | Axios instance, Bearer token attach, deduped silent JWT refresh on 401, `.data` unwrapper in response interceptor |
+| `src/api/endpoints.js` | Full API surface: auth, colonies, khasras, plots, pattas, documents, dashboard, gis, users, auditLogs |
+| `src/stores/useAuthStore.js` | Zustand + persist; setAuth/setTokens/logout/isAdmin/isStaffOrAbove |
+| `src/lib/plotStatus.js` | PLOT_STATUS + PATTA_STATUS maps; getPlotStatus/getPattaStatus helpers |
+| `src/components/ui/Button.jsx` | variants (primary/secondary/danger/ghost), sizes, loading spinner |
+| `src/components/ui/Badge.jsx` | PlotStatusBadge (dot + label), PattaStatusBadge |
+| `src/components/ui/Card.jsx` | Card + StatCard (icon, label, value, sub, color variants) |
+| `src/components/ui/Input.jsx` | Input (forwardRef, prefix/suffix, error), Select |
+| `src/components/ui/Modal.jsx` | Escape/backdrop close, overflow lock, sizes sm/md/lg/xl/full, footer slot |
+| `src/components/ui/Table.jsx` | Table (columns with render/className/cellClass), Pagination (X–Y of N) |
+| `src/components/ui/Spinner.jsx` | Standalone spinner component |
+| `src/hooks/useDebounce.js` | Standard debounce hook |
+| `src/components/layout/Sidebar.jsx` | Role-aware NavLink nav; admin section gated by isAdmin(); user avatar + logout |
+| `src/components/layout/Topbar.jsx` | Breadcrumbs from route, live clock (en-IN locale) |
+| `src/components/layout/MainLayout.jsx` | Sidebar + Topbar + `<Outlet />` |
+| `src/App.jsx` | React Router v7: RequireAuth, RequireGuest, RequireAdmin guards; lazy-loaded pages; QueryClient |
+| `src/pages/LoginPage.jsx` | Email/password form, error display, redirects on success |
+| `src/pages/DashboardPage.jsx` | 8 KPI StatCards + ColonyProgress table + ZoneBreakdown list |
+| `src/pages/ColoniesPage.jsx` | Searchable/paginated table + ColonyDetailModal (stats + khasra chips) |
+| `src/pages/PlotsPage.jsx` | Filtered/paginated table (colony + status dropdowns + plot search) |
+| `src/pages/PattaLedgerPage.jsx` | Paginated table with colony filter + search; navigate-to-detail |
+| `src/pages/PattaDetailPage.jsx` | Full patta detail: allottee, financials, linked plots, version history |
+| `src/pages/DocumentsPage.jsx` | Filtered table with preview (window.open) + verify action |
+| `src/pages/admin/UsersPage.jsx` | User list + CreateUserModal (role select, emp_id, etc.) |
+| `src/pages/admin/AuditLogsPage.jsx` | Log table filtered by entity type + action |
+
 ### 🔲 Remaining — Frontend
 
-#### Priority order (start after backend `/api/auth/` + `/api/colonies/` are ready)
-1. [ ] Consolidate `src/` structure: `api/`, `stores/`, `hooks/`, `lib/`, `components/`, `pages/`
-2. [ ] `src/api/client.js` — Axios instance with JWT Bearer header + silent refresh interceptor
-3. [ ] `src/api/endpoints.js` — all API URL constants
-4. [ ] Zustand stores: `useAuthStore`, `useFilterStore`, `useNotificationStore`
-5. [ ] Custom hooks: `useQuery`, `useMutation`, `useForm`, `useDebounce`, `usePagination`
-6. [ ] `src/lib/plotStatus.js` — status → color/label map (used by table badges + map layer)
-7. [ ] Shared components: `Modal`, `DataTable`, `StatusBadge`, `FilterBar`, `Pagination`, `LoadingSpinner`
-8. [ ] Layout: `Sidebar` (role-aware nav), `Topbar`, `MainLayout`
-9. [ ] **LoginPage**
-10. [ ] **DashboardPage** (KPI cards, colony progress bar chart, zone pie chart)
-11. [ ] **ColoniesPage** + ColonyDetailModal
-12. [ ] **PlotsPage** + PlotDetailModal (cursor paginated, 2375+ rows)
-13. [ ] **PattaLedgerPage** + PattaDetailModal
-14. [ ] **MapPage** (Mapbox GL + MapMyIndia raster tiles + GeoJSON overlays + LayerControlPanel)
-15. [ ] **DocumentsPage** (drag-drop upload + gallery + PDF/image viewer)
-16. [ ] **ReportsPage**
-17. [ ] **PublicMapPage** (no auth, read-only colony view)
-18. [ ] **AdminPanel**: UserManagementPage + AuditLogViewer
+- [ ] **MapPage** — Mapbox GL + MapMyIndia raster tiles + GeoJSON plot/colony overlays + LayerControlPanel (toggle layers) + UploadLayerModal
+- [ ] **DocumentsPage enhancements** — drag-drop upload zone, PDF/image preview in modal (currently opens in new tab)
+- [ ] **ReportsPage** — Report card grid + GenerateReportModal (once backend Celery tasks are ready)
+- [ ] **PublicMapPage** — unauthenticated read-only colony/plot view (low priority)
+- [ ] **PlotDetailModal** — full inline plot detail with linked pattas, documents, upload form (currently PlotsPage only shows table)
 
 ---
 
