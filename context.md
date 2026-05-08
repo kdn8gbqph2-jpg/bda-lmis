@@ -1815,10 +1815,11 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, nullable fields), `Khasra` (PostGIS Polygon), list/detail/GeoJSON serializers, CRUD + `/stats/` + `/geojson/` endpoints, Redis caching on stats + geojson, `GISModelAdmin` |
 | `plots` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Plot` (area_sqy + area_sqm auto-computed, PostGIS Polygon, 7 status values), `PlotKhasraMapping` junction, list/detail/write/GeoJSON serializers (status color in properties), CRUD + soft-delete + `/pattas/` + `/documents/` + `/history/` + `/geojson/` + `/bulk-import/` CSV endpoint, Redis caching on geojson, `GISModelAdmin` |
 | `pattas` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Patta` (all Excel fields: patta_number VARCHAR, allottee_address, challan_number/date, lease_amount/duration, regulation_file_present BOOLEAN), `PlotPattaMapping` junction (ownership_share_pct, allottee_role), `PattaVersion` snapshot model, list/detail/write serializers, CRUD + soft-delete + `/versions/` + `/link-document/` + `/plots/` endpoints, auto-snapshot on every mutation |
+| `documents` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Document` model (FileField via DEFAULT_FILE_STORAGE — local/S3 transparent, dms_file_number BHR-format, links to plot + patta), upload serializer (validates MIME + 20 MB limit), list/detail serializers, CRUD + `/preview/` (FileResponse or S3 redirect) + `/verify/` (superintendent+); hard-delete blocked (7-yr rule); `DocumentAdmin` with delete disabled |
 | `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
 
 #### Backend apps — placeholder only (urls.py stub exists, models/views empty)
-`documents`, `gis`, `dashboard`
+`gis`, `dashboard`
 
 #### Auth endpoints live (once Docker is up + migrations run)
 ```
@@ -1832,13 +1833,7 @@ GET  /api/auth/me/       → current user profile
 
 ### 🔲 Remaining — Backend (in dependency order)
 
-#### 1. `documents` app  ← NEXT
-- [ ] `Document` model: file path (S3 or local), type, status, links to plot + patta
-- [ ] `storage.py`: S3/local storage abstraction
-- [ ] Views: multipart upload, preview, verify (`superintendent+`), download
-- [ ] Migrations
-
-#### 2. `gis` app
+#### 1. `gis` app  ← NEXT
 - [ ] `CustomLayer` model: PostGIS `GeometryCollectionField`, style JSONB
 - [ ] `LayerFeature` model
 - [ ] `geo_utils.py`: shapefile parsing (fiona + shapely), GeoJSON helpers, CRS reprojection to EPSG:4326
