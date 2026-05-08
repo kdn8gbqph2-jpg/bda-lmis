@@ -24,7 +24,8 @@ urlpatterns = [
     path('api/pattas/',     include('pattas.urls')),
     path('api/documents/',  include('documents.urls')),
     path('api/gis/',        include('gis.urls')),
-    path('api/dashboard/',  include('dashboard.urls')),
+    path('api/dashboard/',   include('dashboard.urls')),
+    path('api/audit-logs/',  include('audit.urls')),
 ]
 
 if settings.DEBUG:

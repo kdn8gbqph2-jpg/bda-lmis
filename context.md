@@ -1817,7 +1817,7 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | `documents` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Document` model (FileField → local filesystem via `MEDIA_ROOT`, dms_file_number BHR-format, links to plot + patta), upload serializer (validates MIME + 20 MB limit), list/detail serializers, CRUD + `/preview/` (FileResponse stream) + `/verify/` (superintendent+); hard-delete blocked (7-yr rule); `DocumentAdmin` with delete disabled |
 | `gis` | `models.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py`, `geo_utils.py` | `CustomLayer` (PostGIS GeometryCollection, style JSONB, metadata JSONB), `LayerFeature` (per-feature geometry + properties), `geo_utils.py` (shapefile ZIP parsing via fiona/shapely/pyproj, CRS reprojection to EPSG:4326, GeoJSON helpers), CRUD + shapefile/GeoJSON upload + `/geojson/` + `/validate/` endpoints; proxy GeoJSON views for colonies/khasras/plots; Redis caching |
 | `dashboard` | `views.py`, `urls.py` | No models; aggregate views: `/stats/` (global KPIs), `/colony-progress/` (per-colony patta + regulation counts), `/zone-breakdown/` (zone-level aggregates); lazy imports for plots/pattas; Redis caching (5-10 min) |
-| `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
+| `audit` | `models.py`, `middleware.py`, `signals.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py` | `AuditLog` model; `AuditMiddleware` with thread-local (user + IP + user-agent); `signals.py` — pre_save captures old DB state, post_save logs create/update, post_delete logs delete for Colony/Plot/Patta/Document; geometry/file fields excluded from JSON snapshots; admin-only `GET /api/audit-logs/` list view |
 
 #### Backend apps — placeholder only
 *(none — all apps have full implementations)*
@@ -1834,26 +1834,26 @@ GET  /api/auth/me/       → current user profile
 
 ### 🔲 Remaining — Backend (in dependency order)
 
-#### 1. `audit` app — wire signals  ← NEXT
-- [ ] Connect `AuditMiddleware` to thread-local for IP capture
-- [ ] `post_save` / `post_delete` signals for: plot, patta, document, colony
-- [ ] Admin-only list view at `/api/audit-logs/`
-
+#### 1. ~~`audit` signals~~ ✅ DONE
 #### 2. ~~Migrations & first run~~ ✅ DONE
 All 48 migrations applied. Superuser: `admin@bda.gov.in` / emp_id `ADMIN001`.
-Django system check: 0 issues.
 
-#### 3. Data import command
-- [ ] `management/commands/import_patta_ledger.py`
-  - Parse each sheet of `Patta Ledger Format.xlsx`
-  - Header rows → `Colony` (name, chak_number, layout_approval_date, total plots)
-  - Row 6 khasra string → `Khasra` records (comma-separated, handle `1450/1887` format)
-  - Data rows → `Plot` (area_sqy → area_sqm conversion), `Patta`, `PlotPattaMapping`
-  - Column D comma-separated khasra → `PlotKhasraMapping` if multiple
-  - Column N (DMS file number `BHR102703`) → `Document` record linked to patta
-  - Handle: alphanumeric plot numbers (`27A`, `27B`), blank allottee rows, `"NO"` in DMS column
+#### 3. ~~Data import command~~ ✅ DONE
+`colonies/management/commands/import_patta_ledger.py`
+- `--file`, `--dry-run`, `--colony` flags
+- Per-sheet: upserts Colony → Khasras → Plots → Pattas → PlotPattaMappings → Document stubs
+- Handles compound khasra numbers (1450/1887), comma-separated khasra cells, alphanumeric plot numbers, "NO" in DMS column, blank allottee rows
+- Idempotent (get_or_create throughout); wrapped in per-sheet atomic transactions
 
-#### 4. Celery tasks
+To run after copying the Excel file into the container:
+```bash
+docker compose cp "Patta Ledger Format.xlsx" backend:/app/
+docker compose exec backend python manage.py import_patta_ledger --file /app/Patta\ Ledger\ Format.xlsx
+# dry-run first:
+docker compose exec backend python manage.py import_patta_ledger --file /app/... --dry-run
+```
+
+#### 4. Celery tasks  ← NEXT BACKEND ITEM
 - [ ] `generate_report_file(report_type, params, user_id)` — async Excel/PDF export
 - [ ] `parse_uploaded_shapefile(layer_id, file_path)` — background shapefile parsing
 
