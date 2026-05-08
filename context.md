@@ -1816,10 +1816,12 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | `plots` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Plot` (area_sqy + area_sqm auto-computed, PostGIS Polygon, 7 status values), `PlotKhasraMapping` junction, list/detail/write/GeoJSON serializers (status color in properties), CRUD + soft-delete + `/pattas/` + `/documents/` + `/history/` + `/geojson/` + `/bulk-import/` CSV endpoint, Redis caching on geojson, `GISModelAdmin` |
 | `pattas` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Patta` (all Excel fields: patta_number VARCHAR, allottee_address, challan_number/date, lease_amount/duration, regulation_file_present BOOLEAN), `PlotPattaMapping` junction (ownership_share_pct, allottee_role), `PattaVersion` snapshot model, list/detail/write serializers, CRUD + soft-delete + `/versions/` + `/link-document/` + `/plots/` endpoints, auto-snapshot on every mutation |
 | `documents` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Document` model (FileField via DEFAULT_FILE_STORAGE — local/S3 transparent, dms_file_number BHR-format, links to plot + patta), upload serializer (validates MIME + 20 MB limit), list/detail serializers, CRUD + `/preview/` (FileResponse or S3 redirect) + `/verify/` (superintendent+); hard-delete blocked (7-yr rule); `DocumentAdmin` with delete disabled |
+| `gis` | `models.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py`, `geo_utils.py` | `CustomLayer` (PostGIS GeometryCollection, style JSONB, metadata JSONB), `LayerFeature` (per-feature geometry + properties), `geo_utils.py` (shapefile ZIP parsing via fiona/shapely/pyproj, CRS reprojection to EPSG:4326, GeoJSON helpers), CRUD + shapefile/GeoJSON upload + `/geojson/` + `/validate/` endpoints; proxy GeoJSON views for colonies/khasras/plots; Redis caching |
+| `dashboard` | `views.py`, `urls.py` | No models; aggregate views: `/stats/` (global KPIs), `/colony-progress/` (per-colony patta + regulation counts), `/zone-breakdown/` (zone-level aggregates); lazy imports for plots/pattas; Redis caching (5-10 min) |
 | `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
 
-#### Backend apps — placeholder only (urls.py stub exists, models/views empty)
-`gis`, `dashboard`
+#### Backend apps — placeholder only
+*(none — all apps have full implementations)*
 
 #### Auth endpoints live (once Docker is up + migrations run)
 ```
@@ -1833,27 +1835,18 @@ GET  /api/auth/me/       → current user profile
 
 ### 🔲 Remaining — Backend (in dependency order)
 
-#### 1. `gis` app  ← NEXT
-- [ ] `CustomLayer` model: PostGIS `GeometryCollectionField`, style JSONB
-- [ ] `LayerFeature` model
-- [ ] `geo_utils.py`: shapefile parsing (fiona + shapely), GeoJSON helpers, CRS reprojection to EPSG:4326
-- [ ] Views: colony/khasra/plot GeoJSON endpoints, custom layer upload + validate
-
-#### 3. `dashboard` app
-- [ ] Views only (no models): global KPIs, colony-progress list, zone-breakdown
-
-#### 4. `audit` app — wire signals
+#### 1. `audit` app — wire signals  ← NEXT
 - [ ] Connect `AuditMiddleware` to thread-local for IP capture
 - [ ] `post_save` / `post_delete` signals for: plot, patta, document, colony
 - [ ] Admin-only list view at `/api/audit-logs/`
 
-#### 5. Migrations & first run
+#### 2. Migrations & first run
 - [ ] `docker compose up --build`
 - [ ] `docker compose exec backend python manage.py makemigrations`
 - [ ] `docker compose exec backend python manage.py migrate`
 - [ ] `docker compose exec backend python manage.py createsuperuser`
 
-#### 6. Data import command
+#### 3. Data import command
 - [ ] `management/commands/import_patta_ledger.py`
   - Parse each sheet of `Patta Ledger Format.xlsx`
   - Header rows → `Colony` (name, chak_number, layout_approval_date, total plots)
@@ -1863,11 +1856,11 @@ GET  /api/auth/me/       → current user profile
   - Column N (DMS file number `BHR102703`) → `Document` record linked to patta
   - Handle: alphanumeric plot numbers (`27A`, `27B`), blank allottee rows, `"NO"` in DMS column
 
-#### 7. Celery tasks
+#### 4. Celery tasks
 - [ ] `generate_report_file(report_type, params, user_id)` — async Excel/PDF export
 - [ ] `parse_uploaded_shapefile(layer_id, file_path)` — background shapefile parsing
 
-#### 8. Reports endpoints
+#### 5. Reports endpoints
 - [ ] Patta ledger Excel export (`/api/reports/patta-ledger/`)
 - [ ] Scanning status report (`/api/reports/scanning-status/`)
 - [ ] Colony summary report (`/api/reports/colony-summary/`)
