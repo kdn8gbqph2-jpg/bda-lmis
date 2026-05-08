@@ -1813,10 +1813,11 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 |-----|-------|-------------|
 | `users` | `managers.py`, `models.py`, `permissions.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py` | `CustomUser` (email login, role/emp_id), `ColonyAssignment`, RBAC permission classes, JWT login/logout/me/refresh, user CRUD + assign-colonies (admin only) |
 | `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, nullable fields), `Khasra` (PostGIS Polygon), list/detail/GeoJSON serializers, CRUD + `/stats/` + `/geojson/` endpoints, Redis caching on stats + geojson, `GISModelAdmin` |
+| `plots` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Plot` (area_sqy + area_sqm auto-computed, PostGIS Polygon, 7 status values), `PlotKhasraMapping` junction, list/detail/write/GeoJSON serializers (status color in properties), CRUD + soft-delete + `/pattas/` + `/documents/` + `/history/` + `/geojson/` + `/bulk-import/` CSV endpoint, Redis caching on geojson, `GISModelAdmin` |
 | `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
 
 #### Backend apps — placeholder only (urls.py stub exists, models/views empty)
-`plots`, `pattas`, `documents`, `gis`, `dashboard`
+`pattas`, `documents`, `gis`, `dashboard`
 
 #### Auth endpoints live (once Docker is up + migrations run)
 ```
@@ -1830,23 +1831,7 @@ GET  /api/auth/me/       → current user profile
 
 ### 🔲 Remaining — Backend (in dependency order)
 
-#### 1. `colonies` app  ← NEXT
-- [ ] `Colony` model: PostGIS `MultiPolygonField`, + `chak_number INT NULL`, make `notified_area_bigha` / `conversion_date` / `dlc_file_number` nullable (not all colonies have these in Excel)
-- [ ] `Khasra` model: PostGIS `PolygonField`
-- [ ] Serializers: list, detail, GeoJSON FeatureCollection
-- [ ] Views: CRUD + `/stats/` + `/geojson/` endpoints
-- [ ] Admin with `GISModelAdmin`
-- [ ] Migrations
-
-#### 2. `plots` app
-- [ ] `Plot` model: `area_sqy DECIMAL(10,2)` (square yards from Excel) + `area_sqm DECIMAL(10,2)` (converted), PostGIS `PolygonField`, 7 status values
-- [ ] `PlotKhasraMapping` junction model
-- [ ] Serializers: list, detail, GeoJSON FeatureCollection (status color in properties)
-- [ ] Views: CRUD + cursor pagination + bulk-import (CSV) + `/geojson/` + `/pattas/` + `/documents/`
-- [ ] `filters.py` for colony / khasra / status / search filtering
-- [ ] Migrations
-
-#### 3. `pattas` app
+#### 1. `pattas` app  ← NEXT
 - [ ] `Patta` model with **all Excel-derived fields**: `patta_number VARCHAR` (plain integer), `allottee_address`, `challan_number`, `challan_date`, `lease_amount DECIMAL(12,2)`, `lease_duration VARCHAR(20)`, `regulation_file_present BOOLEAN NULL`, `remarks`
 - [ ] `PlotPattaMapping` junction model (`ownership_share_pct`, `allottee_role`, `document_status`)
 - [ ] `PattaVersion` model (amendment history)
