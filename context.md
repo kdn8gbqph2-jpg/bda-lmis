@@ -1396,7 +1396,7 @@ frontend/
 | Celery | 5.3+ | Async tasks (auto-case creation, report export) |
 | Gunicorn | 20+ | WSGI server |
 | Nginx | 1.24+ | Reverse proxy |
-| django-storages | 1.14+ | S3 / local file storage |
+| FileSystemStorage | Django built-in | Local file storage (no S3) |
 | fiona + shapely | Latest | Shapefile parsing + geometry validation |
 | openpyxl | 3.1+ | Excel report generation |
 | reportlab | 4.0+ | PDF report generation |
@@ -1425,8 +1425,7 @@ frontend/
 |-----------|---------|
 | Docker + Docker Compose | Containerization |
 | GitHub Actions | CI/CD pipeline |
-| AWS S3 | Document file storage |
-| AWS CloudFront | CDN for document downloads |
+| Local filesystem + Nginx | Document file storage and serving |
 
 ---
 
@@ -1804,7 +1803,7 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | `frontend/Dockerfile` | Node 20 Alpine + Vite dev server with `--host` flag |
 | `.env.example` | All environment variables templated |
 | `.dockerignore` | Excludes `venv/` and `node_modules/` from build context |
-| `config/settings.py` | PostGIS DB, DRF + JWT (simplejwt), CORS, Redis cache, Celery, Asia/Kolkata TZ, S3 toggle |
+| `config/settings.py` | PostGIS DB, DRF + JWT (simplejwt), CORS, Redis cache, Celery, Asia/Kolkata TZ, local FileSystemStorage |
 | `config/celery.py` + `__init__.py` | Celery app wired with `autodiscover_tasks` |
 | `config/urls.py` | Auth endpoints + all app routes under `/api/` |
 
@@ -1815,7 +1814,7 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, nullable fields), `Khasra` (PostGIS Polygon), list/detail/GeoJSON serializers, CRUD + `/stats/` + `/geojson/` endpoints, Redis caching on stats + geojson, `GISModelAdmin` |
 | `plots` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Plot` (area_sqy + area_sqm auto-computed, PostGIS Polygon, 7 status values), `PlotKhasraMapping` junction, list/detail/write/GeoJSON serializers (status color in properties), CRUD + soft-delete + `/pattas/` + `/documents/` + `/history/` + `/geojson/` + `/bulk-import/` CSV endpoint, Redis caching on geojson, `GISModelAdmin` |
 | `pattas` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Patta` (all Excel fields: patta_number VARCHAR, allottee_address, challan_number/date, lease_amount/duration, regulation_file_present BOOLEAN), `PlotPattaMapping` junction (ownership_share_pct, allottee_role), `PattaVersion` snapshot model, list/detail/write serializers, CRUD + soft-delete + `/versions/` + `/link-document/` + `/plots/` endpoints, auto-snapshot on every mutation |
-| `documents` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Document` model (FileField via DEFAULT_FILE_STORAGE — local/S3 transparent, dms_file_number BHR-format, links to plot + patta), upload serializer (validates MIME + 20 MB limit), list/detail serializers, CRUD + `/preview/` (FileResponse or S3 redirect) + `/verify/` (superintendent+); hard-delete blocked (7-yr rule); `DocumentAdmin` with delete disabled |
+| `documents` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Document` model (FileField → local filesystem via `MEDIA_ROOT`, dms_file_number BHR-format, links to plot + patta), upload serializer (validates MIME + 20 MB limit), list/detail serializers, CRUD + `/preview/` (FileResponse stream) + `/verify/` (superintendent+); hard-delete blocked (7-yr rule); `DocumentAdmin` with delete disabled |
 | `gis` | `models.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py`, `geo_utils.py` | `CustomLayer` (PostGIS GeometryCollection, style JSONB, metadata JSONB), `LayerFeature` (per-feature geometry + properties), `geo_utils.py` (shapefile ZIP parsing via fiona/shapely/pyproj, CRS reprojection to EPSG:4326, GeoJSON helpers), CRUD + shapefile/GeoJSON upload + `/geojson/` + `/validate/` endpoints; proxy GeoJSON views for colonies/khasras/plots; Redis caching |
 | `dashboard` | `views.py`, `urls.py` | No models; aggregate views: `/stats/` (global KPIs), `/colony-progress/` (per-colony patta + regulation counts), `/zone-breakdown/` (zone-level aggregates); lazy imports for plots/pattas; Redis caching (5-10 min) |
 | `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
@@ -1840,11 +1839,9 @@ GET  /api/auth/me/       → current user profile
 - [ ] `post_save` / `post_delete` signals for: plot, patta, document, colony
 - [ ] Admin-only list view at `/api/audit-logs/`
 
-#### 2. Migrations & first run
-- [ ] `docker compose up --build`
-- [ ] `docker compose exec backend python manage.py makemigrations`
-- [ ] `docker compose exec backend python manage.py migrate`
-- [ ] `docker compose exec backend python manage.py createsuperuser`
+#### 2. ~~Migrations & first run~~ ✅ DONE
+All 48 migrations applied. Superuser: `admin@bda.gov.in` / emp_id `ADMIN001`.
+Django system check: 0 issues.
 
 #### 3. Data import command
 - [ ] `management/commands/import_patta_ledger.py`
