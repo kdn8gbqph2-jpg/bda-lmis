@@ -1814,10 +1814,11 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | `users` | `managers.py`, `models.py`, `permissions.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py` | `CustomUser` (email login, role/emp_id), `ColonyAssignment`, RBAC permission classes, JWT login/logout/me/refresh, user CRUD + assign-colonies (admin only) |
 | `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, nullable fields), `Khasra` (PostGIS Polygon), list/detail/GeoJSON serializers, CRUD + `/stats/` + `/geojson/` endpoints, Redis caching on stats + geojson, `GISModelAdmin` |
 | `plots` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Plot` (area_sqy + area_sqm auto-computed, PostGIS Polygon, 7 status values), `PlotKhasraMapping` junction, list/detail/write/GeoJSON serializers (status color in properties), CRUD + soft-delete + `/pattas/` + `/documents/` + `/history/` + `/geojson/` + `/bulk-import/` CSV endpoint, Redis caching on geojson, `GISModelAdmin` |
+| `pattas` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Patta` (all Excel fields: patta_number VARCHAR, allottee_address, challan_number/date, lease_amount/duration, regulation_file_present BOOLEAN), `PlotPattaMapping` junction (ownership_share_pct, allottee_role), `PattaVersion` snapshot model, list/detail/write serializers, CRUD + soft-delete + `/versions/` + `/link-document/` + `/plots/` endpoints, auto-snapshot on every mutation |
 | `audit` | `models.py`, `middleware.py`, `admin.py` | `AuditLog` model + stub middleware (signals wiring pending) |
 
 #### Backend apps — placeholder only (urls.py stub exists, models/views empty)
-`pattas`, `documents`, `gis`, `dashboard`
+`documents`, `gis`, `dashboard`
 
 #### Auth endpoints live (once Docker is up + migrations run)
 ```
@@ -1831,41 +1832,33 @@ GET  /api/auth/me/       → current user profile
 
 ### 🔲 Remaining — Backend (in dependency order)
 
-#### 1. `pattas` app  ← NEXT
-- [ ] `Patta` model with **all Excel-derived fields**: `patta_number VARCHAR` (plain integer), `allottee_address`, `challan_number`, `challan_date`, `lease_amount DECIMAL(12,2)`, `lease_duration VARCHAR(20)`, `regulation_file_present BOOLEAN NULL`, `remarks`
-- [ ] `PlotPattaMapping` junction model (`ownership_share_pct`, `allottee_role`, `document_status`)
-- [ ] `PattaVersion` model (amendment history)
-- [ ] Serializers: list, detail (with co-plots + share %), GeoJSON
-- [ ] Views: CRUD + cursor pagination + `/versions/` + `/link-document/`
-- [ ] Migrations
-
-#### 4. `documents` app
+#### 1. `documents` app  ← NEXT
 - [ ] `Document` model: file path (S3 or local), type, status, links to plot + patta
 - [ ] `storage.py`: S3/local storage abstraction
 - [ ] Views: multipart upload, preview, verify (`superintendent+`), download
 - [ ] Migrations
 
-#### 5. `gis` app
+#### 2. `gis` app
 - [ ] `CustomLayer` model: PostGIS `GeometryCollectionField`, style JSONB
 - [ ] `LayerFeature` model
 - [ ] `geo_utils.py`: shapefile parsing (fiona + shapely), GeoJSON helpers, CRS reprojection to EPSG:4326
 - [ ] Views: colony/khasra/plot GeoJSON endpoints, custom layer upload + validate
 
-#### 6. `dashboard` app
+#### 3. `dashboard` app
 - [ ] Views only (no models): global KPIs, colony-progress list, zone-breakdown
 
-#### 7. `audit` app — wire signals
+#### 4. `audit` app — wire signals
 - [ ] Connect `AuditMiddleware` to thread-local for IP capture
 - [ ] `post_save` / `post_delete` signals for: plot, patta, document, colony
 - [ ] Admin-only list view at `/api/audit-logs/`
 
-#### 8. Migrations & first run
+#### 5. Migrations & first run
 - [ ] `docker compose up --build`
 - [ ] `docker compose exec backend python manage.py makemigrations`
 - [ ] `docker compose exec backend python manage.py migrate`
 - [ ] `docker compose exec backend python manage.py createsuperuser`
 
-#### 9. Data import command
+#### 6. Data import command
 - [ ] `management/commands/import_patta_ledger.py`
   - Parse each sheet of `Patta Ledger Format.xlsx`
   - Header rows → `Colony` (name, chak_number, layout_approval_date, total plots)
@@ -1875,11 +1868,11 @@ GET  /api/auth/me/       → current user profile
   - Column N (DMS file number `BHR102703`) → `Document` record linked to patta
   - Handle: alphanumeric plot numbers (`27A`, `27B`), blank allottee rows, `"NO"` in DMS column
 
-#### 10. Celery tasks
+#### 7. Celery tasks
 - [ ] `generate_report_file(report_type, params, user_id)` — async Excel/PDF export
 - [ ] `parse_uploaded_shapefile(layer_id, file_path)` — background shapefile parsing
 
-#### 11. Reports endpoints
+#### 8. Reports endpoints
 - [ ] Patta ledger Excel export (`/api/reports/patta-ledger/`)
 - [ ] Scanning status report (`/api/reports/scanning-status/`)
 - [ ] Colony summary report (`/api/reports/colony-summary/`)
