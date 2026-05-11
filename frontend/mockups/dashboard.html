@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDA LMIS — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body class="bg-slate-100 font-sans flex">
+
+<!-- SIDEBAR -->
+<aside class="w-60 bg-slate-900 min-h-screen flex flex-col fixed top-0 left-0 z-30">
+  <div class="px-5 py-5 border-b border-slate-700/60">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-4.5 h-4.5 text-white w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      </div>
+      <div>
+        <div class="text-white font-bold text-sm leading-tight">BDA LMIS</div>
+        <div class="text-slate-400 text-xs leading-tight">Bharatpur Dev. Auth.</div>
+      </div>
+    </div>
+  </div>
+  <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+    <a href="dashboard.html" class="sidebar-link active">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+      Dashboard
+    </a>
+    <a href="colonies.html" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      Colonies
+    </a>
+    <a href="plots.html" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      Plots
+    </a>
+    <a href="map.html" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Map
+    </a>
+    <a href="patta-ledger.html" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Patta Ledger
+    </a>
+    <a href="reports.html" class="sidebar-link">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Reports
+    </a>
+    <div class="pt-3 mt-3 border-t border-slate-700/60">
+      <p class="px-3 text-xs text-slate-500 uppercase tracking-wider mb-1">Admin</p>
+      <a href="#" class="sidebar-link">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        Users
+      </a>
+      <a href="#" class="sidebar-link">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Audit Logs
+      </a>
+    </div>
+  </nav>
+  <div class="px-3 py-4 border-t border-slate-700/60">
+    <div class="flex items-center gap-2.5 px-2">
+      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">AK</div>
+      <div class="min-w-0">
+        <div class="text-white text-xs font-medium truncate">Ashish Kumar</div>
+        <div class="text-slate-400 text-xs">Administrator</div>
+      </div>
+      <a href="login.html" class="ml-auto text-slate-400 hover:text-white" title="Logout">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="ml-60 flex-1 flex flex-col min-h-screen">
+
+  <!-- TOPBAR -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+    <div>
+      <h1 class="text-slate-800 font-semibold text-base">Dashboard</h1>
+      <p class="text-slate-400 text-xs">Overview of all colonies and land records</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center font-bold">3</span>
+        <button class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        </button>
+      </div>
+      <div class="text-slate-500 text-xs bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+        <span class="font-medium text-slate-700">Wed, 7 May 2025</span>
+        <span class="ml-2 text-slate-400">11:32 AM</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- PAGE CONTENT -->
+  <main class="flex-1 p-6 space-y-6">
+
+    <!-- ALERT BANNER -->
+    <div class="bg-red-50 border border-red-200 rounded-xl px-5 py-3 flex items-center gap-3">
+      <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <p class="text-red-700 text-sm"><span class="font-semibold">128 pattas</span> have missing physical files. <a href="patta-ledger.html" class="underline font-medium hover:text-red-800">View patta ledger →</a></p>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-4 gap-4">
+      <div class="kpi-card">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Plots</p>
+            <p class="text-3xl font-bold text-slate-800 mt-1">2,375</p>
+            <p class="text-xs text-slate-400 mt-1">1,700 residential · 675 commercial</p>
+          </div>
+          <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-blue-500 h-1.5 rounded-full" style="width:100%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Pattas Issued</p>
+            <p class="text-3xl font-bold text-slate-800 mt-1">2,047</p>
+            <p class="text-xs text-green-600 mt-1 font-medium">↑ 86.2% of total plots</p>
+          </div>
+          <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-green-500 h-1.5 rounded-full" style="width:86%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Regulation File Missing</p>
+            <p class="text-3xl font-bold text-red-600 mt-1">128</p>
+            <p class="text-xs text-red-500 mt-1 font-medium">Across 18 colonies</p>
+          </div>
+          <div class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-red-500 h-1.5 rounded-full" style="width:6%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Documents Scanned</p>
+            <p class="text-3xl font-bold text-slate-800 mt-1">1,847</p>
+            <p class="text-xs text-amber-600 mt-1 font-medium">73.5% scanned</p>
+          </div>
+          <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-amber-500 h-1.5 rounded-full" style="width:73%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div class="grid grid-cols-3 gap-4">
+
+      <!-- Colony Progress Chart (2/3 width) -->
+      <div class="col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-semibold text-slate-800 text-sm">Colony Scanning Progress</h3>
+            <p class="text-slate-400 text-xs">Documents scanned vs total pattas issued</p>
+          </div>
+          <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option>All Zones</option>
+            <option>North</option><option>South</option><option>East</option>
+            <option>West</option><option>Central</option>
+          </select>
+        </div>
+        <div class="space-y-2.5">
+          <!-- Bar rows -->
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate" title="बौद्ध बिहार">बौद्ध बिहार</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-green-500 h-5 rounded-full" style="width:92%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">92%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">61 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate" title="गणेश नगर फेज-1">गणेश नगर फेज-1</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-green-500 h-5 rounded-full" style="width:87%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">87%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">78 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate">विष्णु नगर</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-green-500 h-5 rounded-full" style="width:81%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">81%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">54 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate">सुभाष नगर फेज-10</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-amber-500 h-5 rounded-full" style="width:74%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">74%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">92 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate">राधिका बिहार ब्लॉक-A</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-amber-500 h-5 rounded-full" style="width:68%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">68%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">110 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate">कृष्णा बिहार (नई मण्डी)</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-amber-500 h-5 rounded-full" style="width:61%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">61%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">88 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate">पुष्प विहार</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-orange-500 h-5 rounded-full" style="width:45%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">45%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">66 plots</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 text-xs text-slate-600 text-right truncate">देव बिहार</div>
+            <div class="flex-1 bg-slate-100 rounded-full h-5 relative">
+              <div class="bg-red-500 h-5 rounded-full" style="width:28%"></div>
+              <span class="absolute right-2 top-0.5 text-xs font-medium text-slate-700">28%</span>
+            </div>
+            <div class="w-12 text-xs text-slate-400 text-right">43 plots</div>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-4 text-xs text-slate-400">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-green-500 rounded-sm inline-block"></span>≥75%</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-amber-500 rounded-sm inline-block"></span>50-74%</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-orange-500 rounded-sm inline-block"></span>25-49%</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-red-500 rounded-sm inline-block"></span>&lt;25%</span>
+          <a href="colonies.html" class="ml-auto text-blue-600 font-medium hover:underline">View all 72 colonies →</a>
+        </div>
+      </div>
+
+      <!-- Plot Status Donut -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 class="font-semibold text-slate-800 text-sm mb-1">Plot Status</h3>
+        <p class="text-slate-400 text-xs mb-4">Distribution across all colonies</p>
+        <!-- SVG Donut -->
+        <div class="flex justify-center mb-4">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <!-- patta_ok: 1,520 = 64% -->
+            <circle cx="70" cy="70" r="50" fill="none" stroke="#16a34a" stroke-width="22"
+              stroke-dasharray="201.1 314.2" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
+            <!-- allotted: 380 = 16% -->
+            <circle cx="70" cy="70" r="50" fill="none" stroke="#7c3aed" stroke-width="22"
+              stroke-dasharray="50.3 314.2" stroke-dashoffset="-201.1" transform="rotate(-90 70 70)"/>
+            <!-- patta_missing: 128 = 5.4% -->
+            <circle cx="70" cy="70" r="50" fill="none" stroke="#dc2626" stroke-width="22"
+              stroke-dasharray="17.0 314.2" stroke-dashoffset="-251.4" transform="rotate(-90 70 70)"/>
+            <!-- available: 300 = 12.6% -->
+            <circle cx="70" cy="70" r="50" fill="none" stroke="#0891b2" stroke-width="22"
+              stroke-dasharray="39.6 314.2" stroke-dashoffset="-268.4" transform="rotate(-90 70 70)"/>
+            <!-- cancelled: 47 = 2% -->
+            <circle cx="70" cy="70" r="50" fill="none" stroke="#9ca3af" stroke-width="22"
+              stroke-dasharray="6.3 314.2" stroke-dashoffset="-308.0" transform="rotate(-90 70 70)"/>
+            <text x="70" y="65" text-anchor="middle" class="text-lg font-bold" style="font-size:18px;font-weight:700;fill:#1e293b">2,375</text>
+            <text x="70" y="82" text-anchor="middle" style="font-size:9px;fill:#94a3b8">total plots</text>
+          </svg>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-green-600 rounded-sm"></span>Patta OK</span>
+            <span class="font-semibold text-slate-700">1,520 <span class="text-slate-400 font-normal">(64%)</span></span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-purple-600 rounded-sm"></span>Allotted</span>
+            <span class="font-semibold text-slate-700">380 <span class="text-slate-400 font-normal">(16%)</span></span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-cyan-600 rounded-sm"></span>Available</span>
+            <span class="font-semibold text-slate-700">300 <span class="text-slate-400 font-normal">(12.6%)</span></span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-red-600 rounded-sm"></span>File Missing</span>
+            <span class="font-semibold text-red-600">128 <span class="text-slate-400 font-normal">(5.4%)</span></span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-gray-400 rounded-sm"></span>Cancelled</span>
+            <span class="font-semibold text-slate-700">47 <span class="text-slate-400 font-normal">(2%)</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM ROW: Zone Breakdown + Recent Activity -->
+    <div class="grid grid-cols-3 gap-4">
+
+      <!-- Zone Breakdown -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 class="font-semibold text-slate-800 text-sm mb-4">Zone Breakdown</h3>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-600 font-medium">North</span><span class="text-slate-500">8 colonies · 420 plots</span></div>
+            <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width:100%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-600 font-medium">West</span><span class="text-slate-500">7 colonies · 440 plots</span></div>
+            <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-indigo-500 h-2 rounded-full" style="width:100%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-600 font-medium">South</span><span class="text-slate-500">6 colonies · 360 plots</span></div>
+            <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-violet-500 h-2 rounded-full" style="width:86%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-600 font-medium">East</span><span class="text-slate-500">6 colonies · 360 plots</span></div>
+            <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full" style="width:86%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-600 font-medium">Central</span><span class="text-slate-500">6 colonies · 360 plots</span></div>
+            <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-pink-500 h-2 rounded-full" style="width:86%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-600 font-medium">North-East</span><span class="text-slate-500">4 colonies · 220 plots</span></div>
+            <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-rose-500 h-2 rounded-full" style="width:52%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-slate-800 text-sm">Recent Activity</h3>
+          <a href="#" class="text-blue-600 text-xs font-medium hover:underline">View audit log →</a>
+        </div>
+        <div class="space-y-0 divide-y divide-slate-100">
+          <div class="py-2.5 flex items-start gap-3">
+            <div class="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-slate-700">Document <span class="font-medium">BHR108923</span> uploaded and linked to Patta <span class="font-medium">3498</span> — Plot <span class="font-medium">BB-023</span></p>
+              <p class="text-xs text-slate-400 mt-0.5">Ramesh Yadav (Staff) · बौद्ध बिहार · 10 min ago</p>
+            </div>
+          </div>
+          <div class="py-2.5 flex items-start gap-3">
+            <div class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-slate-700">Plot status updated: <span class="font-medium">GN-017</span> → <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Patta OK</span></p>
+              <p class="text-xs text-slate-400 mt-0.5">Priya Singh (Staff) · गणेश नगर फेज-1 · 25 min ago</p>
+            </div>
+          </div>
+          <div class="py-2.5 flex items-start gap-3">
+            <div class="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-slate-700">New patta entry added: <span class="font-medium">Patta 4127</span> — Sunita Devi, Plot <span class="font-medium">RB-044</span></p>
+              <p class="text-xs text-slate-400 mt-0.5">Ashish Kumar (Admin) · राधिका बिहार ब्लॉक-A · 1 hr ago</p>
+            </div>
+          </div>
+          <div class="py-2.5 flex items-start gap-3">
+            <div class="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-slate-700">Document <span class="font-medium">BHR107654</span> verified by Superintendent</p>
+              <p class="text-xs text-slate-400 mt-0.5">Suresh Sharma (Supdt.) · विष्णु नगर · 2 hrs ago</p>
+            </div>
+          </div>
+          <div class="py-2.5 flex items-start gap-3">
+            <div class="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-slate-700">Regulation file marked <span class="font-medium text-red-600">missing</span> for Patta <span class="font-medium">2984</span> — Plot <span class="font-medium">SN-061</span></p>
+              <p class="text-xs text-slate-400 mt-0.5">Meena Agarwal (Staff) · शेरसिंह नगर · 3 hrs ago</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

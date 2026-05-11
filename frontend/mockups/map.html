@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDA LMIS — Map</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="_shared.css">
+<style>
+/* Map canvas */
+.map-canvas {
+  background-color: #e8e4dc;
+  background-image:
+    linear-gradient(rgba(160,150,135,0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(160,150,135,0.25) 1px, transparent 1px),
+    radial-gradient(ellipse 70% 50% at 42% 58%, rgba(180,210,165,0.45) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 35% at 68% 30%, rgba(190,215,175,0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 20% at 20% 80%, rgba(195,218,178,0.3) 0%, transparent 50%);
+  background-size: 44px 44px, 44px 44px, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Roads */
+.road { position:absolute; background:rgba(255,255,255,0.92); border-radius:4px; pointer-events:none; }
+.road-major { background:rgba(255,236,153,0.85); }
+
+/* Colony shapes */
+.colony-shape {
+  position: absolute;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.colony-shape.bda-layer { border: 2px solid rgba(59,130,246,0.7); background: rgba(219,234,254,0.25); }
+.colony-shape.bda-layer:hover { background: rgba(219,234,254,0.5); border-color: rgba(59,130,246,0.95); }
+.colony-shape.bda-layer.active-colony { border-color: #1d4ed8; background: rgba(219,234,254,0.55); box-shadow: 0 0 0 3px rgba(59,130,246,0.3); }
+
+/* Khasra outlines */
+.khasra-line { position:absolute; border: 1px dashed rgba(139,92,246,0.5); pointer-events:none; border-radius:4px; }
+
+/* Plot dots */
+.plot-dot { position:absolute; border-radius:3px; cursor:pointer; transition:transform 0.1s; }
+.plot-dot:hover { transform: scale(1.5); z-index:5; }
+
+/* Custom layer features */
+.layer-feature-line { position:absolute; pointer-events:none; }
+.layer-feature-poly { position:absolute; border-radius:6px; pointer-events:none; }
+
+/* Drawing cursor */
+.drawing-cursor { cursor: crosshair !important; }
+.drawing-cursor * { cursor: crosshair !important; }
+
+/* Drawing overlay */
+.draw-vertex { position:absolute; width:10px; height:10px; background:#1d4ed8; border:2px solid white; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:20; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+.draw-edge { position:absolute; background:rgba(29,78,216,0.7); pointer-events:none; z-index:15; transform-origin: left center; height:2px; }
+.draw-fill { position:absolute; background:rgba(29,78,216,0.15); border:2px solid rgba(29,78,216,0.8); border-radius:4px; pointer-events:none; z-index:14; }
+.draw-guide { position:absolute; background:rgba(29,78,216,0.4); pointer-events:none; z-index:13; transform-origin:left center; height:1px; border-top:1px dashed rgba(29,78,216,0.7); }
+
+/* Layer panel */
+.layer-item { border-radius:8px; padding:8px 10px; cursor:pointer; transition:background 0.12s; }
+.layer-item:hover { background:#f1f5f9; }
+.layer-item.active-layer { background:#eff6ff; border: 1px solid #bfdbfe; }
+.layer-swatch { width:14px; height:14px; border-radius:3px; flex-shrink:0; }
+
+/* Tooltip */
+#feature-popup { pointer-events:none; }
+
+/* Active tool highlight */
+.tool-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:6px; cursor:pointer; color:#4b5563; transition:all 0.12s; border:1px solid transparent; }
+.tool-btn:hover { background:#f1f5f9; color:#1e293b; }
+.tool-btn.active { background:#1d4ed8; color:white; border-color:#1d4ed8; }
+.tool-btn.danger:hover { background:#fee2e2; color:#dc2626; }
+</style>
+</head>
+<body class="font-sans flex h-screen overflow-hidden bg-slate-100">
+
+<!-- ─── APP SIDEBAR ─── -->
+<aside class="w-60 bg-slate-900 h-full flex flex-col flex-shrink-0 z-30">
+  <div class="px-5 py-5 border-b border-slate-700/60">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      </div>
+      <div><div class="text-white font-bold text-sm">BDA LMIS</div><div class="text-slate-400 text-xs">Bharatpur Dev. Auth.</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+    <a href="dashboard.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+    <a href="colonies.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>Colonies</a>
+    <a href="plots.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Plots</a>
+    <a href="map.html" class="sidebar-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Map</a>
+    <a href="patta-ledger.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Patta Ledger</a>
+    <a href="reports.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Reports</a>
+  </nav>
+  <div class="px-3 py-4 border-t border-slate-700/60">
+    <div class="flex items-center gap-2.5 px-2">
+      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">AK</div>
+      <div class="min-w-0"><div class="text-white text-xs font-medium truncate">Ashish Kumar</div><div class="text-slate-400 text-xs">Administrator</div></div>
+      <a href="login.html" class="ml-auto text-slate-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></a>
+    </div>
+  </div>
+</aside>
+
+<!-- ─── LAYER PANEL (Google My Maps style) ─── -->
+<div class="w-80 bg-white h-full flex flex-col border-r border-slate-200 flex-shrink-0 shadow-sm z-20">
+
+  <!-- Panel header -->
+  <div class="px-4 pt-4 pb-3 border-b border-slate-100">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h2 class="font-semibold text-slate-800 text-sm">BDA LMIS Map</h2>
+        <p class="text-slate-400 text-xs mt-0.5">Bharatpur, Rajasthan · 72 colonies</p>
+      </div>
+      <button class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg" title="Share map">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+      </button>
+    </div>
+    <!-- Base map selector -->
+    <div class="flex gap-2">
+      <button onclick="setBase(this,'light')" class="base-btn flex-1 py-1.5 text-xs font-medium rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700" data-base="light">
+        <div class="w-full h-7 rounded bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 mb-1 mx-auto"></div>
+        Light
+      </button>
+      <button onclick="setBase(this,'dark')" class="base-btn flex-1 py-1.5 text-xs font-medium rounded-lg border-2 border-transparent text-slate-500 hover:border-slate-300" data-base="dark">
+        <div class="w-full h-7 rounded bg-gradient-to-br from-slate-700 to-slate-900 mb-1"></div>
+        Dark
+      </button>
+      <button onclick="setBase(this,'satellite')" class="base-btn flex-1 py-1.5 text-xs font-medium rounded-lg border-2 border-transparent text-slate-500 hover:border-slate-300" data-base="satellite">
+        <div class="w-full h-7 rounded bg-gradient-to-br from-green-700 to-green-900 mb-1"></div>
+        Satellite
+      </button>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto">
+
+    <!-- ── BDA Layers ── -->
+    <div class="px-4 pt-4 pb-2">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">BDA Layers</span>
+        <span class="text-xs text-slate-400 italic">read-only</span>
+      </div>
+
+      <!-- Colony Boundaries -->
+      <div class="layer-item" onclick="toggleLayer('colonies')">
+        <div class="flex items-center gap-2.5">
+          <div class="layer-swatch border-2 border-blue-600 bg-blue-100"></div>
+          <span class="text-sm text-slate-700 flex-1">Colony Boundaries</span>
+          <button class="text-slate-300 hover:text-blue-500 transition" id="eye-colonies" title="Toggle">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-6">72 polygons</p>
+      </div>
+
+      <!-- Khasra Grid -->
+      <div class="layer-item" onclick="toggleLayer('khasras')">
+        <div class="flex items-center gap-2.5">
+          <div class="layer-swatch border-2 border-dashed border-purple-500"></div>
+          <span class="text-sm text-slate-700 flex-1">Khasra Grid</span>
+          <button class="text-slate-300 hover:text-blue-500 transition" id="eye-khasras">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-6">300+ polygons</p>
+      </div>
+
+      <!-- Plots -->
+      <div class="layer-item">
+        <div class="flex items-center gap-2.5">
+          <div class="layer-swatch bg-green-500 rounded-sm"></div>
+          <span class="text-sm text-slate-700 flex-1">Plots</span>
+          <button class="text-blue-500 transition" id="eye-plots">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </button>
+        </div>
+        <!-- Legend inline -->
+        <div class="mt-2 ml-6 grid grid-cols-2 gap-x-3 gap-y-1">
+          <span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block"></span>Patta OK</span>
+          <span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block"></span>Missing</span>
+          <span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="w-2.5 h-2.5 rounded-sm bg-cyan-500 inline-block"></span>Available</span>
+          <span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="w-2.5 h-2.5 rounded-sm bg-purple-500 inline-block"></span>Allotted</span>
+          <span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="w-2.5 h-2.5 rounded-sm bg-teal-500 inline-block"></span>EWS</span>
+          <span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="w-2.5 h-2.5 rounded-sm bg-gray-400 inline-block"></span>Cancelled</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="mx-4 my-2 border-t border-slate-100"></div>
+
+    <!-- ── Custom Layers ── -->
+    <div class="px-4 pb-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">My Layers</span>
+        <button onclick="openAddLayer()" class="flex items-center gap-1 text-xs text-blue-600 font-semibold hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-lg transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          Add layer
+        </button>
+      </div>
+
+      <!-- Layer: Water Mains (active) -->
+      <div class="layer-item active-layer mb-1" id="layer-water" onclick="selectLayer('water')">
+        <div class="flex items-center gap-2.5">
+          <div class="layer-swatch rounded-full bg-blue-500"></div>
+          <span class="text-sm font-medium text-blue-800 flex-1">Water Mains — West Zone</span>
+          <div class="flex items-center gap-0.5">
+            <button class="text-blue-400 hover:text-blue-600 p-0.5" title="Layer visible" onclick="event.stopPropagation(); toggleCustomLayer(this)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </button>
+            <button class="text-slate-300 hover:text-slate-600 p-0.5" onclick="event.stopPropagation(); openLayerMenu(this,'water')" title="Options">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-6">3 features (lines)</p>
+        <!-- Expanded features -->
+        <div class="mt-2 ml-3 space-y-1">
+          <div class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-blue-100 hover:border-blue-300 cursor-pointer group">
+            <svg class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8h16M4 16h16"/></svg>
+            <span class="text-xs text-slate-600 flex-1">Main line — Sector A</span>
+            <span class="text-xs text-slate-300 group-hover:text-blue-400 opacity-0 group-hover:opacity-100">Edit</span>
+          </div>
+          <div class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-blue-100 hover:border-blue-300 cursor-pointer group">
+            <svg class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8h16M4 16h16"/></svg>
+            <span class="text-xs text-slate-600 flex-1">Branch — BB colony</span>
+            <span class="text-xs text-slate-300 group-hover:text-blue-400 opacity-0 group-hover:opacity-100">Edit</span>
+          </div>
+          <div class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-blue-100 hover:border-blue-300 cursor-pointer group">
+            <svg class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8h16M4 16h16"/></svg>
+            <span class="text-xs text-slate-600 flex-1">Lateral — Street 4</span>
+            <span class="text-xs text-slate-300 group-hover:text-blue-400 opacity-0 group-hover:opacity-100">Edit</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer: Sewerage (hidden) -->
+      <div class="layer-item mb-1 opacity-60" id="layer-sewerage" onclick="selectLayer('sewerage')">
+        <div class="flex items-center gap-2.5">
+          <div class="layer-swatch rounded-full bg-amber-600"></div>
+          <span class="text-sm text-slate-600 flex-1">Sewerage Lines</span>
+          <div class="flex items-center gap-0.5">
+            <button class="text-slate-300 hover:text-slate-600 p-0.5" onclick="event.stopPropagation(); toggleCustomLayer(this)" title="Hidden">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+            </button>
+            <button class="text-slate-300 hover:text-slate-600 p-0.5" onclick="event.stopPropagation(); openLayerMenu(this,'sewerage')">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-6">0 features · Hidden</p>
+      </div>
+
+      <!-- Layer: Electricity markers -->
+      <div class="layer-item mb-1" id="layer-elec" onclick="selectLayer('elec')">
+        <div class="flex items-center gap-2.5">
+          <div class="layer-swatch rounded-full bg-yellow-400"></div>
+          <span class="text-sm text-slate-700 flex-1">Electricity Poles</span>
+          <div class="flex items-center gap-0.5">
+            <button class="text-blue-400 hover:text-blue-600 p-0.5" onclick="event.stopPropagation(); toggleCustomLayer(this)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </button>
+            <button class="text-slate-300 hover:text-slate-600 p-0.5" onclick="event.stopPropagation(); openLayerMenu(this,'elec')">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-6">12 markers</p>
+      </div>
+
+      <!-- Empty state hint -->
+      <div class="mt-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 text-center">
+        <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+        <p class="text-xs text-slate-400 font-medium">Add a layer to start drawing</p>
+        <p class="text-xs text-slate-300 mt-0.5">Polygon · Line · Marker</p>
+        <button onclick="openAddLayer()" class="mt-2 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+          + Add layer
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Import button -->
+  <div class="px-4 py-3 border-t border-slate-100 flex gap-2">
+    <button onclick="document.getElementById('import-modal').classList.remove('hidden')" class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      Import file
+    </button>
+    <button class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      Export GeoJSON
+    </button>
+  </div>
+</div>
+
+<!-- ─── MAP AREA ─── -->
+<div class="flex-1 relative overflow-hidden flex flex-col">
+
+  <!-- Drawing toolbar (floats over map) -->
+  <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-white shadow-lg rounded-xl px-2 py-1.5 border border-slate-200">
+    <button class="tool-btn active" id="tool-select" onclick="setTool('select',this)" title="Select / Pan (V)">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+    </button>
+    <div class="w-px h-5 bg-slate-200 mx-0.5"></div>
+    <button class="tool-btn" id="tool-polygon" onclick="setTool('polygon',this)" title="Draw Polygon (P)">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 5-7 13L5 3z"/></svg>
+    </button>
+    <button class="tool-btn" id="tool-line" onclick="setTool('line',this)" title="Draw Line (L)">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20L20 4"/></svg>
+    </button>
+    <button class="tool-btn" id="tool-marker" onclick="setTool('marker',this)" title="Add Marker (M)">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </button>
+    <div class="w-px h-5 bg-slate-200 mx-0.5"></div>
+    <button class="tool-btn" id="tool-undo" onclick="undoDraw()" title="Undo (Ctrl+Z)">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+    </button>
+    <button class="tool-btn danger" id="tool-delete" onclick="deleteSelected()" title="Delete selected">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    </button>
+  </div>
+
+  <!-- Drawing mode hint bar -->
+  <div id="draw-hint" class="hidden absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-blue-700 text-white text-xs px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
+    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span id="draw-hint-text">Click to add points · Double-click or click first point to close polygon</span>
+    <button onclick="cancelDraw()" class="ml-2 bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-lg text-xs font-medium">Esc · Cancel</button>
+  </div>
+
+  <!-- Map canvas -->
+  <div class="flex-1 map-canvas relative overflow-hidden" id="map-canvas"
+       onclick="mapClick(event)" onmousemove="mapMouseMove(event)">
+
+    <!-- Attribution -->
+    <div class="absolute bottom-2 right-2 z-10 bg-white/80 text-xs text-slate-400 px-2 py-0.5 rounded select-none">
+      © MapMyIndia | Bharatpur 77.4933°E, 27.2152°N
+    </div>
+
+    <!-- Zoom controls -->
+    <div class="absolute right-3 bottom-10 z-10 flex flex-col gap-1 shadow-md">
+      <button class="w-8 h-8 bg-white rounded-t-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 font-bold text-lg leading-none">+</button>
+      <button class="w-8 h-8 bg-white rounded-b-lg border border-slate-200 border-t-0 flex items-center justify-center text-slate-600 hover:bg-slate-50 font-bold text-xl leading-none">−</button>
+    </div>
+
+    <!-- Roads -->
+    <div class="road road-major" style="top:37%;left:0;width:100%;height:6px;"></div>
+    <div class="road road-major" style="top:63%;left:0;width:100%;height:6px;"></div>
+    <div class="road" style="top:0;left:29%;width:6px;height:100%;"></div>
+    <div class="road" style="top:0;left:60%;width:6px;height:100%;"></div>
+    <div class="road" style="top:50%;left:0;width:100%;height:3px;opacity:0.6;"></div>
+    <div class="road" style="top:0;left:44%;width:3px;height:100%;opacity:0.6;"></div>
+
+    <!-- ── Colony shapes (BDA layer) ── -->
+    <div class="colony-shape bda-layer" style="top:10%;left:6%;width:21%;height:24%;"
+         onclick="event.stopPropagation();showColonyPopup(this,'बौद्ध बिहार','61 plots · 57 pattas · North Zone · 92% scanned','BB')">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div class="text-blue-800 font-bold text-xs leading-tight drop-shadow-sm">बौद्ध बिहार</div>
+        <div class="text-blue-600 text-xs">61 plots</div>
+      </div>
+      <div class="plot-dot bg-green-500" style="top:18%;left:12%;"></div>
+      <div class="plot-dot bg-green-500" style="top:18%;left:32%;"></div>
+      <div class="plot-dot bg-green-500" style="top:18%;left:52%;"></div>
+      <div class="plot-dot bg-red-500" style="top:18%;left:72%;"></div>
+      <div class="plot-dot bg-green-500" style="top:48%;left:12%;"></div>
+      <div class="plot-dot bg-purple-500" style="top:48%;left:32%;"></div>
+      <div class="plot-dot bg-green-500" style="top:48%;left:52%;"></div>
+      <div class="plot-dot bg-green-500" style="top:48%;left:72%;"></div>
+      <div class="plot-dot bg-cyan-500" style="top:72%;left:22%;"></div>
+      <div class="plot-dot bg-teal-500" style="top:72%;left:52%;"></div>
+    </div>
+
+    <div class="colony-shape bda-layer" style="top:10%;left:32%;width:23%;height:22%;"
+         onclick="event.stopPropagation();showColonyPopup(this,'गणेश नगर फेज-1','78 plots · 72 pattas · Central Zone','GN')">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div class="text-blue-800 font-bold text-xs leading-tight drop-shadow-sm">गणेश नगर फेज-1</div>
+        <div class="text-blue-600 text-xs">78 plots</div>
+      </div>
+      <div class="plot-dot bg-green-500" style="top:22%;left:8%;"></div>
+      <div class="plot-dot bg-green-500" style="top:22%;left:28%;"></div>
+      <div class="plot-dot bg-green-500" style="top:22%;left:48%;"></div>
+      <div class="plot-dot bg-green-500" style="top:22%;left:68%;"></div>
+      <div class="plot-dot bg-red-500" style="top:55%;left:8%;"></div>
+      <div class="plot-dot bg-green-500" style="top:55%;left:28%;"></div>
+      <div class="plot-dot bg-teal-500" style="top:55%;left:48%;"></div>
+      <div class="plot-dot bg-green-500" style="top:55%;left:68%;"></div>
+    </div>
+
+    <div class="colony-shape bda-layer" style="top:10%;left:63%;width:19%;height:20%;"
+         onclick="event.stopPropagation();showColonyPopup(this,'विष्णु नगर','54 plots · 50 pattas · East Zone','VN')">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div class="text-blue-800 font-bold text-xs leading-tight drop-shadow-sm">विष्णु नगर</div>
+        <div class="text-blue-600 text-xs">54 plots</div>
+      </div>
+      <div class="plot-dot bg-green-500" style="top:28%;left:12%;"></div>
+      <div class="plot-dot bg-green-500" style="top:28%;left:42%;"></div>
+      <div class="plot-dot bg-green-500" style="top:28%;left:68%;"></div>
+      <div class="plot-dot bg-green-500" style="top:62%;left:12%;"></div>
+      <div class="plot-dot bg-purple-500" style="top:62%;left:42%;"></div>
+      <div class="plot-dot bg-green-500" style="top:62%;left:68%;"></div>
+    </div>
+
+    <div class="colony-shape bda-layer" style="top:43%;left:6%;width:20%;height:24%;"
+         onclick="event.stopPropagation();showColonyPopup(this,'सुभाष नगर फेज-10','92 plots · 80 pattas · West Zone','SN')">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div class="text-blue-800 font-bold text-xs leading-tight drop-shadow-sm">सुभाष नगर फेज-10</div>
+        <div class="text-blue-600 text-xs">92 plots</div>
+      </div>
+      <div class="plot-dot bg-green-500" style="top:20%;left:12%;"></div>
+      <div class="plot-dot bg-red-500" style="top:20%;left:42%;"></div>
+      <div class="plot-dot bg-green-500" style="top:20%;left:66%;"></div>
+      <div class="plot-dot bg-cyan-500" style="top:55%;left:12%;"></div>
+      <div class="plot-dot bg-green-500" style="top:55%;left:42%;"></div>
+      <div class="plot-dot bg-green-500" style="top:55%;left:66%;"></div>
+    </div>
+
+    <div class="colony-shape bda-layer" style="top:43%;left:31%;width:26%;height:24%;"
+         onclick="event.stopPropagation();showColonyPopup(this,'राधिका बिहार ब्लॉक-A','110 plots · 98 pattas · South Zone','RB')">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div class="text-blue-800 font-bold text-xs leading-tight drop-shadow-sm">राधिका बिहार ब्लॉक-A</div>
+        <div class="text-blue-600 text-xs">110 plots</div>
+      </div>
+      <div class="plot-dot bg-green-500" style="top:15%;left:8%;"></div>
+      <div class="plot-dot bg-green-500" style="top:15%;left:28%;"></div>
+      <div class="plot-dot bg-red-500" style="top:15%;left:48%;"></div>
+      <div class="plot-dot bg-green-500" style="top:15%;left:68%;"></div>
+      <div class="plot-dot bg-green-500" style="top:48%;left:8%;"></div>
+      <div class="plot-dot bg-purple-500" style="top:48%;left:28%;"></div>
+      <div class="plot-dot bg-green-500" style="top:48%;left:48%;"></div>
+      <div class="plot-dot bg-green-500" style="top:48%;left:68%;"></div>
+      <div class="plot-dot bg-red-500" style="top:76%;left:22%;"></div>
+      <div class="plot-dot bg-green-500" style="top:76%;left:52%;"></div>
+    </div>
+
+    <div class="colony-shape bda-layer" style="top:43%;left:63%;width:20%;height:24%;"
+         onclick="event.stopPropagation();showColonyPopup(this,'देव बिहार','43 plots · 18 pattas · North-East Zone','DB')">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div class="text-blue-800 font-bold text-xs leading-tight drop-shadow-sm">देव बिहार</div>
+        <div class="text-blue-600 text-xs">43 plots · New</div>
+      </div>
+      <div class="plot-dot bg-cyan-500" style="top:28%;left:18%;"></div>
+      <div class="plot-dot bg-cyan-500" style="top:28%;left:52%;"></div>
+      <div class="plot-dot bg-purple-500" style="top:60%;left:18%;"></div>
+      <div class="plot-dot bg-cyan-500" style="top:60%;left:52%;"></div>
+    </div>
+
+    <!-- Khasra outlines (SVG) -->
+    <svg id="khasra-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:2;">
+      <rect x="6%" y="10%" width="21%" height="24%" fill="none" stroke="#7c3aed" stroke-width="1" stroke-dasharray="5,4" opacity="0.55"/>
+      <rect x="32%" y="10%" width="23%" height="22%" fill="none" stroke="#7c3aed" stroke-width="1" stroke-dasharray="5,4" opacity="0.55"/>
+      <text x="7%" y="9%" fill="#7c3aed" font-size="9" opacity="0.75" font-family="sans-serif">खसरा 1448–52</text>
+      <text x="33%" y="9%" fill="#7c3aed" font-size="9" opacity="0.75" font-family="sans-serif">खसरा 892–96</text>
+      <text x="64%" y="9%" fill="#7c3aed" font-size="9" opacity="0.75" font-family="sans-serif">खसरा 204–08</text>
+    </svg>
+
+    <!-- Custom layer: Water Mains (blue lines) -->
+    <svg id="water-layer" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:3;">
+      <line x1="6%" y1="56%" x2="30%" y2="56%" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+      <line x1="10%" y1="43%" x2="10%" y2="67%" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+      <line x1="18%" y1="50%" x2="18%" y2="67%" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+      <!-- Labels -->
+      <text x="12%" y="55%" fill="#1d4ed8" font-size="9" font-family="sans-serif" font-weight="600" opacity="0.9">Ø100mm PVC</text>
+    </svg>
+
+    <!-- Elec markers -->
+    <svg id="elec-layer" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:3;">
+      <circle cx="9%" cy="44%" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" opacity="0.9"/>
+      <circle cx="20%" cy="44%" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" opacity="0.9"/>
+      <circle cx="9%" cy="64%" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" opacity="0.9"/>
+      <circle cx="20%" cy="64%" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" opacity="0.9"/>
+      <circle cx="35%" cy="44%" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" opacity="0.9"/>
+      <circle cx="50%" cy="44%" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" opacity="0.9"/>
+    </svg>
+
+    <!-- Drawing preview canvas (SVG overlay) -->
+    <svg id="draw-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:15; display:none;">
+      <polyline id="draw-polyline" points="" fill="rgba(29,78,216,0.12)" stroke="#1d4ed8" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="none"/>
+      <line id="draw-guide-line" x1="0" y1="0" x2="0" y2="0" stroke="#1d4ed8" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.6"/>
+    </svg>
+
+    <!-- Vertex dots rendered here -->
+    <div id="draw-vertices"></div>
+
+    <!-- Feature popup (colony click) -->
+    <div id="colony-popup" class="hidden absolute z-30 pointer-events-auto" style="min-width:220px;">
+      <div class="bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="bg-blue-700 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-white text-sm" id="pop-name"></div>
+            <button onclick="document.getElementById('colony-popup').classList.add('hidden')" class="text-blue-300 hover:text-white">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="text-blue-200 text-xs mt-0.5" id="pop-info"></div>
+        </div>
+        <div class="p-3 space-y-2">
+          <div class="flex gap-1.5">
+            <a href="plots.html" class="flex-1 text-center text-xs bg-blue-700 text-white py-1.5 rounded-lg hover:bg-blue-800 font-medium">View Plots</a>
+            <a href="patta-ledger.html" class="flex-1 text-center text-xs border border-slate-200 text-slate-600 py-1.5 rounded-lg hover:bg-slate-50 font-medium">Patta Ledger</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature properties popup (after drawing) -->
+    <div id="feature-props-popup" class="hidden absolute z-30 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="min-width:240px; top:50%; left:50%; transform:translate(-50%,-50%);">
+      <div class="bg-blue-700 px-4 py-3 flex items-center justify-between">
+        <div class="font-semibold text-white text-sm">Add feature details</div>
+        <button onclick="document.getElementById('feature-props-popup').classList.add('hidden')" class="text-blue-300 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+      <div class="p-4 space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Feature name</label>
+          <input type="text" placeholder="e.g. Main line — Sector A" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Description / Notes</label>
+          <textarea rows="2" placeholder="Diameter, material, depth..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button onclick="document.getElementById('feature-props-popup').classList.add('hidden')" class="flex-1 py-2 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium">Cancel</button>
+          <button onclick="saveFeature()" class="flex-1 py-2 text-xs bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save feature</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end map-canvas -->
+
+</div><!-- end map area -->
+
+<!-- ─── LAYER OPTIONS MENU (dropdown) ─── -->
+<div id="layer-menu" class="hidden fixed z-50 bg-white rounded-xl shadow-2xl border border-slate-200 py-1 w-44">
+  <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+    Rename layer
+  </button>
+  <button onclick="openStylePanel()" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+    Style layer
+  </button>
+  <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+    Export as GeoJSON
+  </button>
+  <div class="border-t border-slate-100 my-1"></div>
+  <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    Delete layer
+  </button>
+</div>
+
+<!-- ─── ADD LAYER MODAL ─── -->
+<div id="add-layer-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+      <h3 class="font-bold text-slate-800">New Layer</h3>
+      <button onclick="document.getElementById('add-layer-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Layer name *</label>
+        <input type="text" placeholder="e.g. Water Mains — North Zone" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-2">Layer type *</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="selectLayerType(this,'Polygon')" class="layer-type-btn flex flex-col items-center gap-1.5 py-3 border-2 border-blue-500 bg-blue-50 rounded-xl text-xs font-medium text-blue-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 5-7 13L5 3z"/></svg>
+            Polygon
+          </button>
+          <button onclick="selectLayerType(this,'Line')" class="layer-type-btn flex flex-col items-center gap-1.5 py-3 border-2 border-transparent hover:border-slate-300 rounded-xl text-xs font-medium text-slate-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20L20 4"/></svg>
+            Line
+          </button>
+          <button onclick="selectLayerType(this,'Marker')" class="layer-type-btn flex flex-col items-center gap-1.5 py-3 border-2 border-transparent hover:border-slate-300 rounded-xl text-xs font-medium text-slate-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Marker
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-2">Colour</label>
+        <div class="flex gap-2 items-center">
+          <div class="flex gap-1.5 flex-wrap">
+            <button onclick="pickColor(this,'#3b82f6')" class="w-6 h-6 rounded-full bg-blue-500 ring-2 ring-blue-500 ring-offset-1"></button>
+            <button onclick="pickColor(this,'#22c55e')" class="w-6 h-6 rounded-full bg-green-500"></button>
+            <button onclick="pickColor(this,'#f59e0b')" class="w-6 h-6 rounded-full bg-amber-500"></button>
+            <button onclick="pickColor(this,'#ef4444')" class="w-6 h-6 rounded-full bg-red-500"></button>
+            <button onclick="pickColor(this,'#a855f7')" class="w-6 h-6 rounded-full bg-purple-500"></button>
+            <button onclick="pickColor(this,'#14b8a6')" class="w-6 h-6 rounded-full bg-teal-500"></button>
+            <button onclick="pickColor(this,'#f97316')" class="w-6 h-6 rounded-full bg-orange-500"></button>
+            <button onclick="pickColor(this,'#64748b')" class="w-6 h-6 rounded-full bg-slate-500"></button>
+          </div>
+          <input type="color" value="#3b82f6" class="w-8 h-8 border border-slate-200 rounded-lg cursor-pointer p-0.5 ml-1">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-1 border-t border-slate-100">
+        <button onclick="document.getElementById('add-layer-modal').classList.add('hidden')" class="flex-1 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium">Cancel</button>
+        <button onclick="createLayer()" class="flex-1 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Create &amp; Start Drawing</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STYLE LAYER PANEL ─── -->
+<div id="style-panel" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+      <h3 class="font-bold text-slate-800">Style: Water Mains</h3>
+      <button onclick="document.getElementById('style-panel').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <!-- Colour -->
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-2">Line / Fill Colour</label>
+        <div class="flex gap-1.5 flex-wrap">
+          <button class="w-7 h-7 rounded-full bg-blue-500 ring-2 ring-blue-500 ring-offset-1"></button>
+          <button class="w-7 h-7 rounded-full bg-green-500"></button>
+          <button class="w-7 h-7 rounded-full bg-amber-500"></button>
+          <button class="w-7 h-7 rounded-full bg-red-500"></button>
+          <button class="w-7 h-7 rounded-full bg-purple-500"></button>
+          <button class="w-7 h-7 rounded-full bg-teal-500"></button>
+          <input type="color" value="#3b82f6" class="w-7 h-7 border border-slate-200 rounded-full cursor-pointer p-0.5">
+        </div>
+      </div>
+      <!-- Line width -->
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Line Width: <span class="text-slate-800 font-semibold" id="lw-val">3px</span></label>
+        <input type="range" min="1" max="10" value="3" oninput="document.getElementById('lw-val').textContent=this.value+'px'" class="w-full accent-blue-600">
+      </div>
+      <!-- Opacity -->
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Opacity: <span class="text-slate-800 font-semibold" id="op-val">80%</span></label>
+        <input type="range" min="10" max="100" value="80" oninput="document.getElementById('op-val').textContent=this.value+'%'" class="w-full accent-blue-600">
+      </div>
+      <!-- Fill opacity (for polygons) -->
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Fill Opacity: <span class="text-slate-800 font-semibold" id="fo-val">25%</span></label>
+        <input type="range" min="0" max="80" value="25" oninput="document.getElementById('fo-val').textContent=this.value+'%'" class="w-full accent-blue-600">
+      </div>
+      <!-- Preview -->
+      <div class="bg-slate-50 rounded-xl p-3 flex items-center justify-center h-14">
+        <div class="w-full h-1 bg-blue-500 rounded-full opacity-80"></div>
+      </div>
+      <div class="flex gap-2 border-t border-slate-100 pt-2">
+        <button onclick="document.getElementById('style-panel').classList.add('hidden')" class="flex-1 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium">Cancel</button>
+        <button onclick="document.getElementById('style-panel').classList.add('hidden')" class="flex-1 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── IMPORT FILE MODAL ─── -->
+<div id="import-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+      <h3 class="font-bold text-slate-800">Import File</h3>
+      <button onclick="document.getElementById('import-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="border-2 border-dashed border-blue-200 rounded-xl p-8 text-center bg-blue-50 cursor-pointer hover:bg-blue-100 transition">
+        <svg class="w-10 h-10 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        <p class="text-sm font-medium text-blue-700">Drop file or click to browse</p>
+        <p class="text-xs text-blue-400 mt-1">GeoJSON · KML · Shapefile ZIP · CSV</p>
+      </div>
+      <div class="text-xs text-slate-400 space-y-1">
+        <p>• GeoJSON (.geojson) — all geometry types</p>
+        <p>• KML (.kml) — from Google Earth / My Maps</p>
+        <p>• Shapefile (.zip with .shp .dbf .prj)</p>
+        <p>• CSV (.csv) with lat/lng columns</p>
+      </div>
+      <div class="flex gap-2 border-t border-slate-100 pt-2">
+        <button onclick="document.getElementById('import-modal').classList.add('hidden')" class="flex-1 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium">Cancel</button>
+        <button onclick="document.getElementById('import-modal').classList.add('hidden')" class="flex-1 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let currentTool = 'select';
+let drawing = false;
+let drawPoints = [];   // [{x,y}] in canvas-relative px
+let mousePos = {x:0, y:0};
+
+// ── Tool selection ──
+function setTool(tool, btn) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const canvas = document.getElementById('map-canvas');
+  const hint = document.getElementById('draw-hint');
+  const svg = document.getElementById('draw-svg');
+
+  if (tool === 'select') {
+    canvas.classList.remove('drawing-cursor');
+    hint.classList.add('hidden');
+    svg.style.display = 'none';
+    cancelDrawState();
+  } else {
+    canvas.classList.add('drawing-cursor');
+    hint.classList.remove('hidden');
+    svg.style.display = 'block';
+    const msgs = {
+      polygon: 'Click to add points · Double-click or click first point to finish polygon · Esc to cancel',
+      line: 'Click to add points · Double-click to finish line · Esc to cancel',
+      marker: 'Click on the map to place a marker · Esc to cancel'
+    };
+    document.getElementById('draw-hint-text').textContent = msgs[tool];
+    drawing = true;
+    drawPoints = [];
+    renderDrawing();
+  }
+}
+
+// ── Map click (drawing) ──
+function mapClick(e) {
+  if (!drawing || currentTool === 'select') return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (currentTool === 'marker') {
+    placeMarker(x, y);
+    return;
+  }
+
+  // Close polygon if clicking near first point
+  if (currentTool === 'polygon' && drawPoints.length >= 3) {
+    const fp = drawPoints[0];
+    const dist = Math.sqrt((x-fp.x)**2 + (y-fp.y)**2);
+    if (dist < 18) { finishDraw(); return; }
+  }
+
+  drawPoints.push({x, y});
+  renderDrawing();
+}
+
+// Double-click to finish
+document.addEventListener('dblclick', function(e) {
+  if (!drawing || currentTool === 'select') return;
+  if (drawPoints.length >= 2) finishDraw();
+});
+
+function mapMouseMove(e) {
+  if (!drawing) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  renderGuide();
+}
+
+function renderDrawing() {
+  const poly = document.getElementById('draw-polyline');
+  const verts = document.getElementById('draw-vertices');
+  if (drawPoints.length === 0) { poly.setAttribute('points',''); verts.innerHTML=''; return; }
+
+  // Polyline
+  const pts = drawPoints.map(p => `${p.x},${p.y}`).join(' ');
+  poly.setAttribute('points', pts);
+  if (currentTool === 'polygon' && drawPoints.length > 2) {
+    poly.setAttribute('fill','rgba(29,78,216,0.12)');
+  } else {
+    poly.setAttribute('fill','none');
+  }
+
+  // Vertices
+  verts.innerHTML = drawPoints.map((p,i) =>
+    `<div class="draw-vertex" style="left:${p.x}px;top:${p.y}px;${i===0?'background:#fff;border-color:#1d4ed8;width:12px;height:12px;':''}" title="${i===0?'Click to close':''}"></div>`
+  ).join('');
+}
+
+function renderGuide() {
+  if (drawPoints.length === 0) return;
+  const last = drawPoints[drawPoints.length-1];
+  const guide = document.getElementById('draw-guide-line');
+  guide.setAttribute('x1', last.x);
+  guide.setAttribute('y1', last.y);
+  guide.setAttribute('x2', mousePos.x);
+  guide.setAttribute('y2', mousePos.y);
+}
+
+function finishDraw() {
+  if (drawPoints.length < 2) return;
+  cancelDrawState();
+  setTool('select', document.getElementById('tool-select'));
+  // Show feature properties popup
+  setTimeout(() => document.getElementById('feature-props-popup').classList.remove('hidden'), 100);
+}
+
+function placeMarker(x, y) {
+  const verts = document.getElementById('draw-vertices');
+  verts.innerHTML += `<div style="position:absolute;left:${x-10}px;top:${y-22}px;pointer-events:none;z-index:16;">
+    <svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 18 10 18s10-10.5 10-18C20 4.477 15.523 0 10 0z" fill="#1d4ed8"/><circle cx="10" cy="10" r="4" fill="white"/></svg>
+  </div>`;
+  cancelDrawState();
+  setTool('select', document.getElementById('tool-select'));
+  setTimeout(() => document.getElementById('feature-props-popup').classList.remove('hidden'), 100);
+}
+
+function cancelDrawState() {
+  drawing = false;
+  drawPoints = [];
+  document.getElementById('draw-polyline').setAttribute('points','');
+  document.getElementById('draw-guide-line').setAttribute('x1','0');
+  document.getElementById('draw-guide-line').setAttribute('y1','0');
+  document.getElementById('draw-guide-line').setAttribute('x2','0');
+  document.getElementById('draw-guide-line').setAttribute('y2','0');
+  document.getElementById('draw-vertices').innerHTML = '';
+}
+
+function cancelDraw() {
+  cancelDrawState();
+  setTool('select', document.getElementById('tool-select'));
+}
+
+function undoDraw() {
+  if (drawPoints.length > 0) { drawPoints.pop(); renderDrawing(); }
+}
+
+function deleteSelected() {
+  // placeholder
+  alert('Select a feature on the map first, then click Delete.');
+}
+
+function saveFeature() {
+  document.getElementById('feature-props-popup').classList.add('hidden');
+  // Show a toast
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-5 right-5 z-50 bg-green-600 text-white px-4 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2';
+  toast.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Feature saved to layer`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// Esc key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cancelDraw();
+  if (e.key === 'Enter' && drawing && drawPoints.length >= 2) finishDraw();
+  if (e.key === 'p' || e.key === 'P') setTool('polygon', document.getElementById('tool-polygon'));
+  if (e.key === 'l' || e.key === 'L') setTool('line', document.getElementById('tool-line'));
+  if (e.key === 'm' || e.key === 'M') setTool('marker', document.getElementById('tool-marker'));
+  if (e.key === 'v' || e.key === 'V') setTool('select', document.getElementById('tool-select'));
+});
+
+// ── Colony popup ──
+function showColonyPopup(el, name, info, code) {
+  if (currentTool !== 'select') return;
+  const popup = document.getElementById('colony-popup');
+  document.getElementById('pop-name').textContent = name;
+  document.getElementById('pop-info').textContent = info;
+  const rect = el.getBoundingClientRect();
+  const mapRect = document.getElementById('map-canvas').getBoundingClientRect();
+  let left = rect.left - mapRect.left + rect.width/2 - 10;
+  let top = rect.top - mapRect.top - 10;
+  if (left + 240 > mapRect.width) left = mapRect.width - 250;
+  if (top < 10) top = rect.bottom - mapRect.top + 5;
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+  popup.classList.remove('hidden');
+}
+
+// ── Layer panel ──
+function selectLayer(id) {
+  document.querySelectorAll('[id^="layer-"]').forEach(el => el.classList.remove('active-layer'));
+  const el = document.getElementById('layer-' + id);
+  if (el) el.classList.add('active-layer');
+}
+
+function toggleLayer(which) {
+  const eye = document.getElementById('eye-' + which);
+  const svg = document.getElementById(which === 'khasras' ? 'khasra-svg' : which + '-layer');
+  if (!svg) return;
+  const visible = svg.style.display !== 'none';
+  svg.style.display = visible ? 'none' : '';
+  eye.style.color = visible ? '#cbd5e1' : '#3b82f6';
+}
+
+function toggleCustomLayer(btn) {
+  // Toggle eye icon between visible and hidden
+  const isVisible = !btn.innerHTML.includes('M13.875');
+  if (isVisible) {
+    // switch to hidden eye
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>`;
+    btn.style.color = '#94a3b8';
+    btn.closest('.layer-item').style.opacity = '0.55';
+  } else {
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
+    btn.style.color = '#60a5fa';
+    btn.closest('.layer-item').style.opacity = '1';
+  }
+}
+
+// ── Menus / Modals ──
+function openLayerMenu(btn, layerId) {
+  const menu = document.getElementById('layer-menu');
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = (rect.left - 140) + 'px';
+  menu.classList.toggle('hidden');
+  setTimeout(() => document.addEventListener('click', () => menu.classList.add('hidden'), {once:true}), 10);
+}
+
+function openAddLayer() { document.getElementById('add-layer-modal').classList.remove('hidden'); }
+function openStylePanel() { document.getElementById('layer-menu').classList.add('hidden'); document.getElementById('style-panel').classList.remove('hidden'); }
+
+function selectLayerType(btn, type) {
+  document.querySelectorAll('.layer-type-btn').forEach(b => {
+    b.classList.remove('border-blue-500','bg-blue-50','text-blue-700');
+    b.classList.add('border-transparent','text-slate-500');
+  });
+  btn.classList.add('border-blue-500','bg-blue-50','text-blue-700');
+  btn.classList.remove('border-transparent','text-slate-500');
+}
+
+function pickColor(btn, color) {
+  document.querySelectorAll('#add-layer-modal button[onclick^="pickColor"]').forEach(b => {
+    b.classList.remove('ring-2','ring-offset-1');
+    b.style.removeProperty('ring-color');
+  });
+  btn.classList.add('ring-2','ring-offset-1');
+  btn.style.outlineColor = color;
+}
+
+function createLayer() {
+  document.getElementById('add-layer-modal').classList.add('hidden');
+  // Auto-start drawing tool matching the selected type
+  const activeTool = document.querySelector('.layer-type-btn.border-blue-500');
+  const type = activeTool ? activeTool.textContent.trim().toLowerCase() : 'polygon';
+  const toolMap = {polygon:'polygon', line:'line', marker:'marker'};
+  setTool(toolMap[type] || 'polygon', document.getElementById('tool-' + (toolMap[type] || 'polygon')));
+}
+
+function setBase(btn, base) {
+  document.querySelectorAll('.base-btn').forEach(b => {
+    b.classList.remove('border-blue-500','bg-blue-50','text-blue-700');
+    b.classList.add('border-transparent','text-slate-500');
+  });
+  btn.classList.add('border-blue-500','bg-blue-50','text-blue-700');
+  btn.classList.remove('border-transparent','text-slate-500');
+  // Simulate base map change
+  const canvas = document.getElementById('map-canvas');
+  if (base === 'dark') {
+    canvas.style.backgroundColor = '#1e293b';
+    canvas.style.backgroundImage = 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)';
+  } else if (base === 'satellite') {
+    canvas.style.backgroundColor = '#2d4a2d';
+    canvas.style.backgroundImage = 'radial-gradient(ellipse 60% 40% at 45% 55%, rgba(60,100,60,0.6) 0%, transparent 70%), linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)';
+  } else {
+    canvas.style.backgroundColor = '#e8e4dc';
+    canvas.style.backgroundImage = '';
+  }
+}
+</script>
+</body>
+</html>

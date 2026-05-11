@@ -78,7 +78,7 @@ export default function PublicColoniesPage() {
     : 'All Colonies'
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
 
       {/* ── Breadcrumb ──────────────────────────────────────────────────── */}
       <nav className="text-sm text-slate-500 mb-5 flex items-center gap-1.5">

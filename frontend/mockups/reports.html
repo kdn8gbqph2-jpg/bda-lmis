@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDA LMIS — Reports</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body class="bg-slate-100 font-sans flex">
+
+<!-- SIDEBAR -->
+<aside class="w-60 bg-slate-900 min-h-screen flex flex-col fixed top-0 left-0 z-30">
+  <div class="px-5 py-5 border-b border-slate-700/60">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      </div>
+      <div><div class="text-white font-bold text-sm">BDA LMIS</div><div class="text-slate-400 text-xs">Bharatpur Dev. Auth.</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 px-3 py-4 space-y-0.5">
+    <a href="dashboard.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+    <a href="colonies.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>Colonies</a>
+    <a href="plots.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Plots</a>
+    <a href="map.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Map</a>
+    <a href="patta-ledger.html" class="sidebar-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Patta Ledger</a>
+    <a href="reports.html" class="sidebar-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Reports</a>
+  </nav>
+  <div class="px-3 py-4 border-t border-slate-700/60">
+    <div class="flex items-center gap-2.5 px-2">
+      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">AK</div>
+      <div class="min-w-0"><div class="text-white text-xs font-medium truncate">Ashish Kumar</div><div class="text-slate-400 text-xs">Administrator</div></div>
+      <a href="login.html" class="ml-auto text-slate-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></a>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="ml-60 flex-1 flex flex-col min-h-screen">
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+    <div>
+      <h1 class="text-slate-800 font-semibold text-base">Reports</h1>
+      <p class="text-slate-400 text-xs">Generate Excel, PDF and CSV reports for official use</p>
+    </div>
+  </header>
+
+  <main class="flex-1 p-6 space-y-6">
+
+    <!-- Recently generated -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <h3 class="font-semibold text-slate-700 text-sm mb-3">Recently Generated</h3>
+      <div class="space-y-2">
+        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-slate-700 truncate">Patta Ledger — बौद्ध बिहार — All Status</div>
+            <div class="text-xs text-slate-400 mt-0.5">Excel · 61 records · Generated 07 May 2025, 10:14 AM</div>
+          </div>
+          <button class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download
+          </button>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-slate-700 truncate">Missing Files Report — All Colonies</div>
+            <div class="text-xs text-slate-400 mt-0.5">PDF · 128 records · Generated 06 May 2025, 4:45 PM</div>
+          </div>
+          <button class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download
+          </button>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-slate-700 truncate">Colony Summary Report — All 72 Colonies</div>
+            <div class="text-xs text-slate-400 mt-0.5">Excel · 72 rows · Generated 05 May 2025, 9:00 AM</div>
+          </div>
+          <button class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Cards -->
+    <div>
+      <h3 class="font-semibold text-slate-700 text-sm mb-3">Generate New Report</h3>
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Report 1: Patta Ledger -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Patta Ledger</h4>
+              <p class="text-slate-400 text-xs mt-0.5">Full patta register with allottee details, plot info, challan numbers</p>
+            </div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Colonies (72)</option>
+              <option>बौद्ध बिहार</option>
+              <option>गणेश नगर फेज-1</option>
+            </select>
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Status</option>
+              <option>Issued only</option>
+              <option>File Missing</option>
+            </select>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="showGenerating('Patta Ledger')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Excel
+            </button>
+            <button onclick="showGenerating('Patta Ledger')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Report 2: Scanning Status -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-11 h-11 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Scanning Status</h4>
+              <p class="text-slate-400 text-xs mt-0.5">Colony-wise scanning progress, scanned vs pending documents</p>
+            </div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Colonies (72)</option>
+              <option>बौद्ध बिहार</option>
+            </select>
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Zones</option>
+              <option>North</option><option>South</option><option>East</option><option>West</option>
+            </select>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="showGenerating('Scanning Status')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Excel
+            </button>
+            <button onclick="showGenerating('Scanning Status')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium">
+              CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Report 3: Colony Summary -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-11 h-11 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Colony Summary</h4>
+              <p class="text-slate-400 text-xs mt-0.5">All 72 colonies: total plots, pattas, missing, scan % in one sheet</p>
+            </div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <div class="bg-slate-50 rounded-lg px-3 py-2 text-xs text-slate-500 text-center">
+              Includes all 72 colonies — no filter needed
+            </div>
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>Group by Colony</option>
+              <option>Group by Zone</option>
+            </select>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="showGenerating('Colony Summary')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Excel
+            </button>
+            <button onclick="showGenerating('Colony Summary')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Report 4: Missing Files -->
+        <div class="bg-white rounded-xl border border-red-200 shadow-sm p-5 hover:shadow-md transition">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-11 h-11 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Missing Files Report</h4>
+              <p class="text-slate-400 text-xs mt-0.5">All pattas where regulation file is marked नही (No)</p>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 mt-1">128 records</span>
+            </div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Colonies (72)</option>
+              <option>राधिका बिहार ब्लॉक-A (18 missing)</option>
+              <option>सुभाष नगर फेज-10 (11 missing)</option>
+            </select>
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Zones</option>
+              <option>North</option><option>South</option>
+            </select>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="showGenerating('Missing Files')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Excel
+            </button>
+            <button onclick="showGenerating('Missing Files')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Report 5: Plot Status -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Plot Status Report</h4>
+              <p class="text-slate-400 text-xs mt-0.5">All 2,375 plots with current status, allottee, area in Sq.Yd & sqm</p>
+            </div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Colonies</option>
+              <option>बौद्ध बिहार</option>
+            </select>
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Plot Types</option>
+              <option>Residential only</option>
+              <option>Commercial only</option>
+            </select>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="showGenerating('Plot Status')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Excel
+            </button>
+            <button onclick="showGenerating('Plot Status')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium">
+              CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Report 6: Zone-wise Summary -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-11 h-11 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">Zone-wise Summary</h4>
+              <p class="text-slate-400 text-xs mt-0.5">8-zone breakdown: colony count, plots, pattas, missing files</p>
+            </div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <div class="bg-slate-50 rounded-lg px-3 py-2 text-xs text-slate-500 text-center">
+              Covers all 8 zones automatically
+            </div>
+            <select class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>As of today</option>
+              <option>Custom date range</option>
+            </select>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="showGenerating('Zone Summary')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              Excel
+            </button>
+            <button onclick="showGenerating('Zone Summary')" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- GENERATING TOAST -->
+<div id="gen-toast" class="hidden fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm">
+  <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0"></div>
+  <div>
+    <div class="font-medium text-sm" id="gen-toast-title">Generating report...</div>
+    <div class="text-slate-400 text-xs mt-0.5">Processing records, this may take a moment</div>
+  </div>
+</div>
+
+<script>
+function showGenerating(name) {
+  const toast = document.getElementById('gen-toast');
+  document.getElementById('gen-toast-title').textContent = 'Generating ' + name + ' report...';
+  toast.classList.remove('hidden');
+  setTimeout(() => {
+    toast.innerHTML = `<div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+      <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+    </div>
+    <div><div class="font-medium text-sm text-white">${name} report ready</div><div class="text-slate-400 text-xs mt-0.5">Click to download</div></div>`;
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+  }, 2000);
+}
+</script>
+
+</body>
+</html>
