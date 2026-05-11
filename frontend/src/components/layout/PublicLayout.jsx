@@ -29,7 +29,8 @@ function SidebarContent({ onClose }) {
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
 
       {/* ── Brand ─────────────────────────────────────────────────────────── */}
-      <div className="px-4 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="px-4 py-4 bg-gradient-to-br from-indigo-50 via-white to-blue-50
+                      border-b border-slate-200/70 flex items-center justify-between">
         <Link to="/public" onClick={onClose} className="flex items-center gap-2.5 group min-w-0">
           <img
             src="/bda-logo.png"
@@ -38,10 +39,10 @@ function SidebarContent({ onClose }) {
                        group-hover:scale-105 transition-transform"
           />
           <div className="min-w-0">
-            <div className="text-sm font-bold text-slate-800 group-hover:text-blue-700 transition leading-tight truncate">
+            <div className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition leading-tight truncate">
               BDA LMIS
             </div>
-            <div className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider leading-tight mt-0.5">
+            <div className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider leading-tight mt-0.5">
               Public Portal
             </div>
           </div>
@@ -119,18 +120,20 @@ function SectionLabel({ children }) {
   )
 }
 
-// Per-color active styles. Use static class strings so Tailwind's JIT picks them up.
-const ACTIVE_STYLES = {
-  blue:    { bar: 'bg-blue-500',    bg: 'bg-blue-50/70',    text: 'text-blue-700',    icon: 'text-blue-600'    },
-  emerald: { bar: 'bg-emerald-500', bg: 'bg-emerald-50/70', text: 'text-emerald-700', icon: 'text-emerald-600' },
-  amber:   { bar: 'bg-amber-500',   bg: 'bg-amber-50/70',   text: 'text-amber-700',   icon: 'text-amber-600'   },
-  orange:  { bar: 'bg-orange-500',  bg: 'bg-orange-50/70',  text: 'text-orange-700',  icon: 'text-orange-600'  },
-  red:     { bar: 'bg-red-500',     bg: 'bg-red-50/70',     text: 'text-red-700',     icon: 'text-red-600'     },
-  slate:   { bar: 'bg-slate-400',   bg: 'bg-slate-100',     text: 'text-slate-800',   icon: 'text-slate-600'   },
+// Per-color nav styles. Static class strings so Tailwind's JIT picks them up.
+// `chipBg` / `chipIcon` are used at idle to color-code each category icon;
+// `activeBg` / `activeText` apply to the active row.
+const NAV_STYLES = {
+  blue:    { bar: 'bg-blue-500',    activeBg: 'bg-blue-50',    activeText: 'text-blue-700',    chipBg: 'bg-blue-50',    chipIcon: 'text-blue-600'    },
+  emerald: { bar: 'bg-emerald-500', activeBg: 'bg-emerald-50', activeText: 'text-emerald-700', chipBg: 'bg-emerald-50', chipIcon: 'text-emerald-600' },
+  amber:   { bar: 'bg-amber-500',   activeBg: 'bg-amber-50',   activeText: 'text-amber-700',   chipBg: 'bg-amber-50',   chipIcon: 'text-amber-600'   },
+  orange:  { bar: 'bg-orange-500',  activeBg: 'bg-orange-50',  activeText: 'text-orange-700', chipBg: 'bg-orange-50',  chipIcon: 'text-orange-600'  },
+  red:     { bar: 'bg-red-500',     activeBg: 'bg-red-50',     activeText: 'text-red-700',     chipBg: 'bg-red-50',     chipIcon: 'text-red-600'     },
+  slate:   { bar: 'bg-slate-400',   activeBg: 'bg-slate-100',  activeText: 'text-slate-800',   chipBg: 'bg-slate-100',  chipIcon: 'text-slate-600'   },
 }
 
 function NavItem({ to, end, icon: Icon, label, labelHi, color = 'slate', onClose }) {
-  const s = ACTIVE_STYLES[color] ?? ACTIVE_STYLES.slate
+  const s = NAV_STYLES[color] ?? NAV_STYLES.slate
 
   return (
     <NavLink
@@ -138,11 +141,11 @@ function NavItem({ to, end, icon: Icon, label, labelHi, color = 'slate', onClose
       end={end}
       onClick={onClose}
       className={({ isActive }) =>
-        `relative flex items-center gap-2.5 mx-2 px-3 py-2 rounded-lg text-sm
+        `relative flex items-center gap-2.5 mx-2 px-2.5 py-2 rounded-lg text-sm
          transition-all duration-150 group
          ${isActive
-            ? `${s.bg} font-medium`
-            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}`
+            ? `${s.activeBg} font-semibold`
+            : 'text-slate-700 hover:bg-slate-50'}`
       }
     >
       {({ isActive }) => (
@@ -151,19 +154,24 @@ function NavItem({ to, end, icon: Icon, label, labelHi, color = 'slate', onClose
           {isActive && (
             <motion.span
               layoutId="public-nav-active"
-              className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full ${s.bar}`}
+              className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full ${s.bar}`}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             />
           )}
-          <Icon
-            className={`w-4 h-4 flex-shrink-0 transition-colors
-                        ${isActive ? s.icon : 'text-slate-400 group-hover:text-slate-600'}`}
-            strokeWidth={2}
-          />
+
+          {/* Colored icon chip — always tinted, even at idle */}
+          <span className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0
+                            ${s.chipBg} transition-transform group-hover:scale-105`}>
+            <Icon className={`w-4 h-4 ${s.chipIcon}`} strokeWidth={2.25} />
+          </span>
+
           <div className="min-w-0 flex-1">
-            <div className={`truncate leading-tight ${isActive ? s.text : ''}`}>{label}</div>
+            <div className={`truncate leading-tight ${isActive ? s.activeText : 'text-slate-800'}`}>
+              {label}
+            </div>
             <div className="text-[10px] text-slate-400 truncate leading-tight">{labelHi}</div>
           </div>
+
           <ChevronRight
             className={`w-3 h-3 transition
                         ${isActive ? 'text-slate-400' : 'text-slate-300 opacity-0 group-hover:opacity-100'}`}
