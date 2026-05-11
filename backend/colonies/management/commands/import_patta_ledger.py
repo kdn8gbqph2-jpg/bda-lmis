@@ -150,6 +150,10 @@ class Command(BaseCommand):
         for sheet_name in wb.sheetnames:
             if only_col and sheet_name != only_col:
                 continue
+            # Skip Excel's default "Sheet1" / "Sheet2" placeholder tabs.
+            if re.match(r'^Sheet\d+$', sheet_name, flags=re.IGNORECASE):
+                self.stdout.write(f'  Skipping placeholder sheet: {sheet_name}')
+                continue
             # Skip sheets with fewer than 9 rows (no data rows possible)
             ws_check = wb[sheet_name]
             if ws_check.max_row < 9:
