@@ -60,20 +60,26 @@ def _fetch_old(instance) -> dict | None:
 
 def _write_log(entity_type: str, entity_id, action: str,
                old_values=None, new_values=None):
-    """Create one AuditLog row; never raises (audit must not break app flow)."""
+    """Create one AuditLog row; never raises (audit must not break app flow).
+
+    Uses its own savepoint so that a DB error inside here does NOT corrupt
+    the caller's transaction (e.g. management commands, bulk imports).
+    """
+    from django.db import transaction as _tx
     try:
-        user = get_current_user()
-        ip, ua = get_current_request_meta()
-        AuditLog.objects.create(
-            user=user,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            action=action,
-            old_values=old_values,
-            new_values=new_values,
-            ip_address=ip,
-            user_agent=ua or '',
-        )
+        with _tx.atomic():          # savepoint — rolls back only THIS write on failure
+            user = get_current_user()
+            ip, ua = get_current_request_meta()
+            AuditLog.objects.create(
+                user=user,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                action=action,
+                old_values=old_values,
+                new_values=new_values,
+                ip_address=ip,
+                user_agent=ua or '',
+            )
     except Exception:
         pass   # never let audit failures propagate
 

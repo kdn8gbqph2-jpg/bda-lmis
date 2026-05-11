@@ -143,20 +143,20 @@ class Command(BaseCommand):
         except Exception as e:
             raise CommandError(f'Cannot open workbook: {e}')
 
-        # Skip the three blank placeholder sheets
-        SKIP_SHEETS = {'Sheet1', 'Sheet2', 'Sheet3'}
-
         totals = {'colonies': 0, 'khasras': 0, 'plots': 0,
                   'pattas': 0, 'mappings': 0, 'documents': 0,
                   'errors': 0}
 
         for sheet_name in wb.sheetnames:
-            if sheet_name in SKIP_SHEETS:
-                continue
             if only_col and sheet_name != only_col:
                 continue
+            # Skip sheets with fewer than 9 rows (no data rows possible)
+            ws_check = wb[sheet_name]
+            if ws_check.max_row < 9:
+                self.stdout.write(f'  Skipping blank sheet: {sheet_name}')
+                continue
 
-            ws = wb[sheet_name]
+            ws = ws_check
             self.stdout.write(f'\n── Sheet: {sheet_name}')
 
             try:
@@ -185,10 +185,16 @@ class Command(BaseCommand):
     # ── per-sheet import ──────────────────────────────────────────────────────
 
     def _import_sheet(self, ws, sheet_name: str, dry_run: bool) -> dict:
-        from colonies.models import Colony, Khasra
-        from plots.models    import Plot, PlotKhasraMapping
-        from pattas.models   import Patta, PlotPattaMapping
+        from colonies.models  import Colony, Khasra
+        from plots.models     import Plot, PlotKhasraMapping
+        from pattas.models    import Patta, PlotPattaMapping
         from documents.models import Document
+        from users.models     import CustomUser
+
+        # Use the first superuser as the system uploader; fall back to None
+        # (nullable FK) if no user exists yet.
+        system_user = CustomUser.objects.filter(is_superuser=True).first()
+        system_user_id = system_user.pk if system_user else None
 
         counts = {'colonies': 0, 'khasras': 0, 'plots': 0,
                   'pattas': 0, 'mappings': 0, 'documents': 0}
@@ -199,10 +205,12 @@ class Command(BaseCommand):
             return counts
 
         # ── Parse header rows ──────────────────────────────────────────
-        colony_name          = _str(rows[0][1]) or sheet_name   # row 1, col B
-        chak_number          = _int(rows[2][1])                  # row 3, col B
-        layout_approval_date = _date(rows[3][1])                 # row 4, col B
-        khasra_raw           = _str(rows[5][1])                  # row 6, col B
+        # Colony name: try col B first, fall back to sheet name.
+        # Chak/date/khasras: the actual values are in col D (index 3).
+        colony_name          = _str(rows[0][1]) or sheet_name   # row 1, col B or sheet name
+        chak_number          = _int(rows[2][3])                  # row 3, col D
+        layout_approval_date = _date(rows[3][3])                 # row 4, col D
+        khasra_raw           = _str(rows[5][3])                  # row 6, col D
 
         self.stdout.write(
             f'  Colony: {colony_name} | Chak: {chak_number} | '
@@ -376,15 +384,15 @@ class Command(BaseCommand):
                         'document_type':     'patta',
                         'status':            'linked',
                         'linked_patta':      patta,
-                        'uploaded_by_id':    1,  # system / first superuser
+                        'uploaded_by_id':    system_user_id,
                     },
                 )
                 if doc_created:
                     counts['documents'] += 1
                 # Link patta → document if not already linked
                 if not patta.document_id:
-                    patta.document = doc
-                    patta.save(update_fields=['document'])
+                    Patta.objects.filter(pk=patta.pk).update(document_id=doc.pk)
+                    patta.document_id = doc.pk  # keep in-memory object in sync
 
         self.stdout.write(
             f'  → plots={counts["plots"]}  pattas={counts["pattas"]}  '

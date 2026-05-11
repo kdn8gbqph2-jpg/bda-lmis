@@ -53,3 +53,6 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Claude Code local session data
+.claude/

@@ -1,25 +1,17 @@
 import React from 'react'
 import { useLocation } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { Bell } from 'lucide-react'
 
-const ROUTE_LABELS = {
-  '/dashboard':        'Dashboard',
-  '/colonies':         'Colonies',
-  '/plots':            'Plots',
-  '/patta-ledger':     'Patta Ledger',
-  '/documents':        'Documents',
-  '/admin/users':      'User Management',
-  '/admin/audit-logs': 'Audit Logs',
-}
-
-function useBreadcrumbs() {
-  const { pathname } = useLocation()
-  // Handle dynamic segments like /patta-ledger/:id
-  const base = '/' + pathname.split('/').slice(1, 3).join('/')
-  const parts = [{ label: 'Home', to: '/dashboard' }]
-  const label = ROUTE_LABELS[pathname] || ROUTE_LABELS[base]
-  if (label && pathname !== '/dashboard') parts.push({ label })
-  return parts
+const ROUTE_META = {
+  '/dashboard':        { title: 'Dashboard',       sub: 'Overview of all colonies and land records' },
+  '/colonies':         { title: 'Colonies',         sub: 'Manage colony and khasra records'          },
+  '/plots':            { title: 'Plots',            sub: 'Browse and filter all plot records'         },
+  '/map':              { title: 'Map',              sub: 'GIS map of colonies and plots'              },
+  '/patta-ledger':     { title: 'Patta Ledger',     sub: 'All patta records and allottee details'     },
+  '/documents':        { title: 'Documents',        sub: 'Scanned patta documents and DMS files'      },
+  '/reports':          { title: 'Reports',          sub: 'Generate and download reports'              },
+  '/admin/users':      { title: 'User Management',  sub: 'Manage system users and roles'              },
+  '/admin/audit-logs': { title: 'Audit Logs',       sub: 'System audit trail and activity log'        },
 }
 
 function Clock() {
@@ -28,35 +20,38 @@ function Clock() {
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
+
+  const date = now.toLocaleDateString('en-IN', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  })
+  const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+
   return (
-    <span className="text-sm text-slate-500 tabular-nums">
-      {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-      {' · '}
-      {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-    </span>
+    <div className="text-xs bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+      <span className="font-medium text-slate-700">{date}</span>
+      <span className="ml-2 text-slate-400">{time}</span>
+    </div>
   )
 }
 
 export function Topbar() {
-  const breadcrumbs = useBreadcrumbs()
-  const pageTitle = breadcrumbs[breadcrumbs.length - 1].label
+  const { pathname } = useLocation()
+  // Handle dynamic segments like /patta-ledger/123
+  const base = '/' + pathname.split('/').slice(1, 3).join('/')
+  const meta = ROUTE_META[pathname] || ROUTE_META[base] || { title: 'BDA LMIS', sub: '' }
 
   return (
-    <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6">
-      <div className="flex flex-col">
-        <h1 className="text-base font-semibold text-slate-900 leading-tight">{pageTitle}</h1>
-        <nav className="flex items-center gap-1 text-xs text-slate-400">
-          {breadcrumbs.map((crumb, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <ChevronRight className="w-3 h-3" />}
-              <span className={i === breadcrumbs.length - 1 ? 'text-slate-600' : ''}>
-                {crumb.label}
-              </span>
-            </React.Fragment>
-          ))}
-        </nav>
+    <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+      <div>
+        <h1 className="text-slate-800 font-semibold text-base leading-tight">{meta.title}</h1>
+        {meta.sub && <p className="text-slate-400 text-xs mt-0.5">{meta.sub}</p>}
       </div>
-      <Clock />
+      <div className="flex items-center gap-3">
+        <button className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+          <Bell className="w-5 h-5" />
+        </button>
+        <Clock />
+      </div>
     </header>
   )
 }

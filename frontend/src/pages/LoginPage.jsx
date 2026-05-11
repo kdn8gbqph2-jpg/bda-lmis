@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2 } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
+import { Eye, EyeOff } from 'lucide-react'
 import { auth } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
 
 export default function LoginPage() {
-  const navigate   = useNavigate()
-  const setAuth    = useAuthStore((s) => s.setAuth)
-  const [form, setForm] = useState({ email: '', password: '' })
-  const [error, setError] = useState('')
+  const navigate  = useNavigate()
+  const setAuth   = useAuthStore((s) => s.setAuth)
+  const [form,    setForm]    = useState({ email: '', password: '' })
+  const [showPwd, setShowPwd] = useState(false)
+  const [error,   setError]   = useState('')
 
   const login = useMutation({
     mutationFn: () => auth.login({ email: form.email, password: form.password }),
@@ -20,8 +19,8 @@ export default function LoginPage() {
       navigate('/dashboard', { replace: true })
     },
     onError: (err) => {
-      const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0]
-      setError(detail || 'Invalid credentials. Please try again.')
+      const d = err.response?.data
+      setError(d?.detail || d?.non_field_errors?.[0] || 'Invalid credentials. Please try again.')
     },
   })
 
@@ -32,43 +31,113 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Brand */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900 leading-tight">BDA LMIS</p>
-            <p className="text-xs text-slate-500">Bharatpur Development Authority</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Subtle grid pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <div className="relative z-10 w-full max-w-md">
+
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <img
+            src="/bda-logo.png"
+            alt="BDA"
+            className="w-24 h-24 object-contain mx-auto mb-4 drop-shadow-2xl"
+          />
+          <h1 className="text-3xl font-bold text-white tracking-tight">BDA LMIS</h1>
+          <p className="text-blue-300 text-sm mt-1">Bharatpur Development Authority</p>
+          <p className="text-slate-400 text-xs mt-0.5">भूमि प्रबंधन सूचना प्रणाली</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-          <h1 className="text-xl font-semibold text-slate-900 mb-1">Sign in</h1>
-          <p className="text-sm text-slate-500 mb-6">Land Management Information System</p>
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Input
-              label="Email address"
-              type="email"
-              autoComplete="email"
-              placeholder="officer@bda.gov.in"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-              required
-            />
+          {/* Blue header band */}
+          <div className="bg-blue-700 px-8 py-4">
+            <h2 className="text-white font-semibold text-lg">Staff Login</h2>
+            <p className="text-blue-200 text-xs mt-0.5">Enter your credentials to access the system</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="px-8 py-7 space-y-5">
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Employee ID / Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="emp@bda.rajasthan.gov.in"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                             bg-slate-50 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                </div>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  className="w-full pl-9 pr-10 py-2.5 border border-slate-300 rounded-lg text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                             bg-slate-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+                >
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember me / Forgot */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-slate-600">Remember me</span>
+              </label>
+              <button type="button" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Forgot password?
+              </button>
+            </div>
 
             {error && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -76,19 +145,26 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              className="w-full mt-1"
-              loading={login.isPending}
+              disabled={login.isPending}
+              className="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white font-semibold
+                         py-2.5 rounded-lg transition text-sm shadow-sm flex items-center justify-center gap-2"
             >
-              Sign in
-            </Button>
+              {login.isPending && (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+              )}
+              Sign In to LMIS
+            </button>
+
           </form>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
-          BDA LMIS · Bharatpur · {new Date().getFullYear()}
+        <p className="text-center text-slate-500 text-xs mt-6">
+          © {new Date().getFullYear()} Bharatpur Development Authority, Rajasthan
         </p>
       </div>
     </div>

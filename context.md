@@ -1830,7 +1830,7 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 
 ## 15. IMPLEMENTATION STATUS & REMAINING WORK
 
-> Last updated: 2026-05-11
+> Last updated: 2026-05-11 (rev 2 — public dashboard modernization)
 
 ### ✅ Completed
 
@@ -1909,26 +1909,21 @@ docker compose exec backend python manage.py import_patta_ledger --file /app/...
 
 All core SPA pages and infrastructure are implemented and committed to `develop`:
 
+#### Core (auth + staff)
+
 | File | What's done |
 |------|-------------|
 | `src/api/client.js` | Axios instance, Bearer token attach, deduped silent JWT refresh on 401, `.data` unwrapper in response interceptor |
 | `src/api/endpoints.js` | Full API surface: auth, colonies, khasras, plots, pattas, documents, dashboard, gis, users, auditLogs; **+ publicApi** (colony-types, colony list/detail/geojson, mapDownloadUrl) |
 | `src/stores/useAuthStore.js` | Zustand + persist; setAuth/setTokens/logout/isAdmin/isStaffOrAbove |
 | `src/lib/plotStatus.js` | PLOT_STATUS + PATTA_STATUS maps; getPlotStatus/getPattaStatus helpers |
-| `src/components/ui/Button.jsx` | variants (primary/secondary/danger/ghost), sizes, loading spinner |
-| `src/components/ui/Badge.jsx` | PlotStatusBadge (dot + label), PattaStatusBadge |
-| `src/components/ui/Card.jsx` | Card + StatCard (icon, label, value, sub, color variants) |
-| `src/components/ui/Input.jsx` | Input (forwardRef, prefix/suffix, error), Select |
-| `src/components/ui/Modal.jsx` | Escape/backdrop close, overflow lock, sizes sm/md/lg/xl/full, footer slot |
-| `src/components/ui/Table.jsx` | Table (columns with render/className/cellClass), Pagination (X–Y of N) |
-| `src/components/ui/Spinner.jsx` | Standalone spinner component |
+| `src/components/ui/*` | Button, Badge, Card, Input/Select, Modal, Table, Spinner |
 | `src/hooks/useDebounce.js` | Standard debounce hook |
-| `src/components/layout/Sidebar.jsx` | Role-aware NavLink nav; admin section gated by isAdmin(); user avatar + logout |
+| `src/components/layout/Sidebar.jsx` | Role-aware NavLink nav; admin section gated by isAdmin(); **BDA shield logo** at top |
 | `src/components/layout/Topbar.jsx` | Breadcrumbs from route, live clock (en-IN locale) |
 | `src/components/layout/MainLayout.jsx` | Sidebar + Topbar + `<Outlet />` |
-| `src/components/layout/PublicLayout.jsx` | **NEW** Government-style BDA header (blue-800), Staff Login link, footer; wraps public routes |
-| `src/App.jsx` | **Converted to `createBrowserRouter`** (React Router v7 data router API — fixes routing issues with pathless wrappers); RequireAuth/RequireGuest/RequireAdmin guards; lazy-loaded pages; public routes at `/public/*` outside auth |
-| `src/pages/LoginPage.jsx` | Email/password form, error display, redirects on success |
+| `src/App.jsx` | **`createBrowserRouter`** (React Router v7 data router API); RequireAuth/RequireGuest/RequireAdmin guards; lazy-loaded pages; public routes at `/public/*` outside auth |
+| `src/pages/LoginPage.jsx` | Email/password form; dark gradient bg; **BDA shield logo** centered above heading; show/hide password toggle |
 | `src/pages/DashboardPage.jsx` | 8 KPI StatCards + ColonyProgress table + ZoneBreakdown list |
 | `src/pages/ColoniesPage.jsx` | Searchable/paginated table + ColonyDetailModal (stats + khasra chips) |
 | `src/pages/PlotsPage.jsx` | Filtered/paginated table (colony + status dropdowns + plot search) |
@@ -1937,9 +1932,42 @@ All core SPA pages and infrastructure are implemented and committed to `develop`
 | `src/pages/DocumentsPage.jsx` | Filtered table with preview (window.open) + verify action |
 | `src/pages/admin/UsersPage.jsx` | User list + CreateUserModal (role select, emp_id, etc.) |
 | `src/pages/admin/AuditLogsPage.jsx` | Log table filtered by entity type + action |
-| `src/pages/public/PublicDashboardPage.jsx` | **NEW** 5 colony-type cards with live counts; search bar; info banner; links to filtered list |
-| `src/pages/public/PublicColoniesPage.jsx` | **NEW** Filterable/paginated list (colony_type + zone + search); map-available badge; URL params synced to filters |
-| `src/pages/public/PublicColonyDetailPage.jsx` | **NEW** Colony detail: timeline, rejection reason alert, remarks info, map download buttons (PDF/SVG/PNG), khasra table |
+| `frontend/public/bda-logo.png` | Official BDA shield logo (15 KB PNG, sourced from BDA branding files) |
+| `frontend/index.html` | Favicon → `/bda-logo.png`; tab title: "BDA LMIS — Bharatpur Development Authority" |
+
+#### Public portal (modernized 2026-05-11)
+
+Government-grade dashboard built with reusable components, framer-motion, and Recharts.
+
+| File | What's done |
+|------|-------------|
+| `src/components/public/categories.js` | **Single source of truth** for the 5 colony types — labels (EN + Hindi), description, lucide icon, Tailwind classes (accent / tint / badge / text / border) |
+| `src/components/public/TopNavbar.jsx` | Sticky white bar with backdrop blur; mobile menu trigger; breadcrumb (desktop); central search input ("Search colonies, schemes, layouts…"); notification bell; Staff Login chip |
+| `src/components/public/DashboardHeader.jsx` | Compact greeting block — title, English subtitle, Hindi subtitle, blue location chip; motion fade-in |
+| `src/components/public/StatsCard.jsx` | Compact horizontal KPI — icon box + value + label; 6 color variants (blue/emerald/amber/red/orange/slate); skeleton on `loading`; framer-motion stagger |
+| `src/components/public/CategoryCard.jsx` | Colony-type card — colored top accent strip, tinted icon box, count badge, EN+Hindi title, 2-line description, "View Colonies →" CTA; hover lift via `whileHover` |
+| `src/components/public/QuickActions.jsx` | 5-up grid of action shortcuts — GIS Map, Auction Plots (Soon), Public Notices (Soon), Download Layouts, Land Bank (Soon); disabled-state styling |
+| `src/components/public/MapPreview.jsx` | Mappls-ready stub — gridded gradient canvas with pulsing colored markers; layer toggle panel (Colonies / Khasras / Utility / Roads); "Coming soon" badge |
+| `src/components/public/AnalyticsSection.jsx` | Recharts donut (Colony Distribution) + bar chart (Approval Status); shared brand-color palette; empty-state when no data |
+| `src/components/layout/PublicLayout.jsx` | **Rewritten** — sidebar + TopNavbar + scrollable `<Outlet />`. Sidebar: BDA logo, 3 sections (Overview / Colony Categories / Browse), active nav items get **colored left-border indicator** (animated via `layoutId`), per-category color theming, mobile drawer with spring slide-in |
+| `src/pages/public/PublicDashboardPage.jsx` | **Rewritten** — composition of all 7 components above; `max-w-[1400px]`; vertical flow: header → stats(6) → quick actions → categories(3-col grid) → map preview → analytics → disclaimer |
+| `src/pages/public/PublicColoniesPage.jsx` | Filterable/paginated list (colony_type + zone + search); map-available badge; URL params synced to filters |
+| `src/pages/public/PublicColonyDetailPage.jsx` | Colony detail: timeline, rejection reason alert, remarks info, map download buttons (PDF/SVG/PNG), khasra table |
+
+#### New runtime dependencies
+
+```
+framer-motion  — page/card entry animations, active-nav layout transitions
+recharts       — analytics donut + bar charts on public dashboard
+```
+
+#### Public portal design system
+
+- **Color palette:** `blue-600` (primary), `emerald-500` (success), `amber-500` (warning), `red-500` (danger). Each colony type owns one palette consistently across sidebar, card, badge, donut slice, and bar segment.
+- **Typography:** `text-xl/2xl` page title, `text-base` section heads, `text-xs` muted captions, Hindi sub-labels at `text-[10–11px] text-slate-400`.
+- **Spacing:** consistent gap-2.5 / gap-3 / gap-4 cadence; compact cards (`p-4`, not `p-6`); section spacing `mb-6`.
+- **Motion:** subtle fade + slide (0.25–0.35s); staggered card entry (0.04–0.05s delays); spring transitions for sidebar drawer and active-nav border.
+- **Responsiveness:** sidebar collapses to drawer below `lg`; stats grid `2 → 3 → 6` cols; category grid `1 → 2 → 3` cols per spec.
 
 ### ⚠️ Known Issue — createBrowserRouter migration note
 
