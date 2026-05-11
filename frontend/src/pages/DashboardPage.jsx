@@ -140,7 +140,7 @@ export default function DashboardPage() {
   })
   const activityQ = useQuery({
     queryKey: ['dashboard', 'activity'],
-    queryFn: () => auditLogs.list({ page_size: 8, ordering: '-timestamp' }),
+    queryFn: () => auditLogs.list({ page_size: 30, ordering: '-timestamp' }),
     staleTime: 30_000,
   })
 
@@ -236,7 +236,12 @@ export default function DashboardPage() {
           ) : actList.length === 0 ? (
             <p className="text-center text-sm text-slate-400 py-6">No recent activity yet.</p>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="max-h-96 overflow-y-auto pr-1 divide-y divide-slate-100
+                            [scrollbar-width:thin]
+                            [&::-webkit-scrollbar]:w-1.5
+                            [&::-webkit-scrollbar-thumb]:bg-slate-300
+                            [&::-webkit-scrollbar-thumb]:rounded-full
+                            [&::-webkit-scrollbar-track]:bg-transparent">
               {actList.map((log) => <ActivityRow key={log.id} log={log} />)}
             </div>
           )}
