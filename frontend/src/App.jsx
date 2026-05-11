@@ -1,7 +1,13 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+  Outlet,
+} from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { MainLayout } from '@/components/layout/MainLayout'
+import { PublicLayout } from '@/components/layout/PublicLayout'
 import { lazy, Suspense } from 'react'
 
 // Pages — lazy-loaded for faster initial paint
@@ -9,11 +15,18 @@ const LoginPage       = lazy(() => import('@/pages/LoginPage'))
 const DashboardPage   = lazy(() => import('@/pages/DashboardPage'))
 const ColoniesPage    = lazy(() => import('@/pages/ColoniesPage'))
 const PlotsPage       = lazy(() => import('@/pages/PlotsPage'))
+const MapPage         = lazy(() => import('@/pages/MapPage'))
 const PattaLedgerPage = lazy(() => import('@/pages/PattaLedgerPage'))
 const PattaDetailPage = lazy(() => import('@/pages/PattaDetailPage'))
 const DocumentsPage   = lazy(() => import('@/pages/DocumentsPage'))
+const ReportsPage     = lazy(() => import('@/pages/ReportsPage'))
 const UsersPage       = lazy(() => import('@/pages/admin/UsersPage'))
 const AuditLogsPage   = lazy(() => import('@/pages/admin/AuditLogsPage'))
+
+// Public pages (no auth required)
+const PublicDashboardPage    = lazy(() => import('@/pages/public/PublicDashboardPage'))
+const PublicColoniesPage     = lazy(() => import('@/pages/public/PublicColoniesPage'))
+const PublicColonyDetailPage = lazy(() => import('@/pages/public/PublicColonyDetailPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +44,8 @@ function PageLoader() {
     </div>
   )
 }
+
+// ── Auth guards (rendered as route elements) ───────────────────────────────────
 
 function RequireAuth() {
   const access = useAuthStore((s) => s.access)
@@ -50,37 +65,71 @@ function RequireAdmin() {
   return <Outlet />
 }
 
+// ── Suspense wrapper for lazy pages ───────────────────────────────────────────
+
+function S({ children }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>
+}
+
+// ── Router (data-router API — React Router v7 recommended) ────────────────────
+
+const router = createBrowserRouter([
+  // ── Guest-only ─────────────────────────────────────────────────────────────
+  {
+    element: <RequireGuest />,
+    children: [
+      { path: '/login', element: <S><LoginPage /></S> },
+    ],
+  },
+
+  // ── Public colony dashboard (no auth required) ─────────────────────────────
+  {
+    path: '/public',
+    element: <PublicLayout />,
+    children: [
+      { index: true,              element: <S><PublicDashboardPage /></S> },
+      { path: 'colonies',         element: <S><PublicColoniesPage /></S> },
+      { path: 'colonies/:id',     element: <S><PublicColonyDetailPage /></S> },
+    ],
+  },
+
+  // ── Staff (auth required) ───────────────────────────────────────────────────
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <MainLayout />,
+        children: [
+          { index: true,                   element: <Navigate to="/dashboard" replace /> },
+          { path: '/dashboard',            element: <S><DashboardPage /></S> },
+          { path: '/colonies',             element: <S><ColoniesPage /></S> },
+          { path: '/plots',                element: <S><PlotsPage /></S> },
+          { path: '/map',                  element: <S><MapPage /></S> },
+          { path: '/patta-ledger',         element: <S><PattaLedgerPage /></S> },
+          { path: '/patta-ledger/:id',     element: <S><PattaDetailPage /></S> },
+          { path: '/documents',            element: <S><DocumentsPage /></S> },
+          { path: '/reports',              element: <S><ReportsPage /></S> },
+          // Admin-only
+          {
+            element: <RequireAdmin />,
+            children: [
+              { path: '/admin/users',      element: <S><UsersPage /></S> },
+              { path: '/admin/audit-logs', element: <S><AuditLogsPage /></S> },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
+  // ── Fallback ────────────────────────────────────────────────────────────────
+  { path: '*', element: <Navigate to="/dashboard" replace /> },
+])
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route element={<RequireGuest />}>
-              <Route path="/login" element={<LoginPage />} />
-            </Route>
-
-            <Route element={<RequireAuth />}>
-              <Route element={<MainLayout />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard"        element={<DashboardPage />} />
-                <Route path="/colonies"         element={<ColoniesPage />} />
-                <Route path="/plots"            element={<PlotsPage />} />
-                <Route path="/patta-ledger"     element={<PattaLedgerPage />} />
-                <Route path="/patta-ledger/:id" element={<PattaDetailPage />} />
-                <Route path="/documents"        element={<DocumentsPage />} />
-
-                <Route element={<RequireAdmin />}>
-                  <Route path="/admin/users"       element={<UsersPage />} />
-                  <Route path="/admin/audit-logs"  element={<AuditLogsPage />} />
-                </Route>
-              </Route>
-            </Route>
-
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>
   )
 }

@@ -87,15 +87,38 @@ TOTAL               41            2,375
 ### Colony Fields (Per Record)
 
 ```
-name                VARCHAR(100)  UNIQUE  — Official colony name from BDA records
-zone                VARCHAR(50)           — North/South/East/West/Central/North-East/South-East/South-West
-status              VARCHAR(20)           — active | new | archived
-conversion_date     DATE                  — Date of conversion from agri to urban land
-layout_approval_date DATE                 — Layout sanctioned date
-dlc_file_number     VARCHAR(50)   UNIQUE  — DLC reference number
-notified_area_bigha DECIMAL(8,2)          — Total area in Bigha
-total_residential_plots INT               — Count of residential plots
-total_commercial_plots  INT               — Count of commercial plots
+name                     VARCHAR(200)  UNIQUE  — Official colony name from BDA records
+colony_type              VARCHAR(30)           — bda_scheme | private_approved | suo_moto | pending_layout | rejected_layout
+zone                     VARCHAR(50)           — North/South/East/West/Central/North-East/South-East/South-West
+status                   VARCHAR(20)           — active | new | archived
+chak_number              INT (nullable)        — Revenue block number (चक नम्बर)
+conversion_date          DATE (nullable)       — Date of conversion from agri to urban land
+layout_application_date  DATE (nullable)       — Date layout plan was submitted for approval
+layout_approval_date     DATE (nullable)       — Layout sanctioned date
+dlc_file_number          VARCHAR(100)  UNIQUE (nullable) — DLC reference number
+notified_area_bigha      DECIMAL(10,2) (nullable)        — Total area in Bigha
+total_residential_plots  INT DEFAULT 0         — Count of residential plots
+total_commercial_plots   INT DEFAULT 0         — Count of commercial plots
+rejection_reason         TEXT (blank)          — Required when colony_type='rejected_layout'; shown publicly
+remarks                  TEXT (blank)          — Internal/public notes
+map_pdf                  FileField (nullable)  — Uploaded PDF layout plan  → colony_maps/pdf/
+map_svg                  FileField (nullable)  — Uploaded SVG boundary map → colony_maps/svg/
+map_png                  FileField (nullable)  — Uploaded PNG thumbnail    → colony_maps/png/
+
+Computed properties (not DB columns):
+  total_plots              = total_residential_plots + total_commercial_plots
+  has_map                  = bool(map_pdf or map_svg or map_png)
+  available_map_formats    = list of uploaded formats, e.g. ['pdf', 'png']
+```
+
+### Colony Type Choices
+
+```
+bda_scheme        → BDA Scheme (default)
+private_approved  → Private Approved Colony
+suo_moto          → SUO-Moto Colony Case
+pending_layout    → Pending Colony Layout
+rejected_layout   → Rejected Colony Layout (rejection_reason required)
 ```
 
 ### Key Scale Metrics
@@ -552,16 +575,28 @@ POST  /auth/logout/         Header: Authorization: Bearer {token}
 GET   /auth/me/             Resp: {id, emp_id, name, role, department}
 ```
 
-### Colonies
+### Colonies (Staff — auth required)
 
 ```
-GET    /colonies/            ?zone=North&status=active&search=X&page=1&limit=50
-POST   /colonies/            admin only
+GET    /colonies/                    ?zone=North&status=active&colony_type=bda_scheme&search=X&page=1
+POST   /colonies/                    admin only
 GET    /colonies/{id}/
-PUT    /colonies/{id}/       admin only
-DELETE /colonies/{id}/       admin only (soft delete)
-GET    /colonies/{id}/stats/ {total_plots, pattas_issued, pattas_missing, scan_pct}
+PUT    /colonies/{id}/               admin only
+DELETE /colonies/{id}/               admin only (soft delete)
+GET    /colonies/{id}/stats/         {total_plots, pattas_issued, pattas_missing, scan_pct}
 GET    /colonies/{id}/geojson/
+GET    /colonies/{id}/map/<fmt>/     fmt = pdf | svg | png  → FileResponse attachment
+GET    /colonies/geojson/            FeatureCollection of all colonies
+```
+
+### Public Colony Dashboard (no auth required)
+
+```
+GET    /public/colony-types/              [{value, label}, ...] — the 5 choices
+GET    /public/colonies/                  ?colony_type=&zone=&search=&page=&page_size=
+GET    /public/colonies/geojson/          ?colony_type=&zone=
+GET    /public/colonies/{id}/             full detail + khasras + available_map_formats
+GET    /public/colonies/{id}/map/<fmt>/   fmt = pdf | svg | png → download map file
 ```
 
 ### Khasras
@@ -677,24 +712,30 @@ GET    /audit-logs/                    ?user_id&entity_type&action&days=7
 ### Route Structure
 
 ```
-/login                    LoginPage
-/dashboard                DashboardPage
-/colonies                 ColoniesPage
-/colonies/{id}            ColonyDetailPage
-/plots                    PlotsPage
-/plots/{id}               PlotDetailPage
-/map                      MapPage  (internal, all layers)
-/patta-ledger             PattaLedgerPage
-/patta-ledger/{id}        PattaDetailPage
-/missing-cases            MissingCasesPage
-/missing-cases/{id}       MissingCaseDetailPage
-/documents                DocumentsPage
-/reports                  ReportsPage
-/admin                    AdminPanel  (admin only)
-/admin/users              UserManagementPage
-/admin/audit-logs         AuditLogPage
-/public/map               PublicMapPage  (no auth required)
+── Guest routes (redirect to /dashboard if already logged in) ──
+/login                         LoginPage
+
+── Public colony dashboard (no auth required) ──────────────────
+/public                        PublicDashboardPage    (5 category cards + search)
+/public/colonies               PublicColoniesPage     (filterable list by type/zone)
+/public/colonies/:id           PublicColonyDetailPage (khasras + map downloads)
+
+── Staff routes (RequireAuth guard — redirect to /login) ───────
+/dashboard                     DashboardPage
+/colonies                      ColoniesPage
+/plots                         PlotsPage
+/map                           MapPage  (internal, all layers)
+/patta-ledger                  PattaLedgerPage
+/patta-ledger/:id              PattaDetailPage
+/documents                     DocumentsPage
+/reports                       ReportsPage
+
+── Admin only (RequireAdmin guard) ─────────────────────────────
+/admin/users                   UsersPage
+/admin/audit-logs              AuditLogsPage
 ```
+
+**Router API:** `createBrowserRouter` (React Router v7 data router — NOT legacy `<BrowserRouter>` + `<Routes>`)
 
 ### Component Tree
 
@@ -1789,7 +1830,7 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 
 ## 15. IMPLEMENTATION STATUS & REMAINING WORK
 
-> Last updated: 2026-05-08
+> Last updated: 2026-05-11
 
 ### ✅ Completed
 
@@ -1811,7 +1852,7 @@ Full list of ~72 colonies in Hindi as they appear in the source file:
 | App | Files | What's done |
 |-----|-------|-------------|
 | `users` | `managers.py`, `models.py`, `permissions.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py` | `CustomUser` (email login, role/emp_id), `ColonyAssignment`, RBAC permission classes, JWT login/logout/me/refresh, user CRUD + assign-colonies (admin only) |
-| `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, nullable fields), `Khasra` (PostGIS Polygon), list/detail/GeoJSON serializers, CRUD + `/stats/` + `/geojson/` endpoints, Redis caching on stats + geojson, `GISModelAdmin` |
+| `colonies` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `views_public.py`, `urls.py`, `admin.py` | `Colony` (PostGIS MultiPolygon, chak_number, **colony_type** 5 choices, **layout_application_date**, **rejection_reason**, **remarks**, **map_pdf/svg/png** FileFields, **has_map** + **available_map_formats** properties, save() clears rejection_reason on type change), `Khasra` (PostGIS Polygon); **staff serializers**: ColonyListSerializer + ColonyDetailSerializer (with validation for rejected_layout); **public serializers**: PublicColonyListSerializer, PublicColonyDetailSerializer, PublicKhasraSerializer; filters: zone/status/colony_type/has_map; CRUD + `/stats/` + `/geojson/` + **`/map/<fmt>/`** (PDF/SVG/PNG download) endpoints; **public views** (AllowAny): `/api/public/colonies/`, `/api/public/colonies/{id}/`, `/api/public/colonies/{id}/map/<fmt>/`, `/api/public/colonies/geojson/`, `/api/public/colony-types/`; Redis caching; GISModelAdmin with full fieldsets |
 | `plots` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Plot` (area_sqy + area_sqm auto-computed, PostGIS Polygon, 7 status values), `PlotKhasraMapping` junction, list/detail/write/GeoJSON serializers (status color in properties), CRUD + soft-delete + `/pattas/` + `/documents/` + `/history/` + `/geojson/` + `/bulk-import/` CSV endpoint, Redis caching on geojson, `GISModelAdmin` |
 | `pattas` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Patta` (all Excel fields: patta_number VARCHAR, allottee_address, challan_number/date, lease_amount/duration, regulation_file_present BOOLEAN), `PlotPattaMapping` junction (ownership_share_pct, allottee_role), `PattaVersion` snapshot model, list/detail/write serializers, CRUD + soft-delete + `/versions/` + `/link-document/` + `/plots/` endpoints, auto-snapshot on every mutation |
 | `documents` | `models.py`, `serializers.py`, `filters.py`, `views.py`, `urls.py`, `admin.py` | `Document` model (FileField → local filesystem via `MEDIA_ROOT`, dms_file_number BHR-format, links to plot + patta), upload serializer (validates MIME + 20 MB limit), list/detail serializers, CRUD + `/preview/` (FileResponse stream) + `/verify/` (superintendent+); hard-delete blocked (7-yr rule); `DocumentAdmin` with delete disabled |
@@ -1864,14 +1905,14 @@ docker compose exec backend python manage.py import_patta_ledger --file /app/...
 
 ---
 
-### ✅ Completed — Frontend (2026-05-08)
+### ✅ Completed — Frontend (2026-05-11)
 
 All core SPA pages and infrastructure are implemented and committed to `develop`:
 
 | File | What's done |
 |------|-------------|
 | `src/api/client.js` | Axios instance, Bearer token attach, deduped silent JWT refresh on 401, `.data` unwrapper in response interceptor |
-| `src/api/endpoints.js` | Full API surface: auth, colonies, khasras, plots, pattas, documents, dashboard, gis, users, auditLogs |
+| `src/api/endpoints.js` | Full API surface: auth, colonies, khasras, plots, pattas, documents, dashboard, gis, users, auditLogs; **+ publicApi** (colony-types, colony list/detail/geojson, mapDownloadUrl) |
 | `src/stores/useAuthStore.js` | Zustand + persist; setAuth/setTokens/logout/isAdmin/isStaffOrAbove |
 | `src/lib/plotStatus.js` | PLOT_STATUS + PATTA_STATUS maps; getPlotStatus/getPattaStatus helpers |
 | `src/components/ui/Button.jsx` | variants (primary/secondary/danger/ghost), sizes, loading spinner |
@@ -1885,7 +1926,8 @@ All core SPA pages and infrastructure are implemented and committed to `develop`
 | `src/components/layout/Sidebar.jsx` | Role-aware NavLink nav; admin section gated by isAdmin(); user avatar + logout |
 | `src/components/layout/Topbar.jsx` | Breadcrumbs from route, live clock (en-IN locale) |
 | `src/components/layout/MainLayout.jsx` | Sidebar + Topbar + `<Outlet />` |
-| `src/App.jsx` | React Router v7: RequireAuth, RequireGuest, RequireAdmin guards; lazy-loaded pages; QueryClient |
+| `src/components/layout/PublicLayout.jsx` | **NEW** Government-style BDA header (blue-800), Staff Login link, footer; wraps public routes |
+| `src/App.jsx` | **Converted to `createBrowserRouter`** (React Router v7 data router API — fixes routing issues with pathless wrappers); RequireAuth/RequireGuest/RequireAdmin guards; lazy-loaded pages; public routes at `/public/*` outside auth |
 | `src/pages/LoginPage.jsx` | Email/password form, error display, redirects on success |
 | `src/pages/DashboardPage.jsx` | 8 KPI StatCards + ColonyProgress table + ZoneBreakdown list |
 | `src/pages/ColoniesPage.jsx` | Searchable/paginated table + ColonyDetailModal (stats + khasra chips) |
@@ -1895,13 +1937,19 @@ All core SPA pages and infrastructure are implemented and committed to `develop`
 | `src/pages/DocumentsPage.jsx` | Filtered table with preview (window.open) + verify action |
 | `src/pages/admin/UsersPage.jsx` | User list + CreateUserModal (role select, emp_id, etc.) |
 | `src/pages/admin/AuditLogsPage.jsx` | Log table filtered by entity type + action |
+| `src/pages/public/PublicDashboardPage.jsx` | **NEW** 5 colony-type cards with live counts; search bar; info banner; links to filtered list |
+| `src/pages/public/PublicColoniesPage.jsx` | **NEW** Filterable/paginated list (colony_type + zone + search); map-available badge; URL params synced to filters |
+| `src/pages/public/PublicColonyDetailPage.jsx` | **NEW** Colony detail: timeline, rejection reason alert, remarks info, map download buttons (PDF/SVG/PNG), khasra table |
+
+### ⚠️ Known Issue — createBrowserRouter migration note
+
+React Router v7 (`^7.15`) changed pathless layout route behavior. The `<BrowserRouter>` + `<Routes>` JSX API had a bug where pathless wrapper routes (e.g. `<Route element={<RequireAuth />}>`) would intercept ALL paths including `/public`, triggering the auth redirect. **Fixed** by switching to `createBrowserRouter` with explicit route objects — public routes in their own branch with `path: '/public'` parent, completely separate from auth guards.
 
 ### 🔲 Remaining — Frontend
 
 - [ ] **MapPage** — Mapbox GL + MapMyIndia raster tiles + GeoJSON plot/colony overlays + LayerControlPanel (toggle layers) + UploadLayerModal
 - [ ] **DocumentsPage enhancements** — drag-drop upload zone, PDF/image preview in modal (currently opens in new tab)
 - [ ] **ReportsPage** — Report card grid + GenerateReportModal (once backend Celery tasks are ready)
-- [ ] **PublicMapPage** — unauthenticated read-only colony/plot view (low priority)
 - [ ] **PlotDetailModal** — full inline plot detail with linked pattas, documents, upload form (currently PlotsPage only shows table)
 
 ---
@@ -1932,3 +1980,7 @@ All core SPA pages and infrastructure are implemented and committed to `develop`
 6. **Tailwind v4**: uses `@import "tailwindcss"` in CSS — no `tailwind.config.js`
 7. **Zustand** is installed for state — do not use React Context for global state
 8. **PostGIS**: all geometry stored in EPSG:4326 (WGS 84). Bharatpur centre: `[77.4933, 27.2152]`
+9. **React Router v7**: use `createBrowserRouter` + `RouterProvider` (data router API). Do NOT use `<BrowserRouter>` + `<Routes>` — pathless wrapper routes break in v7.15
+10. **Public API**: `/api/public/*` uses `AllowAny` permission — no token needed. Use `publicApi` from `src/api/endpoints.js` for public page calls
+11. **Colony type**: `colony_type` field on Colony has 5 choices (bda_scheme, private_approved, suo_moto, pending_layout, rejected_layout). `rejection_reason` is required + validated when type = `rejected_layout`. Model `save()` auto-clears rejection_reason when type changes away from `rejected_layout`
+12. **Map files**: Colony layout maps stored as `FileField` in `colony_maps/{pdf|svg|png}/`. Access via `GET /api/colonies/{id}/map/<fmt>/` (auth) or `GET /api/public/colonies/{id}/map/<fmt>/` (public). Use `publicApi.mapDownloadUrl(id, fmt)` to get the URL string for `<a href>`

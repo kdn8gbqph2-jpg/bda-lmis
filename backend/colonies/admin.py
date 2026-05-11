@@ -12,17 +12,42 @@ class KhasraInline(admin.TabularInline):
 @admin.register(Colony)
 class ColonyAdmin(GISModelAdmin):
     inlines       = (KhasraInline,)
-    list_display  = ('name', 'zone', 'chak_number', 'status', 'total_residential_plots', 'total_commercial_plots', 'layout_approval_date')
-    list_filter   = ('zone', 'status')
+    list_display  = (
+        'name', 'colony_type', 'zone', 'status',
+        'total_residential_plots', 'total_commercial_plots',
+        'layout_application_date', 'layout_approval_date', 'has_map',
+    )
+    list_filter   = ('colony_type', 'zone', 'status')
     search_fields = ('name', 'dlc_file_number')
     ordering      = ('name',)
     readonly_fields = ('created_at', 'updated_at', 'updated_by')
     fieldsets = (
-        ('Basic Info',   {'fields': ('name', 'zone', 'chak_number', 'status')}),
-        ('Layout',       {'fields': ('conversion_date', 'layout_approval_date', 'dlc_file_number', 'notified_area_bigha')}),
-        ('Plot Counts',  {'fields': ('total_residential_plots', 'total_commercial_plots')}),
-        ('Boundary',     {'fields': ('boundary',)}),
-        ('Audit',        {'fields': ('created_at', 'updated_at', 'updated_by')}),
+        ('Identity', {
+            'fields': ('name', 'colony_type', 'zone', 'chak_number', 'status'),
+        }),
+        ('Survey / Revenue', {
+            'fields': ('dlc_file_number', 'notified_area_bigha'),
+        }),
+        ('Timeline', {
+            'fields': ('conversion_date', 'layout_application_date', 'layout_approval_date'),
+        }),
+        ('Rejection / Notes', {
+            'fields': ('rejection_reason', 'remarks'),
+            'classes': ('collapse',),
+        }),
+        ('Plot Counts', {
+            'fields': ('total_residential_plots', 'total_commercial_plots'),
+        }),
+        ('Map Files', {
+            'fields': ('map_pdf', 'map_svg', 'map_png'),
+            'description': 'Upload scanned layout maps in one or more formats.',
+        }),
+        ('Boundary', {
+            'fields': ('boundary',),
+        }),
+        ('Audit', {
+            'fields': ('created_at', 'updated_at', 'updated_by'),
+        }),
     )
 
 

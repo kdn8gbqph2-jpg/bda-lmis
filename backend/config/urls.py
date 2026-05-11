@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from users.views import CustomTokenObtainPairView, LogoutView, MeView
-from colonies.urls import khasra_urlpatterns
+from colonies.urls import khasra_urlpatterns, public_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,6 +26,9 @@ urlpatterns = [
     path('api/gis/',        include('gis.urls')),
     path('api/dashboard/',   include('dashboard.urls')),
     path('api/audit-logs/',  include('audit.urls')),
+
+    # Public (unauthenticated) colony dashboard
+    path('api/public/', include(public_urlpatterns)),
 ]
 
 if settings.DEBUG:

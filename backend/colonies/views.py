@@ -1,10 +1,13 @@
+import logging
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.cache import cache
+from django.http import FileResponse, Http404
 
-from .models import Colony, Khasra
+from .models import Colony, Khasra, MAP_UPLOAD_EXTENSIONS
 from .serializers import (
     ColonyListSerializer,
     ColonyDetailSerializer,
@@ -15,6 +18,8 @@ from .serializers import (
 )
 from .filters import ColonyFilter, KhasraFilter
 from users.permissions import IsAdmin, IsStaffOrAbove
+
+logger = logging.getLogger(__name__)
 
 
 class ColonyViewSet(viewsets.ModelViewSet):
@@ -95,6 +100,39 @@ class ColonyViewSet(viewsets.ModelViewSet):
 
         cache.set(cache_key, data, 60 * 10)  # 10 min TTL
         return Response(data)
+
+    # ── /api/colonies/{id}/map/<fmt>/ ─────────────────────────────────────────
+
+    @action(detail=True, methods=['get'], url_path=r'map/(?P<fmt>pdf|svg|png)',
+            permission_classes=[IsAuthenticated])
+    def map_download(self, request, pk=None, fmt=None):
+        """
+        Serve an uploaded map file for the given colony.
+
+        GET /api/colonies/{id}/map/pdf/
+        GET /api/colonies/{id}/map/svg/
+        GET /api/colonies/{id}/map/png/
+
+        Returns 404 when the requested format has not been uploaded.
+        """
+        colony    = self.get_object()
+        file_field = getattr(colony, f'map_{fmt}', None)
+
+        if not file_field:
+            logger.debug('Colony %s has no map_%s uploaded.', colony.pk, fmt)
+            raise Http404(f'No {fmt.upper()} map available for this colony.')
+
+        content_types = {
+            'pdf': 'application/pdf',
+            'svg': 'image/svg+xml',
+            'png': 'image/png',
+        }
+        logger.info('Serving map_%s for colony %s to user %s.', fmt, colony.pk, request.user)
+        response = FileResponse(file_field.open('rb'), content_type=content_types[fmt])
+        response['Content-Disposition'] = (
+            f'attachment; filename="{colony.name}_{fmt}.{fmt}"'
+        )
+        return response
 
     # ── /api/colonies/{id}/geojson/ ───────────────────────────────────────────
 
