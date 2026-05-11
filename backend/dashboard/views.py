@@ -25,7 +25,10 @@ class DashboardStatsView(APIView):
             return Response(cached)
 
         data = {
-            'total_colonies': Colony.objects.count(),
+            'total_colonies':   Colony.objects.count(),
+            'approved_layouts': Colony.objects.filter(
+                layout_approval_date__isnull=False,
+            ).count(),
         }
 
         try:
