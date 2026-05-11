@@ -16,7 +16,7 @@ import { useState } from 'react'
 import { Outlet, NavLink, Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  LayoutDashboard, List, LogIn, X, ChevronRight,
+  LayoutDashboard, List, X, ChevronRight,
 } from 'lucide-react'
 
 import { TopNavbar } from '@/components/public/TopNavbar'
@@ -101,17 +101,7 @@ function SidebarContent({ onClose }) {
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <div className="p-3 border-t border-slate-100">
-        <Link
-          to="/login"
-          onClick={onClose}
-          className="flex items-center justify-center gap-2 w-full px-3 py-2
-                     bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium
-                     rounded-lg transition shadow-sm"
-        >
-          <LogIn className="w-4 h-4" />
-          Staff Login
-        </Link>
-        <p className="text-[10px] text-slate-400 text-center mt-3 leading-tight">
+        <p className="text-[10px] text-slate-400 text-center leading-tight">
           © 2025 Bharatpur Development Authority
         </p>
       </div>
