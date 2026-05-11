@@ -9,7 +9,7 @@ export default function MapPage() {
       <h2 className="text-xl font-semibold text-slate-800 mb-2">GIS Map</h2>
       <p className="text-slate-500 text-sm max-w-sm">
         Interactive map of colonies, khasras and plots will appear here.
-        MapMyIndia integration is under development.
+        OpenStreetMap basemap with GeoJSON overlays is under development.
       </p>
     </div>
   )

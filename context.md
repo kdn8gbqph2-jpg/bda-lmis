@@ -13,7 +13,7 @@
 4. [Database Schema](#4-database-schema)
 5. [API Design](#5-api-design)
 6. [Frontend Architecture](#6-frontend-architecture)
-7. [MapMyIndia Integration](#7-mapmyindia-integration)
+7. [OpenStreetMap Integration](#7-openstreetmap-integration)
 8. [Role-Based Access Control](#8-role-based-access-control)
 9. [Key Workflows](#9-key-workflows)
 10. [Project Structure](#10-project-structure)
@@ -44,7 +44,7 @@
 1. **Multi-plot pattas are common** — One patta covers 2-3 plots frequently. Use junction table.
 2. **Plots cross khasra boundaries** — ~5-10% of plots span multiple khasras. Use junction table.
 3. **No auction tracking in this phase** — Focus on patta ledger, documents, missing cases.
-4. **MapMyIndia as base map** — Raster tile layer + custom GeoJSON overlays on top.
+4. **OpenStreetMap as base map** — free raster tile layer + custom GeoJSON overlays on top.
 5. **Government compliance** — 7-year document retention, full audit trail required.
 6. **Role-based UI** — Admin, Superintendent, Staff see different features.
 7. **Large dataset** — 2,375 plots requires cursor pagination, DB indexing, Redis caching.
@@ -796,7 +796,7 @@ App
         │
         ├── <MapPage>
         │   ├── <MapContainer>      (Mapbox GL)
-        │   │   ├── MapMyIndia raster base layer
+        │   │   ├── OpenStreetMap raster base layer
         │   │   ├── ColonyBoundariesLayer
         │   │   ├── KhasraGridLayer
         │   │   ├── PlotPolygonsLayer (color-coded by status)
@@ -932,18 +932,24 @@ export const PLOT_STATUS = {
 
 ---
 
-## 7. MAPMYINDIA INTEGRATION
+## 7. OPENSTREETMAP INTEGRATION
 
-### API Key Setup
+### No API Key Required
+
+OpenStreetMap raster tiles are free, public, and need no signup.
+Just point Mapbox GL / MapLibre GL at the tile server URL and add
+proper attribution.
 
 ```
-# frontend/.env
-VITE_MAPMYINDIA_API_KEY=your_api_key_here
-VITE_MAPMYINDIA_STYLE=LIGHT
-
-# Get API key: https://www.mappls.com/
-# Styles: LIGHT | DARK | HYBRID
+# frontend/.env (no map key needed)
+VITE_OSM_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png
 ```
+
+Production note: the public `tile.openstreetmap.org` server is *best-effort*
+and rate-limited; for serious traffic switch to a paid/self-hosted tile
+provider — MapTiler, Stadia Maps, Carto Basemaps, or a self-hosted
+[OpenMapTiles](https://openmaptiles.org/) instance. All of them speak the
+same `{z}/{x}/{y}` tile contract, so the swap is a URL change only.
 
 ### Map Center (Bharatpur)
 
@@ -952,35 +958,26 @@ const BHARATPUR_CENTER = [77.4933, 27.2152];  // [lng, lat]
 const DEFAULT_ZOOM = 12;
 ```
 
-### MapMyIndia Raster Tile URL
-
-```javascript
-const tileUrl =
-  `https://mapi.mappls.com/advancedmaps/v1/auto/{z}/{x}/{y}?` +
-  `key=${import.meta.env.VITE_MAPMYINDIA_API_KEY}&` +
-  `style=${import.meta.env.VITE_MAPMYINDIA_STYLE}`;
-```
-
-### Adding Raster Tiles via Mapbox GL
+### Adding OSM Raster Tiles via Mapbox GL
 
 ```javascript
 // Initialize Mapbox GL map
 const map = new mapboxgl.Map({
   container: mapContainerRef.current,
-  style: 'mapbox://styles/mapbox/empty-v9',   // Empty base
+  style: { version: 8, sources: {}, layers: [] },   // empty style
   center: BHARATPUR_CENTER,
-  zoom: DEFAULT_ZOOM
+  zoom: DEFAULT_ZOOM,
 });
 
-// Add MapMyIndia raster tiles
 map.on('load', () => {
-  map.addSource('mmi-tiles', {
+  map.addSource('osm', {
     type: 'raster',
-    tiles: [tileUrl],
+    tiles: [import.meta.env.VITE_OSM_TILE_URL],
     tileSize: 256,
-    attribution: '© MapMyIndia'
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+    maxzoom: 19,
   });
-  map.addLayer({ id: 'mmi-layer', type: 'raster', source: 'mmi-tiles' });
+  map.addLayer({ id: 'osm-layer', type: 'raster', source: 'osm' });
 
   // Then add GeoJSON overlays
   loadColonyBoundaries(map);
@@ -988,6 +985,16 @@ map.on('load', () => {
   loadCustomLayers(map);
 });
 ```
+
+### Alternate Tile Styles (drop-in replacements)
+
+| Provider | URL pattern | Notes |
+|----------|-------------|-------|
+| OSM Standard | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Free, no key |
+| OSM Humanitarian | `https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png` | Free, no key |
+| Carto Light/Dark | `https://{a-d}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png` | Free up to 75k tiles/mo |
+| MapTiler | `https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=...` | Free tier; requires key |
+| Stadia Maps | `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png` | Free tier; domain-restricted |
 
 ### GeoJSON Overlay Pattern
 
@@ -1252,7 +1259,7 @@ ACTOR: Admin / Superintendent
    Backend: parse → validate → store in PostGIS → return GeoJSON
 
 4. Layer appears in map sidebar (checkbox)
-   Toggle ON → blue lines render over MapMyIndia base map
+   Toggle ON → blue lines render over OpenStreetMap base map
    Click feature → tooltip: {Diameter: 100mm, Material: PVC, Depth: 1.5m}
 
 5. Other users: toggle on/off, download GeoJSON, cannot edit
@@ -1450,7 +1457,7 @@ frontend/
 | Vite | 4.4+ | Build tool / dev server |
 | Tailwind CSS | 3.3+ | Utility-first styling |
 | Mapbox GL JS | 2.15+ | Map rendering |
-| MapMyIndia | API | Raster base tiles |
+| OpenStreetMap | tile.openstreetmap.org | Free raster base tiles (no key) |
 | React Query | 3.39+ | Server state + caching |
 | Axios | 1.4+ | HTTP client |
 | React Hook Form | 7.45+ | Form state management |
@@ -1646,7 +1653,7 @@ Paste this full document and say:
 "Write the GET /api/plots/geojson/ endpoint returning FeatureCollection
  with plot status color in properties."
 
-"Create the React MapComponent using Mapbox GL with MapMyIndia raster tiles
+"Create the React MapComponent using Mapbox GL with OpenStreetMap raster tiles
  and a GeoJSON overlay for plots."
 
 "Implement cursor-based pagination for the patta ledger API endpoint."
@@ -1944,7 +1951,7 @@ Government-grade dashboard built with reusable components, framer-motion, and Re
 | `src/components/public/StatsCard.jsx` | Compact horizontal KPI — icon box + value + label; 6 color variants (blue/emerald/amber/red/orange/slate); skeleton on `loading`; framer-motion stagger |
 | `src/components/public/CategoryCard.jsx` | Colony-type card — colored top accent strip, tinted icon box, count badge, EN+Hindi title, 2-line description, "View Colonies →" CTA; hover lift via `whileHover` |
 | `src/components/public/QuickActions.jsx` | 5-up grid of action shortcuts — GIS Map, Auction Plots (Soon), Public Notices (Soon), Download Layouts, Land Bank (Soon); disabled-state styling |
-| `src/components/public/MapPreview.jsx` | Mappls-ready stub — gridded gradient canvas with pulsing colored markers; layer toggle panel (Colonies / Khasras / Utility / Roads); "Coming soon" badge |
+| `src/components/public/MapPreview.jsx` | OSM-ready stub — gridded gradient canvas with pulsing colored markers; layer toggle panel (Colonies / Khasras / Utility / Roads); "Coming soon" badge |
 | `src/components/public/AnalyticsSection.jsx` | Recharts donut (Colony Distribution) + bar chart (Approval Status); shared brand-color palette; empty-state when no data |
 | `src/components/layout/PublicLayout.jsx` | **Rewritten** — sidebar + TopNavbar + scrollable `<Outlet />`. Sidebar: BDA logo, 3 sections (Overview / Colony Categories / Browse), active nav items get **colored left-border indicator** (animated via `layoutId`), per-category color theming, mobile drawer with spring slide-in |
 | `src/pages/public/PublicDashboardPage.jsx` | **Rewritten** — composition of all 7 components above; `max-w-[1400px]`; vertical flow: header → stats(6) → quick actions → categories(3-col grid) → map preview → analytics → disclaimer |
@@ -1972,7 +1979,7 @@ React Router v7 (`^7.15`) changed pathless layout route behavior. The `<BrowserR
 
 ### 🔲 Remaining — Frontend
 
-- [ ] **MapPage** — Mapbox GL + MapMyIndia raster tiles + GeoJSON plot/colony overlays + LayerControlPanel (toggle layers) + UploadLayerModal
+- [ ] **MapPage** — Mapbox GL + OpenStreetMap raster tiles + GeoJSON plot/colony overlays + LayerControlPanel (toggle layers) + UploadLayerModal
 - [ ] **DocumentsPage enhancements** — drag-drop upload zone, PDF/image preview in modal (currently opens in new tab)
 - [ ] **ReportsPage** — Report card grid + GenerateReportModal (once backend Celery tasks are ready)
 - [ ] **PlotDetailModal** — full inline plot detail with linked pattas, documents, upload form (currently PlotsPage only shows table)
@@ -1990,7 +1997,7 @@ React Router v7 (`^7.15`) changed pathless layout route behavior. The `<BrowserR
 [ ] Verify: http://localhost:8000/admin   (Django admin)
 [ ] Verify: http://localhost:8000/api/auth/login/  (POST with email+password)
 [ ] Verify: http://localhost:5173          (React dev server)
-[ ] Obtain MapMyIndia API key from mappls.com and add to .env
+[ ] (Optional) Set VITE_OSM_TILE_URL in .env if using a paid tile provider; defaults to tile.openstreetmap.org
 ```
 
 ---
