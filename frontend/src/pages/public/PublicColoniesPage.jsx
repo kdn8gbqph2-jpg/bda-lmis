@@ -32,7 +32,7 @@ const COLONY_TYPE_COLORS = {
   rejected_layout:  'bg-red-100 text-red-800',
 }
 
-const ZONES = ['North', 'South', 'East', 'West', 'Central', 'North-East', 'South-East', 'South-West']
+const ZONES = ['East', 'West']
 
 const PAGE_SIZE = 20
 

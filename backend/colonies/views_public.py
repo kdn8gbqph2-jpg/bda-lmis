@@ -38,7 +38,7 @@ class PublicColonyListView(generics.ListAPIView):
 
     Returns a paginated list of colonies.  Supports:
       - ?colony_type=bda_scheme|private_approved|suo_moto|pending_layout|rejected_layout
-      - ?zone=North|South|...
+      - ?zone=East|West
       - ?search=<name substring>
     """
     serializer_class   = PublicColonyListSerializer

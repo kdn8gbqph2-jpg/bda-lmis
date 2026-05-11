@@ -17,14 +17,8 @@ COLONY_TYPE_CHOICES = [
 ]
 
 ZONE_CHOICES = [
-    ('North',      'North'),
-    ('South',      'South'),
-    ('East',       'East'),
-    ('West',       'West'),
-    ('Central',    'Central'),
-    ('North-East', 'North-East'),
-    ('South-East', 'South-East'),
-    ('South-West', 'South-West'),
+    ('East', 'East'),
+    ('West', 'West'),
 ]
 
 STATUS_CHOICES = [
@@ -58,7 +52,7 @@ class Colony(models.Model):
         db_index=True,
         help_text='Category shown on the public dashboard.',
     )
-    zone   = models.CharField(max_length=50, choices=ZONE_CHOICES, default='Central')
+    zone   = models.CharField(max_length=20, choices=ZONE_CHOICES, default='East')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
 
     # ── Survey / revenue ──────────────────────────────────────────────────────

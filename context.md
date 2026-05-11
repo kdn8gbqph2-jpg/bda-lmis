@@ -69,19 +69,16 @@
 
 ### Zone Distribution
 
+BDA divides Bharatpur into **two zones — East and West**. Colony-to-zone
+assignment is maintained in the admin (no automatic geographic split).
+
 ```
 ZONE          APPROX COLONIES   APPROX PLOTS
 ─────────────────────────────────────────────
-North                8              420
-South                6              360
-East                 6              360
-West                 7              440
-Central              6              360
-North-East           4              220
-South-East           2              105
-South-West           2              110
+East                 ~            ~
+West                 ~            ~
 ─────────────────────────────────────────────
-TOTAL               41            2,375
+TOTAL                72         2,375
 ```
 
 ### Colony Fields (Per Record)
@@ -89,7 +86,7 @@ TOTAL               41            2,375
 ```
 name                     VARCHAR(200)  UNIQUE  — Official colony name from BDA records
 colony_type              VARCHAR(30)           — bda_scheme | private_approved | suo_moto | pending_layout | rejected_layout
-zone                     VARCHAR(50)           — North/South/East/West/Central/North-East/South-East/South-West
+zone                     VARCHAR(20)           — East | West
 status                   VARCHAR(20)           — active | new | archived
 chak_number              INT (nullable)        — Revenue block number (चक नम्बर)
 conversion_date          DATE (nullable)       — Date of conversion from agri to urban land
@@ -578,7 +575,7 @@ GET   /auth/me/             Resp: {id, emp_id, name, role, department}
 ### Colonies (Staff — auth required)
 
 ```
-GET    /colonies/                    ?zone=North&status=active&colony_type=bda_scheme&search=X&page=1
+GET    /colonies/                    ?zone=East&status=active&colony_type=bda_scheme&search=X&page=1
 POST   /colonies/                    admin only
 GET    /colonies/{id}/
 PUT    /colonies/{id}/               admin only
@@ -769,7 +766,7 @@ App
         │   ├── AlertBanner         (if missing cases > 0)
         │   ├── StatsGrid           (4 KPI cards)
         │   ├── ColonyProgressChart (bar, 41 colonies)
-        │   ├── ZoneBreakdownChart  (pie, 8 zones)
+        │   ├── ZoneBreakdownChart  (pie, 2 zones)
         │   ├── PlotStatusDonut
         │   ├── RecentActivityTable
         │   └── MissingCasesSummary
@@ -1756,7 +1753,7 @@ This replaces the "missing patta" detection workflow (which is excluded from sco
 #### 6. Chak Number ≠ Zone
 ```
 "चक नम्बर" (Chak Number) = revenue block identifier (1, 2, 3...)
-This is NOT the same as the zone (North/South/East/West etc.)
+This is NOT the same as the zone (East/West).
 Zones need to be assigned separately — not present in Excel.
 Chak number can be stored in colonies_colony as a separate field.
 ```
