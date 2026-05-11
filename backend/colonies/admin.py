@@ -36,7 +36,11 @@ class ColonyAdmin(GISModelAdmin):
             'classes': ('collapse',),
         }),
         ('Plot Counts', {
-            'fields': ('total_residential_plots', 'total_commercial_plots'),
+            'fields': ('total_plots_per_layout',
+                       'total_residential_plots', 'total_commercial_plots'),
+            'description': 'total_plots_per_layout is the Excel layout-plan total '
+                           '(source of truth). The residential/commercial pair is '
+                           'used only as a fallback when the layout total is unset.',
         }),
         ('Map Files', {
             'fields': ('map_pdf', 'map_jpeg', 'map_png', 'map_svg'),

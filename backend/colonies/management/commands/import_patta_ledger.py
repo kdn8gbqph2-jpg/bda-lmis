@@ -76,10 +76,26 @@ def _alnum(val) -> str:
 
 
 def _int(val) -> int | None:
-    try:
-        return int(str(val).strip())
-    except (ValueError, TypeError):
+    """Best-effort int parse. Tolerates Excel's float-encoded ints (61.0)."""
+    if val is None:
         return None
+    if isinstance(val, bool):
+        return None
+    if isinstance(val, int):
+        return val
+    if isinstance(val, float):
+        return int(val) if val == int(val) else None
+    s = str(val).strip()
+    if not s:
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        try:
+            f = float(s)
+            return int(f) if f == int(f) else None
+        except ValueError:
+            return None
 
 
 def _decimal(val) -> Decimal | None:
@@ -235,32 +251,41 @@ class Command(BaseCommand):
         # ── Parse header rows ──────────────────────────────────────────
         # Colony name: try col B first, fall back to sheet name.
         # Chak/date/khasras: the actual values are in col D (index 3).
-        colony_name          = _str(rows[0][1]) or sheet_name   # row 1, col B or sheet name
-        chak_number          = _int(rows[2][3])                  # row 3, col D
-        layout_approval_date = _date(rows[3][3])                 # row 4, col D
-        khasra_raw           = _str(rows[5][3])                  # row 6, col D
+        colony_name            = _str(rows[0][1]) or sheet_name   # row 1, col B or sheet name
+        chak_number            = _int(rows[2][3])                 # row 3, col D
+        layout_approval_date   = _date(rows[3][3])                # row 4, col D
+        # Row 5, col D: "लेआउट प्लान अनुसार कुल भुखण्डों की संख्या"
+        total_plots_per_layout = _int(rows[4][3])
+        khasra_raw             = _str(rows[5][3])                 # row 6, col D
 
         self.stdout.write(
             f'  Colony: {colony_name} | Chak: {chak_number} | '
-            f'Layout date: {layout_approval_date} | Khasras: {khasra_raw[:60]}'
+            f'Layout date: {layout_approval_date} | '
+            f'Total plots: {total_plots_per_layout} | '
+            f'Khasras: {khasra_raw[:60]}'
         )
 
         # ── Upsert Colony ──────────────────────────────────────────────
         colony, created = Colony.objects.get_or_create(
             name=colony_name,
             defaults={
-                'chak_number':          chak_number,
-                'layout_approval_date': layout_approval_date,
+                'chak_number':            chak_number,
+                'layout_approval_date':   layout_approval_date,
+                'total_plots_per_layout': total_plots_per_layout,
             },
         )
         if not created:
-            # Update date/chak if they were missing
+            # Backfill missing scalar header values without overwriting
+            # values already entered by staff.
             updated = False
             if layout_approval_date and not colony.layout_approval_date:
                 colony.layout_approval_date = layout_approval_date
                 updated = True
             if chak_number and not colony.chak_number:
                 colony.chak_number = chak_number
+                updated = True
+            if total_plots_per_layout is not None and colony.total_plots_per_layout is None:
+                colony.total_plots_per_layout = total_plots_per_layout
                 updated = True
             if updated:
                 colony.save()

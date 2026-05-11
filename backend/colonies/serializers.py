@@ -82,6 +82,7 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
             'rejection_reason', 'remarks',
             # plots
             'total_residential_plots', 'total_commercial_plots',
+            'total_plots_per_layout',
             'total_plots', 'available_plots', 'patta_issued_count',
             # map files
             'map_pdf', 'map_jpeg', 'map_png', 'map_svg', 'boundary_file',

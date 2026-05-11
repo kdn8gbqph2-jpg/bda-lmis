@@ -85,6 +85,10 @@ class Colony(models.Model):
     # ── Plot counts ───────────────────────────────────────────────────────────
     total_residential_plots = models.IntegerField(default=0)
     total_commercial_plots  = models.IntegerField(default=0)
+    # Source-of-truth total from the Excel layout-plan header
+    # ("लेआउट प्लान अनुसार कुल भुखण्डों की संख्या"). When set, this overrides
+    # the residential+commercial sum exposed by the total_plots property.
+    total_plots_per_layout  = models.IntegerField(null=True, blank=True)
 
     # ── Geometry ──────────────────────────────────────────────────────────────
     boundary = gis_models.MultiPolygonField(srid=4326, null=True, blank=True)
@@ -137,6 +141,10 @@ class Colony(models.Model):
 
     @property
     def total_plots(self):
+        """Prefer the Excel-sourced layout total; fall back to the
+        residential+commercial sum for colonies edited manually."""
+        if self.total_plots_per_layout is not None:
+            return self.total_plots_per_layout
         return self.total_residential_plots + self.total_commercial_plots
 
     @property
