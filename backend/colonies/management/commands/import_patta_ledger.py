@@ -55,6 +55,26 @@ def _str(val) -> str:
     return str(val).strip()
 
 
+def _alnum(val) -> str:
+    """
+    Coerce a cell to a string suitable for ID-style fields (patta_number,
+    plot_number, khasra number, challan number, DMS number). These can be
+    alphanumeric ("17A", "BHR102703") but never decimal — Excel often stores
+    plain integers as floats, producing "3498.0" / "1.0" when stringified.
+    Strip the trailing ".0" but preserve genuine alphanumeric tokens.
+    """
+    if val is None:
+        return ''
+    # Treat int-valued floats as ints to avoid "3498.0"
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    s = str(val).strip()
+    # Catch already-stringified ints like "3498.0"
+    if re.fullmatch(r'-?\d+\.0+', s):
+        return s.split('.')[0]
+    return s
+
+
 def _int(val) -> int | None:
     try:
         return int(str(val).strip())
@@ -104,7 +124,11 @@ def _parse_khasra_numbers(raw: str) -> list[str]:
     """
     if not raw:
         return []
-    parts = [p.strip() for p in re.split(r'[,;]', raw) if p.strip()]
+    parts = []
+    for p in re.split(r'[,;]', raw):
+        n = _alnum(p)
+        if n:
+            parts.append(n)
     return parts
 
 
@@ -268,16 +292,16 @@ class Command(BaseCommand):
 
             allottee_address = _str(row[2] if len(row) > 2 else None)
             khasra_cell      = _str(row[3] if len(row) > 3 else None)
-            plot_number      = _str(row[4] if len(row) > 4 else None)
+            plot_number      = _alnum(row[4] if len(row) > 4 else None)
             area_sqy         = _decimal(row[5] if len(row) > 5 else None)
-            patta_number_raw = _str(row[6] if len(row) > 6 else None)
+            patta_number_raw = _alnum(row[6] if len(row) > 6 else None)
             issue_date       = _date(row[7] if len(row) > 7 else None)
-            challan_number   = _str(row[8] if len(row) > 8 else None)
+            challan_number   = _alnum(row[8] if len(row) > 8 else None)
             challan_date     = _date(row[9] if len(row) > 9 else None)
             lease_amount     = _decimal(row[10] if len(row) > 10 else None)
             lease_duration   = _str(row[11] if len(row) > 11 else None)
             reg_file         = _regulation(row[12] if len(row) > 12 else None)
-            dms_number       = _str(row[13] if len(row) > 13 else None)
+            dms_number       = _alnum(row[13] if len(row) > 13 else None)
             remarks          = _str(row[14] if len(row) > 14 else None)
 
             if not plot_number:
