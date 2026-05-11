@@ -157,6 +157,7 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['colonies'] })
       queryClient.invalidateQueries({ queryKey: ['colony', colony.id] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       onSaved?.(data)
       onClose()
     },

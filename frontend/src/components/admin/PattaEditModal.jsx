@@ -88,6 +88,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pattas'] })
       queryClient.invalidateQueries({ queryKey: ['patta', patta.id] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       onSaved?.(data)
       onClose()
     },
