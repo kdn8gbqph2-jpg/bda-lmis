@@ -44,7 +44,18 @@ const COLUMNS = [
   {
     key: 'user',
     label: 'User',
-    render: (r) => r.user_display || r.user || '—',
+    render: (r) => (
+      r.user_name || r.user_email
+        ? (
+          <div className="leading-tight">
+            <div className="text-sm text-slate-800">{r.user_name || r.user_email}</div>
+            {r.user_email && r.user_name && (
+              <div className="text-xs text-slate-400">{r.user_email}</div>
+            )}
+          </div>
+        )
+        : <span className="text-xs text-slate-400">System</span>
+    ),
   },
   {
     key: 'ip_address',

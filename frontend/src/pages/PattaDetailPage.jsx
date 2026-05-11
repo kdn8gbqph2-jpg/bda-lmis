@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, FileText, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, FileText, CheckCircle, Clock, Pencil } from 'lucide-react'
 import { pattas as pattasApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
+import { PattaEditModal } from '@/components/admin/PattaEditModal'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 function Field({ label, value }) {
   return (
@@ -18,6 +21,8 @@ function Field({ label, value }) {
 export default function PattaDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const isAdmin  = useAuthStore((s) => s.isAdmin)()
+  const [editing, setEditing] = useState(false)
 
   const { data: patta, isPending, isError } = useQuery({
     queryKey: ['patta', id],
@@ -37,9 +42,24 @@ export default function PattaDetailPage() {
 
   return (
     <div className="max-w-4xl space-y-5">
-      <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
-      </Button>
+      {isAdmin && (
+        <PattaEditModal
+          patta={patta}
+          open={editing}
+          onClose={() => setEditing(false)}
+        />
+      )}
+
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back
+        </Button>
+        {isAdmin && (
+          <Button variant="primary" size="sm" onClick={() => setEditing(true)}>
+            <Pencil className="w-4 h-4" /> Edit Patta
+          </Button>
+        )}
+      </div>
 
       {/* Header */}
       <div className="flex items-start justify-between">

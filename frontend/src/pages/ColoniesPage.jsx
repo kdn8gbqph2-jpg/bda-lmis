@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, MapPin, ChevronRight } from 'lucide-react'
+import { Search, MapPin, ChevronRight, Pencil } from 'lucide-react'
 import { colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -8,6 +8,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Table, Pagination } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { khasras as khasrasApi } from '@/api/endpoints'
+import { ColonyEditModal } from '@/components/admin/ColonyEditModal'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const PAGE_SIZE = 20
 
@@ -29,10 +31,18 @@ const COLUMNS = [
 ]
 
 function ColonyDetailModal({ colony, onClose }) {
+  const isAdmin = useAuthStore((s) => s.isAdmin)()
+  const [editing, setEditing] = useState(false)
+
   const detail = useQuery({
     queryKey: ['colony', colony?.id, 'stats'],
     queryFn: () => coloniesApi.stats(colony.id),
     enabled: !!colony,
+  })
+  const full = useQuery({
+    queryKey: ['colony', colony?.id, 'detail'],
+    queryFn: () => coloniesApi.detail(colony.id),
+    enabled: !!colony && isAdmin,
   })
   const khasras = useQuery({
     queryKey: ['colony', colony?.id, 'khasras'],
@@ -44,7 +54,28 @@ function ColonyDetailModal({ colony, onClose }) {
   const kList = khasras.data?.results ?? khasras.data ?? []
 
   return (
-    <Modal open={!!colony} onClose={onClose} title={colony?.name || 'Colony Detail'} size="lg">
+    <>
+      {isAdmin && full.data && (
+        <ColonyEditModal
+          colony={full.data}
+          open={editing}
+          onClose={() => setEditing(false)}
+        />
+      )}
+
+      <Modal
+        open={!!colony && !editing}
+        onClose={onClose}
+        title={colony?.name || 'Colony Detail'}
+        size="lg"
+        footer={
+          isAdmin && (
+            <Button variant="primary" onClick={() => setEditing(true)} disabled={!full.data}>
+              <Pencil className="w-4 h-4" /> Edit Colony
+            </Button>
+          )
+        }
+      >
       {detail.isPending ? (
         <p className="text-center text-slate-400 py-8">Loading…</p>
       ) : (
@@ -102,7 +133,8 @@ function ColonyDetailModal({ colony, onClose }) {
           </div>
         </div>
       )}
-    </Modal>
+      </Modal>
+    </>
   )
 }
 
