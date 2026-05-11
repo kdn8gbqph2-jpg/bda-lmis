@@ -36,7 +36,7 @@ export function Modal({ open, onClose, title, children, size = 'md', footer }) {
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-md" />
 
       {/* Dialog */}
       <div className={clsx(
