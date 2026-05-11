@@ -98,8 +98,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         identifier = attrs.get(self.username_field, '')
         if identifier and '@' not in identifier:
+            # Exact match wins over case-insensitive — handles colliding
+            # usernames like 'admin' vs 'Admin'.
             user = (
-                CustomUser.objects.filter(username__iexact=identifier).first()
+                CustomUser.objects.filter(username=identifier).first()
+                or CustomUser.objects.filter(emp_id=identifier).first()
+                or CustomUser.objects.filter(username__iexact=identifier).first()
                 or CustomUser.objects.filter(emp_id__iexact=identifier).first()
             )
             if user:
