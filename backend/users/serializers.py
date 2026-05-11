@@ -90,10 +90,21 @@ class MeSerializer(serializers.ModelSerializer):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    Extends the default JWT token response to include basic user info,
-    so the frontend does not need a separate /me call right after login.
+    Lets users sign in with their username, emp_id, or email — whichever
+    they remember. The identifier still travels in the `email` field for
+    backwards compatibility with the existing frontend client; if it is
+    not an email, we resolve it to one before delegating to the parent.
     """
     def validate(self, attrs):
+        identifier = attrs.get(self.username_field, '')
+        if identifier and '@' not in identifier:
+            user = (
+                CustomUser.objects.filter(username__iexact=identifier).first()
+                or CustomUser.objects.filter(emp_id__iexact=identifier).first()
+            )
+            if user:
+                attrs[self.username_field] = user.email
+
         data = super().validate(attrs)
         data['user'] = MeSerializer(self.user).data
         return data

@@ -65,10 +65,10 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="px-8 py-7 space-y-5">
 
-            {/* Email */}
+            {/* User ID */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Employee ID / Email
+                User ID
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -78,10 +78,10 @@ export default function LoginPage() {
                   </svg>
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  autoComplete="email"
-                  placeholder="emp@bda.rajasthan.gov.in"
+                  autoComplete="username"
+                  placeholder="Enter your user ID"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm
