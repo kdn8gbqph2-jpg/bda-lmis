@@ -44,8 +44,8 @@ export function Table({ columns, data, loading, emptyMessage = 'No records found
               <tr key={row.id ?? i}
                 className={clsx(
                   'border-b border-slate-100 last:border-b-0 transition-colors',
-                  i % 2 === 1 && 'bg-slate-50/60',
-                  'hover:bg-blue-50/60',
+                  i % 2 === 1 ? 'bg-slate-100' : 'bg-white',
+                  'hover:bg-blue-100/70',
                 )}>
                 {columns.map((col) => (
                   <td key={col.key}
