@@ -1,26 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { auth } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 export default function LoginPage() {
   const navigate  = useNavigate()
   const setAuth   = useAuthStore((s) => s.setAuth)
-  const [form,    setForm]    = useState({ email: '', password: '' })
+  const [form,    setForm]    = useState({ email: '', password: '', captcha: '' })
   const [showPwd, setShowPwd] = useState(false)
   const [error,   setError]   = useState('')
+  const [captcha, setCaptcha] = useState({ token: null, question: null })
+
+  const fetchCaptcha = useCallback(async () => {
+    try {
+      const c = await auth.captcha()
+      setCaptcha({ token: c.token, question: c.question })
+      setForm((f) => ({ ...f, captcha: '' }))
+    } catch {
+      setCaptcha({ token: null, question: null })
+    }
+  }, [])
+
+  useEffect(() => { fetchCaptcha() }, [fetchCaptcha])
 
   const login = useMutation({
-    mutationFn: () => auth.login({ email: form.email, password: form.password }),
+    mutationFn: () => auth.login({
+      email:          form.email,
+      password:       form.password,
+      captcha_token:  captcha.token,
+      captcha_answer: form.captcha,
+    }),
     onSuccess: (data) => {
       setAuth(data.user, data.access, data.refresh)
       navigate('/dashboard', { replace: true })
     },
     onError: (err) => {
       const d = err.response?.data
-      setError(d?.detail || d?.non_field_errors?.[0] || 'Invalid credentials. Please try again.')
+      const msg = d?.captcha?.[0]
+                ?? d?.detail
+                ?? d?.non_field_errors?.[0]
+                ?? 'Invalid credentials. Please try again.'
+      setError(msg)
+      // CAPTCHA is single-use — always refresh after a failed attempt
+      fetchCaptcha()
     },
   })
 
@@ -120,6 +144,41 @@ export default function LoginPage() {
                   className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
                 >
                   {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Captcha */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Verify you are human
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 border border-slate-200 rounded-lg select-none">
+                  <span className="font-mono font-bold text-slate-800 tabular-nums tracking-wider">
+                    {captcha.question ?? '…'}
+                  </span>
+                  <span className="text-slate-400">= ?</span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="Answer"
+                  value={form.captcha}
+                  onChange={(e) => setForm((f) => ({ ...f, captcha: e.target.value }))}
+                  className="flex-1 min-w-0 px-3 py-2.5 border border-slate-300 rounded-lg text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                             bg-slate-50"
+                />
+                <button
+                  type="button"
+                  onClick={fetchCaptcha}
+                  title="New challenge"
+                  className="p-2.5 rounded-lg border border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
+                >
+                  <RefreshCw className="w-4 h-4" />
                 </button>
               </div>
             </div>

@@ -1,7 +1,12 @@
+import logging
+import secrets
+
+from django.core.cache import cache
 from rest_framework import viewsets, generics, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -13,6 +18,114 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
 )
 from .permissions import IsAdmin
+
+logger = logging.getLogger(__name__)
+
+# ── CAPTCHA ──────────────────────────────────────────────────────────────────
+
+# Cache key prefix and TTL for captcha challenges. The serializer that
+# validates login consumes the token (cache.delete) on first read so each
+# challenge is single-use.
+_CAPTCHA_PREFIX = 'captcha:'
+_CAPTCHA_TTL    = 5 * 60   # seconds
+
+import random
+
+
+def _build_challenge() -> tuple[str, str, int]:
+    """
+    Generate a simple arithmetic challenge solvable by a human in <2s.
+    Returns (token, question_text, integer_answer).
+    """
+    a = random.randint(2, 9)
+    b = random.randint(2, 9)
+    op = random.choice(['+', '-', '×'])
+    if op == '+':
+        answer = a + b
+    elif op == '-':
+        # keep answer non-negative
+        if a < b: a, b = b, a
+        answer = a - b
+    else:
+        answer = a * b
+    token = secrets.token_urlsafe(16)
+    return token, f'{a} {op} {b}', answer
+
+
+class CaptchaView(APIView):
+    """
+    GET /api/auth/captcha/
+
+    Returns a fresh math challenge:
+        { "token": "<opaque>", "question": "3 + 7" }
+
+    The expected integer answer is stored in Redis under captcha:<token>
+    with a 5-minute TTL. Single-use — consumed on successful login.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token, question, answer = _build_challenge()
+        cache.set(f'{_CAPTCHA_PREFIX}{token}', answer, _CAPTCHA_TTL)
+        return Response({'token': token, 'question': question})
+
+
+# ── Password change ─────────────────────────────────────────────────────────
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Body: { current_password, new_password }
+
+    Requires authentication. Writes an AuditLog entry under entity_type=user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    MIN_LEN = 8
+
+    def post(self, request):
+        current = request.data.get('current_password') or ''
+        new     = request.data.get('new_password')     or ''
+
+        if not request.user.check_password(current):
+            return Response(
+                {'current_password': ['Current password is incorrect.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new) < self.MIN_LEN:
+            return Response(
+                {'new_password': [f'Password must be at least {self.MIN_LEN} characters.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if new == current:
+            return Response(
+                {'new_password': ['New password must differ from the current one.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.set_password(new)
+        request.user.save(update_fields=['password'])
+
+        # Manual audit entry — not covered by the signal handlers
+        # (they're wired only on Colony/Plot/Patta/Document).
+        try:
+            from audit.models import AuditLog
+            from audit.middleware import get_current_request_meta
+            ip, ua = get_current_request_meta()
+            AuditLog.objects.create(
+                user=request.user,
+                entity_type='user',
+                entity_id=request.user.pk,
+                action='password_change',
+                ip_address=ip,
+                user_agent=ua or '',
+            )
+        except Exception:
+            logger.warning('Failed to write audit log for password change', exc_info=True)
+
+        logger.info('User %s changed their password.', request.user.email)
+        return Response({'detail': 'Password updated.'}, status=status.HTTP_200_OK)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):

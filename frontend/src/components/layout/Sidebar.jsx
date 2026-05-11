@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   LayoutDashboard, Building2, Grid3x3, FileText,
   FolderOpen, Users, ClipboardList, LogOut, Map, BarChart3,
+  KeyRound,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal'
 
 const NAV = [
   { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard'    },
@@ -41,6 +44,7 @@ function NavItem({ to, icon: Icon, label }) {
 export function Sidebar() {
   const { user, logout, isAdmin } = useAuthStore()
   const navigate = useNavigate()
+  const [pwdOpen, setPwdOpen] = useState(false)
 
   const initials = user?.first_name
     ? (user.first_name[0] + (user.last_name?.[0] || '')).toUpperCase()
@@ -90,7 +94,7 @@ export function Sidebar() {
       </nav>
 
       {/* User footer */}
-      <div className="px-3 py-4 border-t border-slate-700/60">
+      <div className="px-3 py-4 border-t border-slate-700/60 space-y-2">
         <div className="flex items-center gap-2.5 px-2">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
             {initials}
@@ -107,7 +111,17 @@ export function Sidebar() {
             <LogOut className="w-4 h-4" />
           </button>
         </div>
+        <button
+          onClick={() => setPwdOpen(true)}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs
+                     text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          Change Password
+        </button>
       </div>
+
+      <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
     </aside>
   )
 }

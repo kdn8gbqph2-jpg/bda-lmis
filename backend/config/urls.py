@@ -4,17 +4,22 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from users.views import CustomTokenObtainPairView, LogoutView, MeView
+from users.views import (
+    CustomTokenObtainPairView, LogoutView, MeView,
+    CaptchaView, ChangePasswordView,
+)
 from colonies.urls import khasra_urlpatterns, public_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Auth
-    path('api/auth/login/',   CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/auth/refresh/', TokenRefreshView.as_view(),          name='token_refresh'),
-    path('api/auth/logout/',  LogoutView.as_view(),                name='token_logout'),
-    path('api/auth/me/',      MeView.as_view(),                    name='auth_me'),
+    path('api/auth/login/',           CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/refresh/',         TokenRefreshView.as_view(),          name='token_refresh'),
+    path('api/auth/logout/',          LogoutView.as_view(),                name='token_logout'),
+    path('api/auth/me/',              MeView.as_view(),                    name='auth_me'),
+    path('api/auth/captcha/',         CaptchaView.as_view(),               name='auth_captcha'),
+    path('api/auth/change-password/', ChangePasswordView.as_view(),        name='auth_change_password'),
 
     # App routers
     path('api/users/',      include('users.urls')),

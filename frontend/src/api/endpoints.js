@@ -2,10 +2,12 @@ import client from './client'
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const auth = {
-  login:   (data) => client.post('/auth/login/', data),
-  refresh: (data) => client.post('/auth/refresh/', data),
-  logout:  (data) => client.post('/auth/logout/', data),
-  me:      ()     => client.get('/auth/me/'),
+  login:          (data) => client.post('/auth/login/', data),
+  refresh:        (data) => client.post('/auth/refresh/', data),
+  logout:         (data) => client.post('/auth/logout/', data),
+  me:             ()     => client.get('/auth/me/'),
+  captcha:        ()     => client.get('/auth/captcha/'),
+  changePassword: (data) => client.post('/auth/change-password/', data),
 }
 
 // ── Colonies ──────────────────────────────────────────────────────────────────

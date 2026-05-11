@@ -94,8 +94,31 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     they remember. The identifier still travels in the `email` field for
     backwards compatibility with the existing frontend client; if it is
     not an email, we resolve it to one before delegating to the parent.
+
+    Also enforces the self-hosted math CAPTCHA: the client must send
+    captcha_token + captcha_answer fetched from GET /api/auth/captcha/.
+    Each token is single-use (deleted on consume).
     """
+    captcha_token  = serializers.CharField(write_only=True, required=True)
+    captcha_answer = serializers.CharField(write_only=True, required=True)
+
     def validate(self, attrs):
+        from django.core.cache import cache
+
+        # ── CAPTCHA gate (runs before identity lookup so bot floods don't
+        #    even hit the auth backend) ──────────────────────────────────
+        token  = attrs.pop('captcha_token',  None)
+        answer = attrs.pop('captcha_answer', None)
+        cache_key = f'captcha:{token}' if token else None
+        expected  = cache.get(cache_key) if cache_key else None
+        # Consume the token regardless — single-use semantics.
+        if cache_key:
+            cache.delete(cache_key)
+        if expected is None or str(answer).strip() != str(expected):
+            raise serializers.ValidationError(
+                {'captcha': ['CAPTCHA verification failed. Please refresh and try again.']}
+            )
+
         identifier = attrs.get(self.username_field, '')
         if identifier and '@' not in identifier:
             # Exact match wins over case-insensitive — handles colliding
