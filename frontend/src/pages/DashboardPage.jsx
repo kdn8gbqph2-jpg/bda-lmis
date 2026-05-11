@@ -103,9 +103,29 @@ const ACTION_META = {
   delete: { icon: Trash2,  bg: 'bg-red-100',     text: 'text-red-700',     label: 'Deleted' },
 }
 
+// Per-entity identifier field. Pulled from new_values (create/update) or
+// old_values (delete) so we can show "Updated Colony — आनन्द नगर" instead
+// of just "Updated Colony #1".
+const ENTITY_IDENT = {
+  colony:   ['name'],
+  patta:    ['patta_number'],
+  plot:     ['plot_number'],
+  document: ['original_filename'],
+}
+
+function entityIdentifier(log) {
+  const snap = log.new_values ?? log.old_values ?? {}
+  for (const key of ENTITY_IDENT[log.entity_type] ?? []) {
+    if (snap[key]) return String(snap[key])
+  }
+  return null
+}
+
 function ActivityRow({ log }) {
-  const meta = ACTION_META[log.action] ?? { icon: Activity, bg: 'bg-slate-100', text: 'text-slate-600', label: log.action }
-  const Icon = meta.icon
+  const meta  = ACTION_META[log.action] ?? { icon: Activity, bg: 'bg-slate-100', text: 'text-slate-600', label: log.action }
+  const Icon  = meta.icon
+  const ident = entityIdentifier(log)
+
   return (
     <div className="flex items-start gap-3 py-2.5">
       <span className={`w-7 h-7 rounded-full ${meta.bg} flex items-center justify-center flex-shrink-0`}>
@@ -114,8 +134,15 @@ function ActivityRow({ log }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm text-slate-800 truncate">
           <span className="font-semibold">{meta.label}</span>{' '}
-          <span className="capitalize text-slate-600">{log.entity_type}</span>{' '}
-          <span className="text-slate-400">#{log.entity_id}</span>
+          <span className="capitalize text-slate-600">{log.entity_type}</span>
+          {ident ? (
+            <>
+              {' — '}
+              <span className="font-medium text-slate-800">{ident}</span>
+            </>
+          ) : (
+            <span className="text-slate-400"> #{log.entity_id}</span>
+          )}
         </p>
         <p className="text-[11px] text-slate-400 mt-0.5 truncate">
           {log.user_name || log.user_email || 'System'} · {timeAgo(log.timestamp)}

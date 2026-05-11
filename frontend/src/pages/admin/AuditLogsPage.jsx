@@ -39,8 +39,22 @@ const COLUMNS = [
       </span>
     ),
   },
-  { key: 'entity_type', label: 'Entity' },
-  { key: 'entity_id',   label: 'ID', cellClass: 'tabular-nums text-xs text-slate-500' },
+  {
+    key: 'entity',
+    label: 'Entity',
+    render: (r) => {
+      const snap  = r.new_values ?? r.old_values ?? {}
+      const ident = snap.name ?? snap.patta_number ?? snap.plot_number ?? snap.original_filename ?? null
+      return (
+        <div className="leading-tight min-w-0">
+          <div className="text-sm capitalize text-slate-800">{r.entity_type}</div>
+          <div className="text-xs text-slate-500 truncate max-w-[18rem]">
+            {ident ?? `#${r.entity_id}`}
+          </div>
+        </div>
+      )
+    },
+  },
   {
     key: 'user',
     label: 'User',
