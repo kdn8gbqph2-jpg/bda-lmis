@@ -84,6 +84,19 @@ const SCALAR_FIELDS = [
   'rejection_reason', 'remarks',
 ]
 
+// Fields where the model column is `null=True` — empty input should be sent
+// as JSON null rather than empty string. The rest are TextField(blank=True)
+// without null=True (rejection_reason, remarks, name, colony_type, zone,
+// status) and reject null at validation time.
+const NULLISH_WHEN_EMPTY = new Set([
+  'chak_number',
+  'dlc_file_number',
+  'notified_area_bigha',
+  'conversion_date',
+  'layout_application_date',
+  'layout_approval_date',
+])
+
 function fromColony(colony) {
   const out = {}
   for (const f of SCALAR_FIELDS) out[f] = colony?.[f] ?? ''
@@ -130,12 +143,15 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
       // JSON path
       const payload = {}
       for (const f of SCALAR_FIELDS) {
-        payload[f] = form[f] === '' ? null : form[f]
+        const v = form[f]
+        if (v === '' || v === null || v === undefined) {
+          payload[f] = NULLISH_WHEN_EMPTY.has(f) ? null : ''
+        } else {
+          payload[f] = v
+        }
       }
       payload.khasras_input = form.khasras_input || ''
-      for (const k of ['chak_number']) {
-        if (payload[k] !== null) payload[k] = Number(payload[k])
-      }
+      if (payload.chak_number !== null) payload.chak_number = Number(payload.chak_number)
       return coloniesApi.update(colony.id, payload)
     },
     onSuccess: (data) => {
