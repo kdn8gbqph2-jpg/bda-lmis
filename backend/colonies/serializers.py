@@ -54,11 +54,18 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
     """
     Full serializer for detail/create/update views — includes khasras and audit.
     """
-    total_plots        = serializers.IntegerField(read_only=True)
-    colony_type_label  = serializers.CharField(source='get_colony_type_display', read_only=True)
-    khasras            = KhasraListSerializer(many=True, read_only=True)
-    updated_by_name    = serializers.SerializerMethodField()
-    has_map            = serializers.BooleanField(read_only=True)
+    total_plots         = serializers.IntegerField(read_only=True)
+    available_plots     = serializers.SerializerMethodField(read_only=True)
+    patta_issued_count  = serializers.SerializerMethodField(read_only=True)
+    colony_type_label   = serializers.CharField(source='get_colony_type_display', read_only=True)
+    khasras             = KhasraListSerializer(many=True, read_only=True)
+    # Write-only convenience field — accepts a comma-separated list of khasra
+    # numbers and syncs Khasra rows for this colony in serializer.update().
+    khasras_input       = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, allow_null=True,
+    )
+    updated_by_name     = serializers.SerializerMethodField()
+    has_map             = serializers.BooleanField(read_only=True)
     available_map_formats = serializers.ListField(read_only=True)
 
     class Meta:
@@ -74,11 +81,13 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
             # notes
             'rejection_reason', 'remarks',
             # plots
-            'total_residential_plots', 'total_commercial_plots', 'total_plots',
+            'total_residential_plots', 'total_commercial_plots',
+            'total_plots', 'available_plots', 'patta_issued_count',
             # map files
-            'map_pdf', 'map_svg', 'map_png', 'has_map', 'available_map_formats',
+            'map_pdf', 'map_jpeg', 'map_png', 'map_svg', 'boundary_file',
+            'has_map', 'available_map_formats',
             # related
-            'khasras',
+            'khasras', 'khasras_input',
             # audit
             'created_at', 'updated_at', 'updated_by', 'updated_by_name',
         )
@@ -86,6 +95,22 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
 
     def get_updated_by_name(self, obj):
         return obj.updated_by.get_full_name() if obj.updated_by else None
+
+    def get_available_plots(self, obj):
+        """Count of plots in this colony that have not yet been allotted."""
+        try:
+            from plots.models import Plot
+            return Plot.objects.filter(colony=obj, status='available').count()
+        except Exception:
+            return 0
+
+    def get_patta_issued_count(self, obj):
+        """Count of pattas issued for this colony."""
+        try:
+            from pattas.models import Patta
+            return Patta.objects.filter(colony=obj, status='issued').count()
+        except Exception:
+            return 0
 
     def validate(self, attrs):
         """
@@ -99,6 +124,53 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
                 'rejection_reason': 'Rejection reason is required for rejected layout colonies.',
             })
         return attrs
+
+    # ── khasras_input handling ───────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_khasras_input(raw) -> list:
+        """Accepts a comma/whitespace-separated string and returns deduped tokens."""
+        if not raw:
+            return []
+        # Treat , and whitespace as separators; drop empties; preserve order; dedupe.
+        seen, out = set(), []
+        for tok in raw.replace('\n', ',').replace(';', ',').split(','):
+            n = tok.strip()
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+        return out
+
+    def _sync_khasras(self, colony, raw_input):
+        if raw_input is None:
+            return  # field omitted — leave khasras alone
+        from .models import Khasra
+        wanted = set(self._parse_khasras_input(raw_input))
+        existing = {k.number: k for k in colony.khasras.all()}
+        # Delete khasras not in the new list
+        for number, k in existing.items():
+            if number not in wanted:
+                k.delete()
+        # Create new khasras for numbers not yet present
+        for number in wanted:
+            if number not in existing:
+                Khasra.objects.create(colony=colony, number=number)
+        logger.info(
+            'Colony %s khasras synced — kept %d, %d total wanted.',
+            colony.pk, len(existing.keys() & wanted), len(wanted),
+        )
+
+    def create(self, validated_data):
+        khasras_input = validated_data.pop('khasras_input', None)
+        colony = super().create(validated_data)
+        self._sync_khasras(colony, khasras_input)
+        return colony
+
+    def update(self, instance, validated_data):
+        khasras_input = validated_data.pop('khasras_input', None)
+        colony = super().update(instance, validated_data)
+        self._sync_khasras(colony, khasras_input)
+        return colony
 
 
 # ── Colony — Public serializers ───────────────────────────────────────────────

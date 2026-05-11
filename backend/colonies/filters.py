@@ -14,11 +14,11 @@ class ColonyFilter(django_filters.FilterSet):
 
     def filter_has_map(self, queryset, name, value):
         """Filter colonies that have at least one uploaded map file."""
+        empty_kwargs   = {f'map_{f}': '' for f in ('pdf', 'jpeg', 'png', 'svg')}
+        nullish_kwargs = {f'map_{f}__isnull': True for f in ('pdf', 'jpeg', 'png', 'svg')}
         if value:
-            return queryset.exclude(map_pdf='', map_svg='', map_png='').exclude(
-                map_pdf__isnull=True, map_svg__isnull=True, map_png__isnull=True,
-            )
-        return queryset.filter(map_pdf='', map_svg='', map_png='')
+            return queryset.exclude(**empty_kwargs).exclude(**nullish_kwargs)
+        return queryset.filter(**empty_kwargs)
 
     class Meta:
         model  = Colony

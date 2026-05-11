@@ -103,15 +103,16 @@ class ColonyViewSet(viewsets.ModelViewSet):
 
     # ── /api/colonies/{id}/map/<fmt>/ ─────────────────────────────────────────
 
-    @action(detail=True, methods=['get'], url_path=r'map/(?P<fmt>pdf|svg|png)',
+    @action(detail=True, methods=['get'], url_path=r'map/(?P<fmt>pdf|jpeg|png|svg)',
             permission_classes=[IsAuthenticated])
     def map_download(self, request, pk=None, fmt=None):
         """
         Serve an uploaded map file for the given colony.
 
         GET /api/colonies/{id}/map/pdf/
-        GET /api/colonies/{id}/map/svg/
+        GET /api/colonies/{id}/map/jpeg/
         GET /api/colonies/{id}/map/png/
+        GET /api/colonies/{id}/map/svg/   (legacy)
 
         Returns 404 when the requested format has not been uploaded.
         """
@@ -123,9 +124,10 @@ class ColonyViewSet(viewsets.ModelViewSet):
             raise Http404(f'No {fmt.upper()} map available for this colony.')
 
         content_types = {
-            'pdf': 'application/pdf',
-            'svg': 'image/svg+xml',
-            'png': 'image/png',
+            'pdf':  'application/pdf',
+            'jpeg': 'image/jpeg',
+            'png':  'image/png',
+            'svg':  'image/svg+xml',
         }
         logger.info('Serving map_%s for colony %s to user %s.', fmt, colony.pk, request.user)
         response = FileResponse(file_field.open('rb'), content_type=content_types[fmt])

@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 COLONY_TYPE_CHOICES = [
     ('bda_scheme',        'BDA Scheme'),
-    ('private_approved',  'Private Approved Colony'),
-    ('suo_moto',          'SUO-Moto Colony Case'),
-    ('pending_layout',    'Pending Colony Layout'),
-    ('rejected_layout',   'Rejected Colony Layout'),
+    ('private_approved',  'BDA Approved'),
+    ('suo_moto',          'SUO-Moto'),
+    ('pending_layout',    'Pending Layout Approval'),
+    ('rejected_layout',   'Rejected Layout'),
 ]
 
 ZONE_CHOICES = [
@@ -28,7 +28,7 @@ STATUS_CHOICES = [
 ]
 
 # Allowed map upload extensions (enforced at serializer/view level)
-MAP_UPLOAD_EXTENSIONS = ['pdf', 'svg', 'png']
+MAP_UPLOAD_EXTENSIONS = ['pdf', 'jpeg', 'jpg', 'png', 'svg']
 
 
 # ── Colony ────────────────────────────────────────────────────────────────────
@@ -94,13 +94,21 @@ class Colony(models.Model):
         upload_to='colony_maps/pdf/', null=True, blank=True,
         help_text='Uploaded PDF copy of the colony layout plan.',
     )
+    map_jpeg = models.FileField(
+        upload_to='colony_maps/jpeg/', null=True, blank=True,
+        help_text='Uploaded JPEG of the colony layout plan.',
+    )
+    map_png = models.FileField(
+        upload_to='colony_maps/png/', null=True, blank=True,
+        help_text='Uploaded PNG of the colony layout plan.',
+    )
     map_svg = models.FileField(
         upload_to='colony_maps/svg/', null=True, blank=True,
         help_text='Uploaded SVG version of the colony boundary map.',
     )
-    map_png = models.FileField(
-        upload_to='colony_maps/png/', null=True, blank=True,
-        help_text='Uploaded PNG thumbnail of the colony layout plan.',
+    boundary_file = models.FileField(
+        upload_to='colony_maps/boundary/', null=True, blank=True,
+        help_text='Source KML or shapefile (.kml/.zip) used to derive boundary geometry.',
     )
 
     # ── Audit ─────────────────────────────────────────────────────────────────
@@ -134,18 +142,16 @@ class Colony(models.Model):
     @property
     def has_map(self):
         """True if at least one map file has been uploaded."""
-        return bool(self.map_pdf or self.map_svg or self.map_png)
+        return bool(self.map_pdf or self.map_jpeg or self.map_png or self.map_svg)
 
     @property
     def available_map_formats(self):
         """Returns list of uploaded format strings, e.g. ['pdf', 'png']."""
         formats = []
-        if self.map_pdf:
-            formats.append('pdf')
-        if self.map_svg:
-            formats.append('svg')
-        if self.map_png:
-            formats.append('png')
+        if self.map_pdf:  formats.append('pdf')
+        if self.map_jpeg: formats.append('jpeg')
+        if self.map_png:  formats.append('png')
+        if self.map_svg:  formats.append('svg')
         return formats
 
     # ── Business logic ────────────────────────────────────────────────────────

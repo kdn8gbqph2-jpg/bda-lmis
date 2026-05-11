@@ -54,7 +54,7 @@ class PublicColonyListView(generics.ListAPIView):
             'id', 'name', 'colony_type', 'zone',
             'layout_application_date', 'layout_approval_date',
             'total_residential_plots', 'total_commercial_plots',
-            'map_pdf', 'map_svg', 'map_png',
+            'map_pdf', 'map_jpeg', 'map_png', 'map_svg',
         )
 
 
@@ -79,9 +79,10 @@ class PublicColonyMapDownloadView(APIView):
     permission_classes = [AllowAny]
 
     _CONTENT_TYPES = {
-        'pdf': 'application/pdf',
-        'svg': 'image/svg+xml',
-        'png': 'image/png',
+        'pdf':  'application/pdf',
+        'jpeg': 'image/jpeg',
+        'png':  'image/png',
+        'svg':  'image/svg+xml',
     }
 
     def get(self, request, pk, fmt):

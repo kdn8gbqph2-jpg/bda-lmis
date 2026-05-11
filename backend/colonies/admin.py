@@ -39,11 +39,12 @@ class ColonyAdmin(GISModelAdmin):
             'fields': ('total_residential_plots', 'total_commercial_plots'),
         }),
         ('Map Files', {
-            'fields': ('map_pdf', 'map_svg', 'map_png'),
+            'fields': ('map_pdf', 'map_jpeg', 'map_png', 'map_svg'),
             'description': 'Upload scanned layout maps in one or more formats.',
         }),
         ('Boundary', {
-            'fields': ('boundary',),
+            'fields': ('boundary', 'boundary_file'),
+            'description': 'Source KML/shapefile + parsed MultiPolygon geometry.',
         }),
         ('Audit', {
             'fields': ('created_at', 'updated_at', 'updated_by'),
