@@ -20,7 +20,7 @@ export function Table({ columns, data, loading, emptyMessage = 'No records found
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody>
           {loading ? (
             <tr>
               <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-400">
@@ -42,7 +42,11 @@ export function Table({ columns, data, loading, emptyMessage = 'No records found
           ) : (
             data.map((row, i) => (
               <tr key={row.id ?? i}
-                className="hover:bg-slate-50 transition-colors">
+                className={clsx(
+                  'border-b border-slate-100 last:border-b-0 transition-colors',
+                  i % 2 === 1 && 'bg-slate-50/60',
+                  'hover:bg-blue-50/60',
+                )}>
                 {columns.map((col) => (
                   <td key={col.key}
                     className={clsx('px-4 py-3 text-slate-700', col.cellClass)}>
