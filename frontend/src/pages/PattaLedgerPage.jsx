@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Search, Download, Plus, CheckCircle, XCircle } from 'lucide-react'
 import { pattas as pattasApi, colonies as coloniesApi } from '@/api/endpoints'
 import { PattaStatusBadge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Table'
+import { AddPattaModal } from '@/components/admin/AddPattaModal'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const PAGE_SIZE = 25
 
@@ -17,14 +19,36 @@ const STATUS_TABS = [
 ]
 
 export default function PattaLedgerPage() {
-  const navigate = useNavigate()
+  const navigate     = useNavigate()
+  const isStaff      = useAuthStore((s) => s.isStaffOrAbove)()
   const [search,    setSearch]    = useState('')
   const [colonyId,  setColonyId]  = useState('')
   const [status,    setStatus]    = useState('')
   const [regFilter, setRegFilter] = useState('')
   const [page,      setPage]      = useState(1)
+  const [addOpen,   setAddOpen]   = useState(false)
 
   const reset = () => setPage(1)
+
+  // Export current filtered view as Excel — same filters as the list query
+  const exportMut = useMutation({
+    mutationFn: () => pattasApi.exportExcel({
+      search:                  search    || undefined,
+      colony:                  colonyId  || undefined,
+      status:                  status    || undefined,
+      regulation_file_present: regFilter || undefined,
+    }),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `patta_ledger_${new Date().toISOString().slice(0, 10)}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    },
+  })
 
   const pattasQ = useQuery({
     queryKey: ['pattas', page, search, colonyId, status, regFilter],
@@ -123,15 +147,27 @@ export default function PattaLedgerPage() {
           records
         </span>
 
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+        <button
+          onClick={() => exportMut.mutate()}
+          disabled={exportMut.isPending || total === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 border border-slate-200
+                     rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
           <Download className="w-4 h-4" />
-          Export Excel
+          {exportMut.isPending ? 'Exporting…' : 'Export Excel'}
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors">
-          <Plus className="w-4 h-4" />
-          Add Patta
-        </button>
+        {isStaff && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Patta
+          </button>
+        )}
       </div>
+
+      <AddPattaModal open={addOpen} onClose={() => setAddOpen(false)} />
 
       {/* ── Table ── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">

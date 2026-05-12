@@ -1,4 +1,8 @@
+import logging
+from io import BytesIO
+
 from django.core.cache import cache
+from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +17,8 @@ from .serializers import (
     PattaVersionSerializer,
 )
 from users.permissions import IsAdmin, IsStaffOrAbove
+
+logger = logging.getLogger(__name__)
 
 
 class PattaViewSet(viewsets.ModelViewSet):
@@ -80,6 +86,84 @@ class PattaViewSet(viewsets.ModelViewSet):
         except Exception:
             raw = {}
         PattaVersion.objects.create(patta=patta, snapshot=raw, changed_by=user)
+
+    # ── /api/pattas/export/ ───────────────────────────────────────────────────
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """
+        GET /api/pattas/export/?<same filter params as list>
+
+        Streams an .xlsx of the currently filtered queryset. Authentication
+        required (uses the same JWT as the rest of the API).
+        """
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        qs = self.filter_queryset(self.get_queryset())
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Patta Ledger'
+
+        headers = [
+            'Patta No.', 'Allottee Name', 'Allottee Address', 'Colony',
+            'Plot(s)', 'Issue Date', 'Amendment Date',
+            'Challan No.', 'Challan Date',
+            'Lease Amount (₹)', 'Lease Duration',
+            'Regulation File', 'Status', 'Remarks',
+        ]
+        ws.append(headers)
+        header_font  = Font(bold=True, color='FFFFFF')
+        header_fill  = PatternFill('solid', fgColor='1E3A8A')   # blue-900
+        center_align = Alignment(horizontal='center', vertical='center')
+        for col_idx, _ in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.font      = header_font
+            cell.fill      = header_fill
+            cell.alignment = center_align
+
+        for p in qs:
+            plots = ', '.join(
+                pm.plot.plot_number for pm in p.plot_mappings.all() if pm.plot
+            )
+            reg = ''
+            if p.regulation_file_present is True:  reg = 'हाँ'
+            elif p.regulation_file_present is False: reg = 'नही'
+            ws.append([
+                p.patta_number,
+                p.allottee_name,
+                p.allottee_address or '',
+                p.colony.name if p.colony_id else '',
+                plots,
+                p.issue_date.isoformat()     if p.issue_date     else '',
+                p.amendment_date.isoformat() if p.amendment_date else '',
+                p.challan_number or '',
+                p.challan_date.isoformat() if p.challan_date else '',
+                float(p.lease_amount) if p.lease_amount is not None else '',
+                p.lease_duration or '',
+                reg,
+                p.get_status_display() if hasattr(p, 'get_status_display') else p.status,
+                p.remarks or '',
+            ])
+
+        # Reasonable column widths
+        widths = [12, 28, 32, 28, 18, 12, 14, 16, 12, 14, 14, 12, 12, 30]
+        for col_idx, w in enumerate(widths, start=1):
+            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = w
+        ws.freeze_panes = 'A2'
+
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        logger.info('Patta export: %d rows by user %s', qs.count(), request.user)
+        resp = HttpResponse(
+            buf.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        resp['Content-Disposition'] = 'attachment; filename="patta_ledger.xlsx"'
+        return resp
 
     # ── /api/pattas/{id}/versions/ ────────────────────────────────────────────
 

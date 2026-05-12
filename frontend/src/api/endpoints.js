@@ -55,6 +55,10 @@ export const pattas = {
   create:       (data)   => client.post('/pattas/', data),
   update:       (id, d)  => client.put(`/pattas/${id}/`, d),
   destroy:      (id)     => client.delete(`/pattas/${id}/`),
+  exportExcel:  (params) => client.get('/pattas/export/', {
+    params, responseType: 'blob',
+    // Axios response interceptor unwraps .data, but for blob we still get the Blob
+  }),
 }
 
 // ── Documents ─────────────────────────────────────────────────────────────────
