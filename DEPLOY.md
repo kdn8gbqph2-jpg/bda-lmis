@@ -59,6 +59,38 @@ docker compose -f docker-compose.prod.yml exec backend \
 
 ## Updating to a newer commit
 
+Two ways: automatic (recommended once CI is wired up) or manual.
+
+### Automatic — GitHub Actions
+
+`.github/workflows/deploy.yml` runs on every push to `develop`:
+
+1. **build** — smoke-tests the Docker images on a GitHub runner
+2. **deploy** — SSHs to the server, `git fetch && git reset --hard <sha>`,
+   rebuilds, brings the stack up, and waits for `/api/auth/captcha/`
+   to respond before declaring success.
+
+One-time setup of the three required secrets under
+**Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST`     | hostname or IP of the server (e.g. `lmis.bdabharatpur.org`) |
+| `DEPLOY_USER`     | SSH login (`itadmin`) |
+| `DEPLOY_SSH_KEY`  | full contents of a private key authorized on the server |
+| `DEPLOY_PATH`     | *(optional)* defaults to `/opt/bda-lmis` |
+
+Generate the deploy key once on a workstation:
+
+```bash
+ssh-keygen -t ed25519 -f ./bda-lmis-deploy -C 'github-actions@bda-lmis' -N ''
+# Append the public key on the server
+ssh worksserver 'cat >> ~/.ssh/authorized_keys' < ./bda-lmis-deploy.pub
+# Paste the private key (./bda-lmis-deploy) into the DEPLOY_SSH_KEY secret
+```
+
+### Manual
+
 ```bash
 cd /opt/bda-lmis
 git pull

@@ -1,0 +1,78 @@
+name: build-and-deploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+# Cancel an older run if a new commit lands while it's still going.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  # ── Build ────────────────────────────────────────────────────────────────
+  # Smoke-test the Docker images on a GitHub runner so a broken commit can
+  # never reach the production server. Doesn't push anywhere — the server
+  # rebuilds locally on deploy.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Stub .env (build only — no real secrets)
+        run: cp .env.example .env
+
+      - name: Build backend image
+        run: docker compose -f docker-compose.prod.yml build backend
+
+      - name: Build frontend bundle image
+        run: docker compose -f docker-compose.prod.yml build frontend-build
+
+  # ── Deploy ───────────────────────────────────────────────────────────────
+  # SSH into the production server, pull the new commit, rebuild and
+  # bring up the stack. Backend migrations run automatically inside the
+  # backend container's entrypoint, so schema changes apply on rollout.
+  #
+  # Secrets needed under  Settings → Secrets and variables → Actions:
+  #   DEPLOY_HOST       hostname or IP of the server
+  #   DEPLOY_USER       SSH login (e.g. itadmin)
+  #   DEPLOY_SSH_KEY    private key matching an authorized_keys entry
+  #   DEPLOY_PATH       optional, defaults to /opt/bda-lmis
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_SSH_KEY }}
+          envs:     DEPLOY_PATH,GITHUB_SHA
+          script: |
+            set -e
+            cd "${DEPLOY_PATH:-/opt/bda-lmis}"
+            echo "── pulling $GITHUB_SHA …"
+            git fetch --quiet
+            git reset --hard "$GITHUB_SHA"
+            echo "── rebuilding images …"
+            docker compose -f docker-compose.prod.yml build
+            echo "── bringing up the stack …"
+            docker compose -f docker-compose.prod.yml up -d
+            echo "── waiting for backend to be ready …"
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost/api/auth/captcha/ >/dev/null; then
+                echo "backend healthy after ${i}s"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "backend did not become healthy"; exit 1
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/bda-lmis' }}

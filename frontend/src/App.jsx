@@ -59,6 +59,12 @@ function RequireGuest() {
   return <Outlet />
 }
 
+/** Root landing: public portal for visitors, /dashboard for logged-in staff. */
+function RootRedirect() {
+  const access = useAuthStore((s) => s.access)
+  return <Navigate to={access ? '/dashboard' : '/public'} replace />
+}
+
 function RequireAdmin() {
   const isAdmin = useAuthStore((s) => s.isAdmin)
   if (!isAdmin()) return <Navigate to="/dashboard" replace />
@@ -74,6 +80,9 @@ function S({ children }) {
 // ── Router (data-router API — React Router v7 recommended) ────────────────────
 
 const router = createBrowserRouter([
+  // ── Landing: auth-aware redirect at / ──────────────────────────────────────
+  { path: '/', element: <RootRedirect /> },
+
   // ── Guest-only ─────────────────────────────────────────────────────────────
   {
     element: <RequireGuest />,
@@ -100,7 +109,6 @@ const router = createBrowserRouter([
       {
         element: <MainLayout />,
         children: [
-          { index: true,                   element: <Navigate to="/dashboard" replace /> },
           { path: '/dashboard',            element: <S><DashboardPage /></S> },
           { path: '/colonies',             element: <S><ColoniesPage /></S> },
           { path: '/plots',                element: <S><PlotsPage /></S> },
@@ -122,8 +130,8 @@ const router = createBrowserRouter([
     ],
   },
 
-  // ── Fallback ────────────────────────────────────────────────────────────────
-  { path: '*', element: <Navigate to="/dashboard" replace /> },
+  // ── Fallback — unknown paths land on the public portal. ────────────────────
+  { path: '*', element: <Navigate to="/public" replace /> },
 ])
 
 export default function App() {
