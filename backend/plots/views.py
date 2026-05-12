@@ -1,8 +1,11 @@
 import csv
 import io
+import logging
+from io import BytesIO
 
 from django.core.cache import cache
 from django.db import transaction
+from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -18,6 +21,21 @@ from .serializers import (
     PlotGeoJSONSerializer,
 )
 from users.permissions import IsAdmin, IsStaffOrAbove
+
+logger = logging.getLogger(__name__)
+
+# ── Plot bulk-import template schema ─────────────────────────────────────────
+# Columns the user fills in; khasra_number is resolved server-side to a
+# Khasra FK using (colony, number).
+
+_TEMPLATE_COLUMNS = ['plot_number', 'khasra_number', 'type', 'area_sqy', 'status']
+_TEMPLATE_HINTS = [
+    'e.g. 1A',          # plot_number
+    'e.g. 1448',        # khasra_number
+    'Residential / Commercial',
+    'Square yards',
+    'available / patta_ok / patta_missing / cancelled',
+]
 
 
 class PlotViewSet(viewsets.ModelViewSet):
@@ -45,7 +63,8 @@ class PlotViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'destroy':
             return [IsAuthenticated(), IsAdmin()]
-        if self.action in ('create', 'update', 'partial_update', 'bulk_import'):
+        if self.action in ('create', 'update', 'partial_update',
+                           'bulk_import', 'bulk_import_xlsx'):
             return [IsAuthenticated(), IsStaffOrAbove()]
         return [IsAuthenticated()]
 
@@ -211,6 +230,158 @@ class PlotViewSet(viewsets.ModelViewSet):
                 except Exception as exc:
                     errors.append({'row': i, 'errors': str(exc)})
 
+        return Response({'created': created, 'updated': updated, 'errors': errors})
+
+    # ── /api/plots/template/  (blank xlsx for offline data entry) ────────────
+
+    @action(detail=False, methods=['get'])
+    def template(self, request):
+        """
+        GET /api/plots/template/
+
+        Streams a blank .xlsx whose header row matches the columns the
+        bulk-import-xlsx action expects. Row 2 contains lightweight hints
+        so the user knows what each cell should hold.
+        """
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Plots'
+
+        # Header
+        ws.append(_TEMPLATE_COLUMNS)
+        for col_idx in range(1, len(_TEMPLATE_COLUMNS) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.font      = Font(bold=True, color='FFFFFF')
+            cell.fill      = PatternFill('solid', fgColor='1E3A8A')
+            cell.alignment = Alignment(horizontal='center')
+
+        # Hint row (italic, light grey) — users delete or overwrite it
+        ws.append(_TEMPLATE_HINTS)
+        for col_idx in range(1, len(_TEMPLATE_HINTS) + 1):
+            cell = ws.cell(row=2, column=col_idx)
+            cell.font = Font(italic=True, color='94A3B8')
+
+        widths = [14, 16, 22, 14, 36]
+        for col_idx, w in enumerate(widths, start=1):
+            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = w
+        ws.freeze_panes = 'A3'
+
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        resp = HttpResponse(
+            buf.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        resp['Content-Disposition'] = 'attachment; filename="plots_template.xlsx"'
+        return resp
+
+    # ── /api/plots/bulk-import-xlsx/  (filled template upload) ────────────────
+
+    @action(
+        detail=False, methods=['post'],
+        url_path='bulk-import-xlsx',
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def bulk_import_xlsx(self, request):
+        """
+        POST /api/plots/bulk-import-xlsx/
+          multipart/form-data:
+            file:   <plots_template.xlsx>
+            colony: <colony_id>
+
+        For each data row, look up Khasra by (colony, khasra_number); if it
+        doesn't exist, create it with just the number (geometry can be added
+        later). Plot is upserted by plot_number.
+        """
+        import openpyxl
+        from colonies.models import Colony, Khasra
+
+        xlsx_file = request.FILES.get('file')
+        colony_id = request.data.get('colony')
+
+        if not xlsx_file:
+            return Response({'detail': 'Send multipart field "file".'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not colony_id:
+            return Response({'detail': 'Send multipart field "colony" (colony id).'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            colony = Colony.objects.get(pk=int(colony_id))
+        except (Colony.DoesNotExist, ValueError, TypeError):
+            return Response({'detail': 'Colony not found.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            wb = openpyxl.load_workbook(xlsx_file, data_only=True)
+        except Exception as exc:
+            return Response({'detail': f'Unable to read workbook: {exc}'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ws = wb.active
+
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < 2:
+            return Response({'detail': 'Workbook has no data rows.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        headers = [str(h).strip() if h else '' for h in rows[0]]
+        # Skip an optional "hint" row that uses italics — treat as data only
+        # if the plot_number cell parses as a sensible value.
+        data_rows = rows[1:]
+        if data_rows and (data_rows[0][0] is None or str(data_rows[0][0]).startswith('e.g.')):
+            data_rows = data_rows[1:]
+
+        col_index = {h: i for i, h in enumerate(headers) if h}
+        required = {'plot_number', 'khasra_number'}
+        missing  = required - set(col_index.keys())
+        if missing:
+            return Response(
+                {'detail': f'Missing required columns: {", ".join(sorted(missing))}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        def _cell(row, col):
+            i = col_index.get(col)
+            if i is None or i >= len(row): return None
+            v = row[i]
+            if v is None: return None
+            if isinstance(v, float) and v.is_integer(): return str(int(v))
+            return str(v).strip()
+
+        created, updated, errors = 0, 0, []
+        with transaction.atomic():
+            for idx, row in enumerate(data_rows, start=2):
+                if not any(row): continue
+                plot_number = _cell(row, 'plot_number')
+                khasra_num  = _cell(row, 'khasra_number')
+                if not plot_number or not khasra_num:
+                    continue   # silently skip empty rows
+                khasra, _ = Khasra.objects.get_or_create(colony=colony, number=khasra_num)
+                payload = {
+                    'plot_number':    plot_number,
+                    'colony':         colony.pk,
+                    'primary_khasra': khasra.pk,
+                    'type':           _cell(row, 'type')     or 'Residential',
+                    'area_sqy':       _cell(row, 'area_sqy') or None,
+                    'status':         _cell(row, 'status')   or 'available',
+                }
+                existing = Plot.objects.filter(plot_number=plot_number).first()
+                ser = (PlotWriteSerializer(existing, data=payload)
+                       if existing else PlotWriteSerializer(data=payload))
+                if not ser.is_valid():
+                    errors.append({'row': idx, 'errors': ser.errors})
+                    continue
+                ser.save(updated_by=request.user)
+                if existing: updated += 1
+                else:        created += 1
+
+        logger.info('Plot xlsx import for colony %s by %s: created=%d updated=%d errors=%d',
+                    colony.pk, request.user, created, updated, len(errors))
+        self._bust_geojson_cache(colony.pk)
         return Response({'created': created, 'updated': updated, 'errors': errors})
 
     # ── /api/plots/geojson/ ───────────────────────────────────────────────────

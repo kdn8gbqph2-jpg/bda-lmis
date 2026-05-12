@@ -43,6 +43,10 @@ export const plots = {
   bulkImport: (form) => client.post('/plots/bulk-import/', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  bulkImportXlsx: (form) => client.post('/plots/bulk-import-xlsx/', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  template: () => client.get('/plots/template/', { responseType: 'blob' }),
 }
 
 // ── Pattas ────────────────────────────────────────────────────────────────────

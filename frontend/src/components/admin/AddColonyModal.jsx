@@ -12,9 +12,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck, AlertCircle, Upload, FileText, X } from 'lucide-react'
+import { ShieldCheck, AlertCircle, Upload, FileText, X, Download } from 'lucide-react'
 
-import { colonies as coloniesApi } from '@/api/endpoints'
+import { colonies as coloniesApi, plots as plotsApi } from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
@@ -111,17 +111,32 @@ const EMPTY_FORM = {
 
 export function AddColonyModal({ open, onClose, onCreated }) {
   const queryClient = useQueryClient()
-  const [form,   setForm]   = useState(EMPTY_FORM)
-  const [errors, setErrors] = useState({})
-  const [files,  setFiles]  = useState({ map_layout: null, boundary_file: null })
+  const [form,    setForm]    = useState(EMPTY_FORM)
+  const [errors,  setErrors]  = useState({})
+  const [files,   setFiles]   = useState({ map_layout: null, boundary_file: null })
+  const [plotsFile, setPlotsFile] = useState(null)
+  const [importResult, setImportResult] = useState(null)
 
   useEffect(() => {
     if (open) {
       setForm(EMPTY_FORM)
       setFiles({ map_layout: null, boundary_file: null })
+      setPlotsFile(null)
+      setImportResult(null)
       setErrors({})
     }
   }, [open])
+
+  // ── Template download ─────────────────────────────────────────────────────
+  const downloadTemplate = async () => {
+    const blob = await plotsApi.template()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'plots_template.xlsx'
+    document.body.appendChild(a); a.click(); a.remove()
+    URL.revokeObjectURL(url)
+  }
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -155,11 +170,27 @@ export function AddColonyModal({ open, onClose, onCreated }) {
       if (payload.chak_number !== null) payload.chak_number = Number(payload.chak_number)
       return coloniesApi.create(payload)
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // If the user picked a plots template, upload it against the new colony.
+      if (plotsFile) {
+        try {
+          const fd = new FormData()
+          fd.append('file', plotsFile)
+          fd.append('colony', data.id)
+          const result = await plotsApi.bulkImportXlsx(fd)
+          setImportResult(result)
+        } catch (e) {
+          setImportResult({
+            _error: e.response?.data?.detail || 'Plot import failed; colony was created.',
+          })
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['colonies'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['plots'] })
       onCreated?.(data)
-      onClose()
+      // Close the modal unless we have an import result the user should see
+      if (!plotsFile) onClose()
     },
     onError: (err) => {
       setErrors(err.response?.data ?? { _detail: 'Failed to create colony.' })
@@ -197,10 +228,16 @@ export function AddColonyModal({ open, onClose, onCreated }) {
       title="Add Colony"
       size="lg"
       footer={
-        <>
-          <Button variant="ghost" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
-          <Button onClick={handleSubmit} loading={mutation.isPending}>Create Colony</Button>
-        </>
+        importResult ? (
+          <Button onClick={onClose}>Done</Button>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
+            <Button onClick={handleSubmit} loading={mutation.isPending}>
+              {plotsFile ? 'Create Colony & Import Plots' : 'Create Colony'}
+            </Button>
+          </>
+        )
       }
     >
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -318,6 +355,58 @@ export function AddColonyModal({ open, onClose, onCreated }) {
             onChange={handleFile('boundary_file')}
             error={errors.boundary_file?.[0]}
           />
+        </div>
+
+        {/* ── Plot data import (optional) ────────────────────────────── */}
+        <div className="rounded-lg border border-slate-200 p-4 bg-slate-50/60">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+            Plot Data Import <span className="text-slate-400 normal-case font-normal">· optional</span>
+          </h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Download the Excel template, fill in your plots, and re-upload below.
+            Plots will be created and linked to this colony after it is saved.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={downloadTemplate}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                         border border-slate-300 bg-white text-slate-700 rounded-lg hover:bg-slate-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Template (.xlsx)
+            </button>
+          </div>
+          <FileSlot
+            label="Filled Plot Template"
+            file={plotsFile}
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null
+              if (f && f.size > MAX_FILE_BYTES) {
+                setErrors((p) => ({ ...p, plots_file: ['File exceeds 20 MB limit.'] }))
+                return
+              }
+              setPlotsFile(f)
+            }}
+            error={errors.plots_file?.[0]}
+          />
+          {importResult && (
+            <div className={`mt-3 text-xs rounded-lg px-3 py-2 ${
+              importResult._error
+                ? 'bg-red-50 border border-red-200 text-red-700'
+                : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+            }`}>
+              {importResult._error
+                ? importResult._error
+                : <>Plot import: <strong>{importResult.created}</strong> created,
+                    {' '}<strong>{importResult.updated}</strong> updated
+                    {importResult.errors?.length
+                      ? <>, <strong>{importResult.errors.length}</strong> errors</>
+                      : null}</>
+              }
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
