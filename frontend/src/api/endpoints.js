@@ -117,6 +117,12 @@ export const auditLogs = {
   list: (params) => client.get('/audit-logs/', { params }),
 }
 
+// ── Transliterate (English → Hindi) ──────────────────────────────────────────
+// Backend proxies Google Input Tools and caches in Redis for 24h.
+export const transliterate = {
+  hi: (token) => client.get('/transliterate/', { params: { q: token } }),
+}
+
 // ── Public (no auth required) ─────────────────────────────────────────────────
 // Uses the same Axios instance but the server permits AllowAny for these URLs.
 export const publicApi = {

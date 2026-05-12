@@ -17,6 +17,7 @@ import { pattas as pattasApi } from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
+import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
 
 // ── Choice constants — must match backend models.py verbatim ─────────────────
 
@@ -149,17 +150,18 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
         <LinkedSection patta={patta} />
 
         <Section title="Allottee">
-          <Input
+          <HindiInput
             label="Allottee Name"
             value={form.allottee_name}
             onChange={set('allottee_name')}
             error={errors.allottee_name?.[0]}
             required
           />
-          <Textarea
+          <HindiTextarea
             label="Allottee Address"
             value={form.allottee_address ?? ''}
             onChange={set('allottee_address')}
+            error={errors.allottee_address?.[0]}
           />
         </Section>
 
@@ -221,10 +223,11 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
           </Select>
         </Section>
 
-        <Textarea
+        <HindiTextarea
           label="Remarks"
           value={form.remarks ?? ''}
           onChange={set('remarks')}
+          error={errors.remarks?.[0]}
         />
 
         {errors._detail && (

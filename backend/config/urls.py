@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/gis/',        include('gis.urls')),
     path('api/dashboard/',   include('dashboard.urls')),
     path('api/audit-logs/',  include('audit.urls')),
+    path('api/transliterate/', include('transliterate.urls')),
 
     # Public (unauthenticated) colony dashboard
     path('api/public/', include(public_urlpatterns)),

@@ -18,6 +18,7 @@ import { colonies as coloniesApi, plots as plotsApi } from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
+import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
 
 // ── Choice constants (must match backend) ────────────────────────────────────
 
@@ -248,7 +249,7 @@ export function AddColonyModal({ open, onClose, onCreated }) {
         </div>
 
         <Section title="Identity">
-          <Input
+          <HindiInput
             label="Colony Name *"
             value={form.name} onChange={set('name')}
             error={errors.name?.[0]}
@@ -419,10 +420,11 @@ export function AddColonyModal({ open, onClose, onCreated }) {
               hint="Required for rejected layouts. Visible on the public dashboard."
             />
           )}
-          <Textarea
+          <HindiTextarea
             label="Remarks"
             value={form.remarks}
             onChange={set('remarks')}
+            error={errors.remarks?.[0]}
           />
         </div>
 

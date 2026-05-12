@@ -20,6 +20,7 @@ import { colonies as coloniesApi, plots as plotsApi } from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
+import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
 
 // ── Choice constants — labels must match the user-facing flag spec ────────────
 
@@ -273,7 +274,7 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
 
         {/* Identity + flag */}
         <Section title="Identity">
-          <Input
+          <HindiInput
             label="Colony Name"
             value={form.name}
             onChange={set('name')}
@@ -474,10 +475,11 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
               hint="Required for rejected layouts. Visible on the public dashboard."
             />
           )}
-          <Textarea
+          <HindiTextarea
             label="Remarks"
             value={form.remarks ?? ''}
             onChange={set('remarks')}
+            error={errors.remarks?.[0]}
           />
         </div>
 

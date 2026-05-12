@@ -75,7 +75,22 @@ export function UploadLayerModal({ open, onClose }) {
       onClose()
     },
     onError: (err) => {
-      setErrors(err.response?.data ?? { _detail: 'Failed to upload layer.' })
+      // Backend returns errors in two shapes:
+      //   parser/permission failures → { detail: "..." }   (DRF convention)
+      //   serializer field errors    → { field: ["..."] }
+      // Normalize so the banner always shows something useful.
+      const data = err.response?.data
+      if (!data) {
+        setErrors({ _detail: err.message || 'Failed to upload layer.' })
+        return
+      }
+      if (typeof data === 'string') { setErrors({ _detail: data }); return }
+      const next = { ...data }
+      if (next.detail && !next._detail) next._detail = next.detail
+      if (next.non_field_errors?.[0] && !next._detail) {
+        next._detail = next.non_field_errors[0]
+      }
+      setErrors(next)
     },
   })
 

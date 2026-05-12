@@ -14,6 +14,7 @@ import { pattas as pattasApi, colonies as coloniesApi } from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
+import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
 
 const PATTA_STATUS_CHOICES = [
   { value: 'issued',     label: 'Issued'     },
@@ -150,15 +151,16 @@ export function AddPattaModal({ open, onClose, onCreated }) {
         </Section>
 
         <Section title="Allottee">
-          <Input
+          <HindiInput
             label="Allottee Name *"
             value={form.allottee_name} onChange={set('allottee_name')}
             error={errors.allottee_name?.[0]}
             required
           />
-          <Textarea
+          <HindiTextarea
             label="Allottee Address"
             value={form.allottee_address} onChange={set('allottee_address')}
+            error={errors.allottee_address?.[0]}
           />
         </Section>
 
@@ -200,7 +202,11 @@ export function AddPattaModal({ open, onClose, onCreated }) {
           </Select>
         </Section>
 
-        <Textarea label="Remarks" value={form.remarks} onChange={set('remarks')} />
+        <HindiTextarea
+          label="Remarks"
+          value={form.remarks} onChange={set('remarks')}
+          error={errors.remarks?.[0]}
+        />
 
         {errors._detail && (
           <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
