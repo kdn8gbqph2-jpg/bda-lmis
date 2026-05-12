@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, UserPlus, Shield } from 'lucide-react'
+import { Search, UserPlus, Pencil, UserX, UserCheck } from 'lucide-react'
 import { users as usersApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
@@ -11,11 +11,11 @@ import { Modal } from '@/components/ui/Modal'
 const PAGE_SIZE = 20
 
 const ROLES = [
-  { value: '',             label: 'All Roles' },
-  { value: 'admin',        label: 'Admin' },
-  { value: 'superintendent', label: 'Superintendent' },
-  { value: 'staff',        label: 'Staff' },
-  { value: 'viewer',       label: 'Viewer' },
+  { value: '',               label: 'All Roles'        },
+  { value: 'admin',          label: 'Admin'            },
+  { value: 'superintendent', label: 'Superintendent'   },
+  { value: 'staff',          label: 'Staff'            },
+  { value: 'viewer',         label: 'Viewer'           },
 ]
 
 const ROLE_COLORS = {
@@ -33,41 +33,64 @@ function RoleBadge({ role }) {
   )
 }
 
-function CreateUserModal({ open, onClose }) {
-  const qc = useQueryClient()
-  const [form, setForm] = useState({
+// ── User form modal (create + edit) ──────────────────────────────────────────
+
+function emptyForm() {
+  return {
     email: '', first_name: '', last_name: '',
-    emp_id: '', role: 'viewer', password: '',
-  })
-  // DRF returns { field: [msg], ... }.  Keep the dict around so we can show
-  // per-field errors next to each Input; top banner only carries the
-  // non-field / unknown-shape messages.
+    emp_id: '', mobile: '', role: 'viewer', password: '',
+    is_active: true,
+  }
+}
+
+function fromUser(u) {
+  return {
+    email:      u?.email      ?? '',
+    first_name: u?.first_name ?? '',
+    last_name:  u?.last_name  ?? '',
+    emp_id:     u?.emp_id     ?? '',
+    mobile:     u?.mobile     ?? '',
+    role:       u?.role       ?? 'viewer',
+    password:   '',
+    is_active:  u?.is_active  ?? true,
+  }
+}
+
+function UserFormModal({ open, onClose, user }) {
+  const isEdit = !!user
+  const qc = useQueryClient()
+  const [form, setForm]     = useState(() => isEdit ? fromUser(user) : emptyForm())
   const [errors, setErrors] = useState({})
   const fieldErr = (k) => errors[k]?.[0]
 
-  const reset = () => {
-    setForm({ email: '', first_name: '', last_name: '', emp_id: '', role: 'viewer', password: '' })
-    setErrors({})
-  }
+  useEffect(() => {
+    if (open) {
+      setForm(isEdit ? fromUser(user) : emptyForm())
+      setErrors({})
+    }
+  }, [open, user, isEdit])
 
-  const create = useMutation({
-    mutationFn: () => usersApi.create({
-      ...form,
-      // Server requires username (unique). Derive from SSO ID — operators
-      // sign in by SSO ID / email anyway, so the username is plumbing.
-      username: form.emp_id || form.email,
-    }),
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (isEdit) {
+        // Don't include password if blank (means "leave unchanged")
+        const { password, ...rest } = form
+        const payload = password ? { ...rest, password } : rest
+        return usersApi.update(user.id, payload)
+      }
+      // On create, derive username from SSO ID since the model requires it.
+      return usersApi.create({ ...form, username: form.emp_id || form.email })
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
       onClose()
-      reset()
     },
     onError: (err) => {
       const data = err.response?.data
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         setErrors(data)
       } else {
-        setErrors({ _detail: typeof data === 'string' ? data : 'Failed to create user.' })
+        setErrors({ _detail: typeof data === 'string' ? data : 'Operation failed.' })
       }
     },
   })
@@ -76,30 +99,34 @@ function CreateUserModal({ open, onClose }) {
 
   const handleSubmit = () => {
     setErrors({})
-    // Light client-side check so users see the most obvious miss immediately.
-    if (!form.emp_id?.trim() || !form.email?.trim() || !form.password) {
+    const required = isEdit
+      ? !form.email?.trim() || !form.emp_id?.trim()
+      : !form.email?.trim() || !form.emp_id?.trim() || !form.password
+    if (required) {
       setErrors({
-        _detail: 'Email, SSO ID, and Password are required.',
-        ...(!form.email?.trim()    && { email:    ['This field is required.'] }),
-        ...(!form.emp_id?.trim()   && { emp_id:   ['This field is required.'] }),
-        ...(!form.password         && { password: ['This field is required.'] }),
+        _detail: isEdit
+          ? 'Email and SSO ID are required.'
+          : 'Email, SSO ID, and Password are required.',
+        ...(!form.email?.trim()         && { email:    ['This field is required.'] }),
+        ...(!form.emp_id?.trim()        && { emp_id:   ['This field is required.'] }),
+        ...(!isEdit && !form.password   && { password: ['This field is required.'] }),
       })
       return
     }
-    create.mutate()
+    mutation.mutate()
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Add New User"
+      title={isEdit ? `Edit User — ${user?.username || user?.email}` : 'Add New User'}
       size="sm"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={create.isPending} onClick={handleSubmit}>
-            Create User
+          <Button variant="primary" loading={mutation.isPending} onClick={handleSubmit}>
+            {isEdit ? 'Save Changes' : 'Create User'}
           </Button>
         </>
       }
@@ -110,77 +137,74 @@ function CreateUserModal({ open, onClose }) {
             {errors._detail}
           </p>
         )}
+
         <div className="grid grid-cols-2 gap-3">
           <Input label="First Name" value={form.first_name}
                  onChange={(e) => set('first_name', e.target.value)}
                  error={fieldErr('first_name')} />
-          <Input label="Last Name"  value={form.last_name}
-                 onChange={(e) => set('last_name',  e.target.value)}
+          <Input label="Last Name" value={form.last_name}
+                 onChange={(e) => set('last_name', e.target.value)}
                  error={fieldErr('last_name')} />
         </div>
+
         <Input label="Email *" type="email" value={form.email}
                onChange={(e) => set('email', e.target.value)}
                error={fieldErr('email') ?? fieldErr('username')} />
-        <Input label="SSO ID *" value={form.emp_id}
-               onChange={(e) => set('emp_id', e.target.value)}
-               error={fieldErr('emp_id')} />
-        <Input label="Password *" type="password" value={form.password}
-               onChange={(e) => set('password', e.target.value)}
-               error={fieldErr('password')} />
-        <Select label="Role" value={form.role}
-                onChange={(e) => set('role', e.target.value)}>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="SSO ID *" value={form.emp_id}
+                 onChange={(e) => set('emp_id', e.target.value)}
+                 error={fieldErr('emp_id')} />
+          <Input label="Mobile" type="tel" inputMode="numeric"
+                 placeholder="10 digits"
+                 value={form.mobile}
+                 onChange={(e) => set('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                 error={fieldErr('mobile')} />
+        </div>
+
+        <Input
+          label={isEdit ? 'New Password (leave blank to keep current)' : 'Password *'}
+          type="password"
+          value={form.password}
+          onChange={(e) => set('password', e.target.value)}
+          error={fieldErr('password')}
+        />
+
+        <Select label="Role" value={form.role} onChange={(e) => set('role', e.target.value)}>
           {ROLES.slice(1).map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </Select>
         {fieldErr('role') && <p className="text-xs text-red-600">{fieldErr('role')}</p>}
+
+        {isEdit && (
+          <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => set('is_active', e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30"
+            />
+            <span className="text-sm text-slate-700">Account active</span>
+            <span className="text-xs text-slate-400 ml-auto">
+              {form.is_active ? 'Can sign in' : 'Sign-in disabled'}
+            </span>
+          </label>
+        )}
       </div>
     </Modal>
   )
 }
 
-const COLUMNS = [
-  {
-    key: 'name',
-    label: 'Name',
-    render: (r) => (
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-semibold shrink-0">
-          {r.first_name?.[0] || r.email?.[0]?.toUpperCase() || 'U'}
-        </div>
-        <div>
-          <p className="text-sm font-medium text-slate-800">
-            {r.first_name ? `${r.first_name} ${r.last_name || ''}`.trim() : r.email}
-          </p>
-          <p className="text-xs text-slate-400">{r.emp_id}</p>
-        </div>
-      </div>
-    ),
-  },
-  { key: 'email', label: 'Email', cellClass: 'text-slate-500 text-xs' },
-  { key: 'role',  label: 'Role', render: (r) => <RoleBadge role={r.role} /> },
-  {
-    key: 'is_active',
-    label: 'Status',
-    render: (r) => (
-      <span className={`text-xs font-medium ${r.is_active ? 'text-green-600' : 'text-slate-400'}`}>
-        {r.is_active ? 'Active' : 'Inactive'}
-      </span>
-    ),
-  },
-  {
-    key: 'date_joined',
-    label: 'Joined',
-    cellClass: 'text-xs text-slate-400 tabular-nums',
-    render: (r) => r.date_joined ? new Date(r.date_joined).toLocaleDateString('en-IN') : '—',
-  },
-]
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UsersPage() {
-  const [search,   setSearch]   = useState('')
-  const [role,     setRole]     = useState('')
-  const [page,     setPage]     = useState(1)
-  const [showCreate, setShowCreate] = useState(false)
+  const qc = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [role,   setRole]   = useState('')
+  const [page,   setPage]   = useState(1)
+  const [editing, setEditing] = useState(null)   // user object → edit
+  const [creating, setCreating] = useState(false)
 
   const users = useQuery({
     queryKey: ['users', page, search, role],
@@ -188,7 +212,87 @@ export default function UsersPage() {
     placeholderData: (prev) => prev,
   })
 
+  const toggleActive = useMutation({
+    mutationFn: (u) => usersApi.update(u.id, { is_active: !u.is_active }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  })
+
   const reset = () => setPage(1)
+
+  const COLUMNS = [
+    {
+      key: 'name',
+      label: 'Name',
+      render: (r) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-semibold shrink-0">
+            {r.first_name?.[0] || r.email?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-800 truncate">
+              {r.first_name ? `${r.first_name} ${r.last_name || ''}`.trim() : r.email}
+            </p>
+            <p className="text-xs text-slate-400 truncate">{r.emp_id}</p>
+          </div>
+        </div>
+      ),
+    },
+    { key: 'email', label: 'Email', cellClass: 'text-slate-500 text-xs' },
+    {
+      key: 'login_id',
+      label: 'Login ID',
+      cellClass: 'text-xs',
+      render: (r) => (
+        <span className="font-mono text-slate-700">{r.username}</span>
+      ),
+    },
+    { key: 'mobile', label: 'Mobile', cellClass: 'text-xs text-slate-500', render: (r) => r.mobile || '—' },
+    { key: 'role',   label: 'Role',   render: (r) => <RoleBadge role={r.role} /> },
+    {
+      key: 'is_active',
+      label: 'Status',
+      render: (r) => (
+        <span className={`text-xs font-medium ${r.is_active ? 'text-green-600' : 'text-slate-400'}`}>
+          {r.is_active ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      render: (r) => (
+        <div className="flex items-center gap-1 justify-end">
+          <button
+            type="button"
+            onClick={() => setEditing(r)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded"
+            title="Edit user"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`${r.is_active ? 'Deactivate' : 'Activate'} ${r.username}?`)) {
+                toggleActive.mutate(r)
+              }
+            }}
+            disabled={toggleActive.isPending}
+            className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded ${
+              r.is_active
+                ? 'text-red-600 hover:bg-red-50'
+                : 'text-emerald-700 hover:bg-emerald-50'
+            }`}
+            title={r.is_active ? 'Deactivate user' : 'Activate user'}
+          >
+            {r.is_active
+              ? <><UserX className="w-3.5 h-3.5" /> Deactivate</>
+              : <><UserCheck className="w-3.5 h-3.5" /> Activate</>}
+          </button>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-4">
@@ -212,7 +316,7 @@ export default function UsersPage() {
           variant="primary"
           size="sm"
           className="ml-auto"
-          onClick={() => setShowCreate(true)}
+          onClick={() => setCreating(true)}
         >
           <UserPlus className="w-4 h-4 mr-1.5" /> Add User
         </Button>
@@ -235,7 +339,8 @@ export default function UsersPage() {
         onPage={setPage}
       />
 
-      <CreateUserModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <UserFormModal open={creating}    onClose={() => setCreating(false)} />
+      <UserFormModal open={!!editing}   onClose={() => setEditing(null)} user={editing} />
     </div>
   )
 }
