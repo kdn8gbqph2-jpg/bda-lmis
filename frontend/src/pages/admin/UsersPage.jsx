@@ -84,7 +84,7 @@ function CreateUserModal({ open, onClose }) {
           <Input label="Last Name"  value={form.last_name}  onChange={(e) => set('last_name',  e.target.value)} />
         </div>
         <Input label="Email"    type="email" value={form.email}  onChange={(e) => set('email',  e.target.value)} />
-        <Input label="Emp ID"   value={form.emp_id}   onChange={(e) => set('emp_id',   e.target.value)} />
+        <Input label="SSO ID"   value={form.emp_id}   onChange={(e) => set('emp_id',   e.target.value)} />
         <Input label="Password" type="password" value={form.password} onChange={(e) => set('password', e.target.value)} />
         <Select label="Role" value={form.role} onChange={(e) => set('role', e.target.value)}>
           {ROLES.slice(1).map((r) => (
