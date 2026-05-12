@@ -17,7 +17,7 @@ export const colonies = {
   stats:   (id)     => client.get(`/colonies/${id}/stats/`),
   geojson: (id)     => client.get(`/colonies/${id}/geojson/`),
   geojsonAll: (params) => client.get('/colonies/geojson/', { params }),
-  create:  (data)   => client.post('/colonies/', data),
+  create:  (data, config) => client.post('/colonies/', data, config),
   update:  (id, data, config) => client.put(`/colonies/${id}/`, data, config),
   destroy: (id)     => client.delete(`/colonies/${id}/`),
 }

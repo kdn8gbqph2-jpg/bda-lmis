@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, MapPin, ChevronRight, Pencil, FileText, Download, X } from 'lucide-react'
+import { Search, MapPin, ChevronRight, Pencil, FileText, Download, X, Plus } from 'lucide-react'
 import { colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Table, Pagination } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { ColonyEditModal } from '@/components/admin/ColonyEditModal'
+import { AddColonyModal } from '@/components/admin/AddColonyModal'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 // ── Filter choices (kept in sync with backend ZONE_CHOICES + COLONY_TYPE_CHOICES) ─
@@ -261,6 +262,7 @@ function FileLink({ label, url }) {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function ColoniesPage() {
+  const isAdmin = useAuthStore((s) => s.isAdmin)()
   const [filters, setFilters] = useState({
     search:          '',
     colony_type:     '',
@@ -270,6 +272,7 @@ export default function ColoniesPage() {
   })
   const [page, setPage]         = useState(1)
   const [selected, setSelected] = useState(null)
+  const [addOpen, setAddOpen]   = useState(false)
 
   const setFilter = (key) => (e) => {
     setFilters((f) => ({ ...f, [key]: e.target.value }))
@@ -351,8 +354,15 @@ export default function ColoniesPage() {
             <MapPin className="w-4 h-4" />
             <span>{q.data?.count ?? '…'} colonies</span>
           </div>
+          {isAdmin && (
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="w-4 h-4" /> Add Colony
+            </Button>
+          )}
         </div>
       </Card>
+
+      <AddColonyModal open={addOpen} onClose={() => setAddOpen(false)} />
 
       <Card padding={false}>
         <Table
