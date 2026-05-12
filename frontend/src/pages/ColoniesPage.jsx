@@ -1,14 +1,31 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, MapPin, ChevronRight, Pencil, FileText, Download } from 'lucide-react'
+import { Search, MapPin, ChevronRight, Pencil, FileText, Download, X } from 'lucide-react'
 import { colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
-import { Input } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Table, Pagination } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { ColonyEditModal } from '@/components/admin/ColonyEditModal'
 import { useAuthStore } from '@/stores/useAuthStore'
+
+// ── Filter choices (kept in sync with backend ZONE_CHOICES + COLONY_TYPE_CHOICES) ─
+
+const FLAG_CHOICES = [
+  { value: '',                 label: 'All flags'              },
+  { value: 'bda_scheme',       label: 'BDA Scheme'             },
+  { value: 'private_approved', label: 'BDA Approved'           },
+  { value: 'suo_moto',         label: 'SUO-Moto'               },
+  { value: 'pending_layout',   label: 'Pending Layout Approval'},
+  { value: 'rejected_layout',  label: 'Rejected Layout'        },
+]
+
+const ZONE_CHOICES = [
+  { value: '',     label: 'All zones' },
+  { value: 'East', label: 'East'      },
+  { value: 'West', label: 'West'      },
+]
 
 const PAGE_SIZE = 20
 
@@ -240,13 +257,31 @@ function FileLink({ label, url }) {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function ColoniesPage() {
-  const [search, setSearch]     = useState('')
+  const [filters, setFilters] = useState({
+    search:          '',
+    colony_type:     '',
+    zone:            '',
+    khasra:          '',
+    revenue_village: '',
+  })
   const [page, setPage]         = useState(1)
   const [selected, setSelected] = useState(null)
 
+  const setFilter = (key) => (e) => {
+    setFilters((f) => ({ ...f, [key]: e.target.value }))
+    setPage(1)
+  }
+
+  const hasAny = Object.values(filters).some(Boolean)
+
   const q = useQuery({
-    queryKey: ['colonies', page, search],
-    queryFn: () => coloniesApi.list({ page, page_size: PAGE_SIZE, search }),
+    queryKey: ['colonies', page, filters],
+    queryFn: () => coloniesApi.list({
+      page,
+      page_size: PAGE_SIZE,
+      // omit empty strings — backend filters treat presence as "filter applied"
+      ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+    }),
     placeholderData: (prev) => prev,
   })
 
@@ -254,20 +289,66 @@ export default function ColoniesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-72">
-          <Input
-            placeholder="Search colony name…"
-            prefix={<Search className="w-3.5 h-3.5" />}
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          />
+      {/* Filter bar */}
+      <Card padding>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[14rem]">
+            <Input
+              label="Search"
+              placeholder="Colony name…"
+              prefix={<Search className="w-3.5 h-3.5" />}
+              value={filters.search}
+              onChange={setFilter('search')}
+            />
+          </div>
+          <div className="w-44">
+            <Select label="Flag" value={filters.colony_type} onChange={setFilter('colony_type')}>
+              {FLAG_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-32">
+            <Select label="Zone" value={filters.zone} onChange={setFilter('zone')}>
+              {ZONE_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-36">
+            <Input
+              label="Khasra No."
+              placeholder="e.g. 1448"
+              value={filters.khasra}
+              onChange={setFilter('khasra')}
+            />
+          </div>
+          <div className="w-44">
+            <Input
+              label="Revenue Village"
+              placeholder="ग्राम का नाम"
+              value={filters.revenue_village}
+              onChange={setFilter('revenue_village')}
+            />
+          </div>
+          {hasAny && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFilters({ search: '', colony_type: '', zone: '', khasra: '', revenue_village: '' })
+                setPage(1)
+              }}
+            >
+              <X className="w-3.5 h-3.5" /> Clear
+            </Button>
+          )}
+          <div className="flex items-center gap-1.5 text-sm text-slate-500 ml-auto whitespace-nowrap">
+            <MapPin className="w-4 h-4" />
+            <span>{q.data?.count ?? '…'} colonies</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-sm text-slate-500 ml-auto">
-          <MapPin className="w-4 h-4" />
-          <span>{q.data?.count ?? '…'} colonies</span>
-        </div>
-      </div>
+      </Card>
 
       <Card padding={false}>
         <Table
