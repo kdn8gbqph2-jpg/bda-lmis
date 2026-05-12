@@ -77,6 +77,7 @@ export const dashboard = {
   stats:          () => client.get('/dashboard/stats/'),
   colonyProgress: () => client.get('/dashboard/colony-progress/'),
   zoneBreakdown:  () => client.get('/dashboard/zone-breakdown/'),
+  charts:         () => client.get('/dashboard/charts/'),
 }
 
 // ── GIS ───────────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 
 import { dashboard, auditLogs } from '@/api/endpoints'
+import { ChartsSection } from '@/components/dashboard/ChartsSection'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -212,6 +213,9 @@ export default function DashboardPage() {
           sub={approvedPct != null ? `${approvedPct}% of colonies` : null}
         />
       </div>
+
+      {/* ── Charts ──────────────────────────────────────────────────────── */}
+      <ChartsSection />
 
       {/* ── Zone breakdown + Recent activity ────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

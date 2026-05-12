@@ -25,6 +25,7 @@ _DASHBOARD_KEYS = (
     'dashboard:stats',
     'dashboard:colony-progress',
     'dashboard:zone-breakdown',
+    'dashboard:charts',
     'colonies:all',
     'colonies:all:geojson',
 )

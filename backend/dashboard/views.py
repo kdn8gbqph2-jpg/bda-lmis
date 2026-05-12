@@ -1,5 +1,6 @@
 from django.core.cache import cache
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import ExtractYear
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -127,6 +128,65 @@ class ColonyProgressView(APIView):
 
         cache.set(cache_key, rows, 60 * 10)
         return Response(rows)
+
+
+class ChartsView(APIView):
+    """
+    GET /api/dashboard/charts/
+
+    Aggregate datasets for the dashboard's amCharts visualisations:
+
+    - colony_type_distribution: [{value, label, count}, ...] for a donut
+      across the 5 colony_type categories.
+    - pattas_by_year:           [{year, count}, ...] for a column chart
+      of pattas issued by issue_date year.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        cache_key = 'dashboard:charts'
+        cached    = cache.get(cache_key)
+        if cached:
+            return Response(cached)
+
+        from colonies.models import COLONY_TYPE_CHOICES
+        type_labels = dict(COLONY_TYPE_CHOICES)
+        type_counts = dict(
+            Colony.objects.values_list('colony_type').annotate(c=Count('id'))
+        )
+        colony_type_distribution = [
+            {
+                'value': value,
+                'label': type_labels.get(value, value),
+                'count': type_counts.get(value, 0),
+            }
+            for value, _label in COLONY_TYPE_CHOICES
+        ]
+
+        pattas_by_year = []
+        try:
+            from pattas.models import Patta
+            rows = (
+                Patta.objects
+                .filter(issue_date__isnull=False, status='issued')
+                .annotate(year=ExtractYear('issue_date'))
+                .values('year')
+                .annotate(count=Count('id'))
+                .order_by('year')
+            )
+            pattas_by_year = [
+                {'year': int(r['year']), 'count': r['count']}
+                for r in rows if r['year']
+            ]
+        except Exception:
+            pass
+
+        data = {
+            'colony_type_distribution': colony_type_distribution,
+            'pattas_by_year':           pattas_by_year,
+        }
+        cache.set(cache_key, data, 60 * 10)
+        return Response(data)
 
 
 class ZoneBreakdownView(APIView):
