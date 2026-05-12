@@ -18,13 +18,46 @@ class PlotListSerializer(serializers.ModelSerializer):
     colony_name           = serializers.CharField(source='colony.name', read_only=True)
     primary_khasra_number = serializers.CharField(source='primary_khasra.number',
                                                   read_only=True)
+    # Aggregate columns for the table view — saves the client a join per row.
+    khasra_numbers  = serializers.SerializerMethodField()
+    allottee_names  = serializers.SerializerMethodField()
+
+    def get_khasra_numbers(self, obj):
+        """Primary khasra plus any secondary khasras from the junction table."""
+        out = []
+        if obj.primary_khasra_id and obj.primary_khasra:
+            out.append(obj.primary_khasra.number)
+        for m in obj.khasra_mappings.all():
+            if m.khasra and m.khasra.number not in out:
+                out.append(m.khasra.number)
+        return out
+
+    def get_allottee_names(self, obj):
+        """Allottees on every patta currently linked to this plot."""
+        names = []
+        for mapping in obj.patta_mappings.select_related('patta').all() \
+                if hasattr(obj, 'patta_mappings') else []:
+            n = getattr(mapping.patta, 'allottee_name', None)
+            if n and n not in names:
+                names.append(n)
+        # Fallback: query directly when the reverse accessor isn't prefetched
+        if not names:
+            try:
+                from pattas.models import PlotPattaMapping
+                for m in PlotPattaMapping.objects.filter(plot=obj).select_related('patta'):
+                    if m.patta and m.patta.allottee_name and m.patta.allottee_name not in names:
+                        names.append(m.patta.allottee_name)
+            except Exception:
+                pass
+        return names
 
     class Meta:
         model  = Plot
         fields = (
             'id', 'plot_number', 'colony', 'colony_name',
-            'primary_khasra', 'primary_khasra_number',
+            'primary_khasra', 'primary_khasra_number', 'khasra_numbers',
             'type', 'area_sqy', 'area_sqm', 'status',
+            'allottee_names',
         )
 
 

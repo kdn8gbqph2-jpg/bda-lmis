@@ -54,7 +54,10 @@ class PlotViewSet(viewsets.ModelViewSet):
 
     queryset         = Plot.objects.select_related(
         'colony', 'primary_khasra', 'updated_by'
-    ).prefetch_related('khasra_mappings__khasra').all()
+    ).prefetch_related(
+        'khasra_mappings__khasra',
+        'patta_mappings__patta',
+    ).all()
     filterset_class  = PlotFilter
     search_fields    = ['plot_number']
     ordering_fields  = ['plot_number', 'area_sqm', 'status', 'type']

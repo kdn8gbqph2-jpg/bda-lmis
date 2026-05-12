@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, Pencil } from 'lucide-react'
 import { plots as plotsApi, colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
@@ -8,6 +8,7 @@ import { Table, Pagination } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
 import { AddPlotModal } from '@/components/admin/AddPlotModal'
+import { PlotEditModal } from '@/components/admin/PlotEditModal'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 const PAGE_SIZE = 25
@@ -23,20 +24,6 @@ const STATUSES = [
   { value: 'cancelled',          label: 'Cancelled' },
 ]
 
-const COLUMNS = [
-  { key: 'plot_number',  label: 'Plot No.' },
-  { key: 'colony_name',  label: 'Colony', render: (r) => r.colony_detail?.name ?? r.colony },
-  { key: 'area_sqy',    label: 'Area (SqY)', cellClass: 'tabular-nums' },
-  { key: 'area_sqm',    label: 'Area (SqM)', cellClass: 'tabular-nums' },
-  { key: 'plot_type',   label: 'Type' },
-  {
-    key: 'status',
-    label: 'Status',
-    render: (r) => <PlotStatusBadge status={r.status} />,
-  },
-  { key: 'khasra_numbers', label: 'Khasra(s)', render: (r) => (r.khasra_numbers || []).join(', ') || '—' },
-]
-
 export default function PlotsPage() {
   const isStaff = useAuthStore((s) => s.isStaffOrAbove)()
   const [search,   setSearch]   = useState('')
@@ -44,6 +31,7 @@ export default function PlotsPage() {
   const [colonyId, setColonyId] = useState('')
   const [page,     setPage]     = useState(1)
   const [addOpen,  setAddOpen]  = useState(false)
+  const [editing,  setEditing]  = useState(null)   // plot row being edited
 
   const plots = useQuery({
     queryKey: ['plots', page, search, status, colonyId],
@@ -58,7 +46,55 @@ export default function PlotsPage() {
   })
   const colonyOptions = coloniesQ.data?.results ?? []
 
-  const reset = () => { setPage(1) }
+  const reset = () => setPage(1)
+
+  // ── Columns — render names not ids; clickable Edit at the end ──────────
+  const COLUMNS = [
+    { key: 'plot_number',  label: 'Plot No.' },
+    { key: 'colony_name',  label: 'Colony', render: (r) => r.colony_name ?? '—' },
+    {
+      key: 'allottee_names',
+      label: 'Allottee',
+      render: (r) => {
+        const names = r.allottee_names ?? []
+        if (names.length === 0) return <span className="text-slate-300">—</span>
+        if (names.length === 1) return names[0]
+        return (
+          <div className="leading-tight">
+            <div>{names[0]}</div>
+            <div className="text-xs text-slate-400">+{names.length - 1} more</div>
+          </div>
+        )
+      },
+    },
+    { key: 'area_sqy',  label: 'Area (SqY)', cellClass: 'tabular-nums', render: (r) => r.area_sqy ?? '—' },
+    { key: 'type',      label: 'Type' },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (r) => <PlotStatusBadge status={r.status} />,
+    },
+    {
+      key: 'khasra_numbers',
+      label: 'Khasra(s)',
+      render: (r) => (r.khasra_numbers || []).join(', ') || '—',
+    },
+    {
+      key: 'edit',
+      label: '',
+      render: (r) =>
+        isStaff ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setEditing(r) }}
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900"
+            title="Edit plot"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
+        ) : null,
+    },
+  ]
 
   return (
     <div className="space-y-4">
@@ -110,6 +146,11 @@ export default function PlotsPage() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         defaultColonyId={colonyId}
+      />
+      <PlotEditModal
+        plot={editing}
+        open={!!editing}
+        onClose={() => setEditing(null)}
       />
 
       {/* Table */}
