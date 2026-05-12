@@ -92,20 +92,25 @@ services:
       - "80:80"
       - "443:443"
 
-  # Run on-demand to obtain / renew the Let's Encrypt cert:
-  #   docker compose -f docker-compose.prod.yml run --rm certbot
-  # The CERTBOT_EMAIL + CERTBOT_DOMAINS env vars come from .env.
+  # Issue or renew the Let's Encrypt cert. The default `renew` action is
+  # idempotent and a no-op when the cert isn't due. Use `certonly` for
+  # initial issuance.
+  #
+  #   First issuance:
+  #     docker compose -f docker-compose.prod.yml --profile certbot \
+  #         run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
+  #           --email "$CERTBOT_EMAIL" --agree-tos --no-eff-email \
+  #           --non-interactive -d "$CERTBOT_DOMAINS"
+  #
+  #   Renewal (safe to schedule on a cron / systemd timer):
+  #     docker compose -f docker-compose.prod.yml --profile certbot \
+  #         run --rm certbot renew --quiet
+  #     docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
   certbot:
     image: certbot/certbot:v3.0.1
     volumes:
       - certbot_webroot:/var/www/certbot
       - letsencrypt:/etc/letsencrypt
-    entrypoint: ["sh", "-c"]
-    command: >
-      "certbot certonly --webroot --webroot-path /var/www/certbot
-       --email ${CERTBOT_EMAIL:-admin@bda.gov.in}
-       --agree-tos --no-eff-email --non-interactive
-       -d ${CERTBOT_DOMAINS:-lmis.bdabharatpur.org}"
     profiles: ["certbot"]
 
 volumes:
