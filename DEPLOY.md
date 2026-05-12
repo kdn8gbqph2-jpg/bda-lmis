@@ -61,9 +61,11 @@ docker compose -f docker-compose.prod.yml exec backend \
 
 Two ways: automatic (recommended once CI is wired up) or manual.
 
-### Automatic — GitHub Actions
+### Manual run from GitHub Actions
 
-`.github/workflows/deploy.yml` runs on every push to `develop`:
+`.github/workflows/deploy.yml` is triggered **manually only** —
+**Actions → build-and-deploy → "Run workflow"** in the GitHub UI. The
+workflow has two jobs:
 
 1. **build** — smoke-tests the Docker images on a GitHub runner
 2. **deploy** — SSHs to the server, `git fetch && git reset --hard <sha>`,

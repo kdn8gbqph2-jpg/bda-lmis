@@ -1,11 +1,10 @@
 name: build-and-deploy
 
+# Triggered manually only. Run from
+#   Actions → build-and-deploy → "Run workflow"
 on:
-  push:
-    branches: [develop]
   workflow_dispatch:
 
-# Cancel an older run if a new commit lands while it's still going.
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -46,7 +45,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
