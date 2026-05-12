@@ -61,6 +61,20 @@ const SHAPE_ACCEPT   = '.kml,.zip,.kmz,application/vnd.google-earth.kml+xml,appl
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Map a user-chosen file's extension to the backend column it belongs in. */
+function layoutSlotFor(filename) {
+  const ext = (filename || '').split('.').pop()?.toLowerCase()
+  if (ext === 'pdf')                 return 'map_pdf'
+  if (ext === 'jpg' || ext === 'jpeg') return 'map_jpeg'
+  if (ext === 'png')                 return 'map_png'
+  return null
+}
+
+/** Return the first uploaded layout URL across the three backend columns. */
+function currentLayoutUrl(colony) {
+  return colony?.map_pdf || colony?.map_jpeg || colony?.map_png || null
+}
+
 function pillColor(khasraNumber) {
   let h = 0
   for (const c of String(khasraNumber)) h = (h * 31 + c.charCodeAt(0)) >>> 0
@@ -112,15 +126,17 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
   const [form, setForm]     = useState(() => fromColony(colony))
   const [errors, setErrors] = useState({})
 
-  // File slots — null means "don't touch this server-side"
+  // File slots — null means "don't touch this server-side".
+  // map_layout is a virtual slot that routes to map_pdf / map_jpeg / map_png
+  // based on the chosen file's extension at submit time.
   const [files, setFiles] = useState({
-    map_pdf: null, map_jpeg: null, map_png: null, boundary_file: null,
+    map_layout: null, boundary_file: null,
   })
 
   useEffect(() => {
     if (open) {
       setForm(fromColony(colony))
-      setFiles({ map_pdf: null, map_jpeg: null, map_png: null, boundary_file: null })
+      setFiles({ map_layout: null, boundary_file: null })
       setErrors({})
     }
   }, [open, colony])
@@ -136,7 +152,14 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
           }
         }
         fd.append('khasras_input', form.khasras_input || '')
-        for (const [k, v] of Object.entries(files)) if (v) fd.append(k, v)
+
+        // Layout file → route to the right backend column by extension
+        if (files.map_layout) {
+          const slot = layoutSlotFor(files.map_layout.name)
+          if (slot) fd.append(slot, files.map_layout)
+        }
+        if (files.boundary_file) fd.append('boundary_file', files.boundary_file)
+
         return coloniesApi.update(colony.id, fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
@@ -320,28 +343,19 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* Layout files */}
+        {/* Layout file (single slot — accepts pdf / jpeg / png) */}
         <div>
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-            Attach Layout <span className="text-slate-400 normal-case font-normal">· .pdf / .jpeg / .png</span>
+            Attach Layout <span className="text-slate-400 normal-case font-normal">· any of .pdf / .jpeg / .png</span>
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <FileSlot
-              label="PDF"  current={colony?.map_pdf}  file={files.map_pdf}
-              accept={LAYOUT_ACCEPT} onChange={handleFile('map_pdf')}
-              error={errors.map_pdf?.[0]}
-            />
-            <FileSlot
-              label="JPEG" current={colony?.map_jpeg} file={files.map_jpeg}
-              accept={LAYOUT_ACCEPT} onChange={handleFile('map_jpeg')}
-              error={errors.map_jpeg?.[0]}
-            />
-            <FileSlot
-              label="PNG"  current={colony?.map_png}  file={files.map_png}
-              accept={LAYOUT_ACCEPT} onChange={handleFile('map_png')}
-              error={errors.map_png?.[0]}
-            />
-          </div>
+          <FileSlot
+            label="Layout"
+            current={currentLayoutUrl(colony)}
+            file={files.map_layout}
+            accept={LAYOUT_ACCEPT}
+            onChange={handleFile('map_layout')}
+            error={errors.map_pdf?.[0] || errors.map_jpeg?.[0] || errors.map_png?.[0]}
+          />
         </div>
 
         {/* Shape / KML file */}

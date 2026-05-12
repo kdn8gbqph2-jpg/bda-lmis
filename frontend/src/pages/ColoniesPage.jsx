@@ -180,16 +180,20 @@ function ColonyDetailModal({ colony, onClose }) {
               </div>
             </div>
 
-            {/* Layout files */}
+            {/* Layout file (unified — first available across pdf/jpeg/png) */}
             <div>
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                Attached Layout
+                Attached Layout <span className="text-slate-400 normal-case font-normal">· any of .pdf / .jpeg / .png</span>
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <FileLink label="PDF"  url={d.map_pdf}  />
-                <FileLink label="JPEG" url={d.map_jpeg} />
-                <FileLink label="PNG"  url={d.map_png}  />
-              </div>
+              <FileLink
+                label={
+                  d.map_pdf  ? 'Layout (PDF)'
+                  : d.map_jpeg ? 'Layout (JPEG)'
+                  : d.map_png ? 'Layout (PNG)'
+                  : 'Layout'
+                }
+                url={d.map_pdf || d.map_jpeg || d.map_png || null}
+              />
             </div>
 
             {/* Shape / KML */}
