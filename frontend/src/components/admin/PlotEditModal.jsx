@@ -37,6 +37,7 @@ function fromPlot(plot) {
     type:           plot?.type           ?? 'Residential',
     area_sqy:       plot?.area_sqy       ?? '',
     status:         plot?.status         ?? 'available',
+    remarks:        plot?.remarks        ?? '',
   }
 }
 
@@ -48,6 +49,7 @@ function cleanPayload(plot, form) {
     type:           form.type,
     area_sqy:       form.area_sqy === '' ? null : form.area_sqy,
     status:         form.status,
+    remarks:        form.remarks ?? '',
   }
 }
 
@@ -165,6 +167,18 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </Select>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700">Remarks</label>
+          <textarea
+            value={form.remarks}
+            onChange={set('remarks')}
+            rows={3}
+            placeholder="Internal notes about this plot…"
+            className="w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 px-3 py-2 shadow-xs
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
 
         {(errors._detail || errors.primary_khasra) && (
           <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">

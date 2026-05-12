@@ -54,6 +54,10 @@ class Plot(models.Model):
     status          = models.CharField(max_length=30, choices=PLOT_STATUS_CHOICES,
                                        default='available', db_index=True)
     geometry        = gis_models.PolygonField(srid=4326, null=True, blank=True)
+    remarks         = models.TextField(
+        blank=True,
+        help_text='Free-form internal notes about the plot.',
+    )
     updated_by      = models.ForeignKey(
         'users.CustomUser',
         on_delete=models.SET_NULL,

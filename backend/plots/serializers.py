@@ -57,7 +57,7 @@ class PlotListSerializer(serializers.ModelSerializer):
             'id', 'plot_number', 'colony', 'colony_name',
             'primary_khasra', 'primary_khasra_number', 'khasra_numbers',
             'type', 'area_sqy', 'area_sqm', 'status',
-            'allottee_names',
+            'allottee_names', 'remarks',
         )
 
 
@@ -77,7 +77,7 @@ class PlotDetailSerializer(serializers.ModelSerializer):
             'primary_khasra', 'primary_khasra_number',
             'type', 'area_sqy', 'area_sqm', 'status',
             'khasra_mappings',
-            'geometry',
+            'geometry', 'remarks',
             'updated_by', 'created_at', 'updated_at',
         )
         read_only_fields = ('area_sqm', 'created_at', 'updated_at', 'updated_by')
@@ -92,7 +92,7 @@ class PlotWriteSerializer(serializers.ModelSerializer):
         model  = Plot
         fields = (
             'plot_number', 'colony', 'primary_khasra',
-            'type', 'area_sqy', 'status', 'geometry',
+            'type', 'area_sqy', 'status', 'geometry', 'remarks',
         )
 
     def validate(self, attrs):
