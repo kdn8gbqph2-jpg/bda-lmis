@@ -60,3 +60,8 @@ htmlcov/
 # Local data files (ledger imports, sample workbooks)
 *.xlsx
 *.xls
+
+# Operator credentials — NEVER commit
+credentials.txt
+credentials.*.txt
+*.credentials.txt
