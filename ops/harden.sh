@@ -21,13 +21,18 @@ DEBIAN_FRONTEND=noninteractive apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ufw fail2ban unattended-upgrades apt-listchanges >/dev/null
 
-echo "── 2/4  Configuring UFW (default deny, allow 22/80/443) …"
+echo "── 2/4  Configuring UFW (default deny, allow <ssh>/80/443) …"
+# Detect the actual sshd listen port from the effective config (handles
+# non-standard ports like 2222 — never blindly assume 22).
+SSH_PORT="$(sshd -T 2>/dev/null | awk '$1=="port" { print $2; exit }')"
+SSH_PORT="${SSH_PORT:-22}"
+echo "    detected sshd port: $SSH_PORT"
 ufw --force reset >/dev/null
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow 22/tcp  comment 'ssh'
-ufw allow 80/tcp  comment 'http'
-ufw allow 443/tcp comment 'https'
+ufw allow "${SSH_PORT}/tcp"  comment 'ssh'
+ufw allow 80/tcp             comment 'http'
+ufw allow 443/tcp            comment 'https'
 ufw --force enable
 ufw status verbose | sed 's/^/    /'
 
@@ -81,9 +86,10 @@ systemctl enable --now unattended-upgrades
 
 echo
 echo "✓ Hardening complete."
-echo "  · UFW status:      $(ufw status | head -1)"
-echo "  · fail2ban jails:  $(fail2ban-client status | grep 'Jail list' | sed 's/.*://' | xargs)"
-echo "  · Whitelisted IP:  $OPERATOR_IP"
+echo "  · UFW status:        $(ufw status | head -1)"
+echo "  · SSH port allowed:  $SSH_PORT"
+echo "  · fail2ban jails:    $(fail2ban-client status | grep 'Jail list' | sed 's/.*://' | xargs)"
+echo "  · Whitelisted IP:    $OPERATOR_IP"
 echo "  · SSH password auth: $(grep -i PasswordAuthentication $SSH_DROPIN | awk '{print $2}')"
 echo
 echo "Reminder: confirm you can still SSH in a NEW window before closing"
