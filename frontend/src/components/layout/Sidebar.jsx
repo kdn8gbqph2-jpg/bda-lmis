@@ -4,7 +4,7 @@ import { clsx } from 'clsx'
 import {
   LayoutDashboard, Building2, Grid3x3, FileText,
   FolderOpen, Users, ClipboardList, LogOut, Map, BarChart3,
-  KeyRound,
+  KeyRound, X,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal'
@@ -24,10 +24,11 @@ const ADMIN_NAV = [
   { to: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
 ]
 
-function NavItem({ to, icon: Icon, label }) {
+function NavItem({ to, icon: Icon, label, onClose }) {
   return (
     <NavLink
       to={to}
+      onClick={onClose}
       className={({ isActive }) => clsx(
         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
         isActive
@@ -41,7 +42,7 @@ function NavItem({ to, icon: Icon, label }) {
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ onClose }) {
   const { user, logout, isAdmin } = useAuthStore()
   const navigate = useNavigate()
   const [pwdOpen, setPwdOpen] = useState(false)
@@ -63,7 +64,7 @@ export function Sidebar() {
     <aside className="w-60 shrink-0 bg-slate-900 flex flex-col h-screen sticky top-0">
 
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-slate-700/60">
+      <div className="px-5 py-5 border-b border-slate-700/60 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img
             src="/bda-logo.png"
@@ -75,11 +76,20 @@ export function Sidebar() {
             <p className="text-slate-400 text-xs leading-tight">Bharatpur Dev. Auth.</p>
           </div>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            aria-label="Close menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {NAV.map((item) => <NavItem key={item.to} {...item} />)}
+        {NAV.map((item) => <NavItem key={item.to} {...item} onClose={onClose} />)}
 
         {isAdmin() && (
           <>
@@ -88,7 +98,7 @@ export function Sidebar() {
                 Admin
               </p>
             </div>
-            {ADMIN_NAV.map((item) => <NavItem key={item.to} {...item} />)}
+            {ADMIN_NAV.map((item) => <NavItem key={item.to} {...item} onClose={onClose} />)}
           </>
         )}
       </nav>
