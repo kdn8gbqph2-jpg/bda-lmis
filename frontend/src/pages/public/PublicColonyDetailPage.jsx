@@ -23,6 +23,26 @@ const COLONY_TYPE_COLORS = {
   rejected_layout:  'bg-red-100 text-red-800 border-red-200',
 }
 
+// Deterministic pill palette for khasra numbers — same hash-based scheme used
+// across the admin colony / patta edit modals so a given khasra is always the
+// same colour wherever it shows up.
+const PILL_PALETTE = [
+  { bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200'    },
+  { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200'   },
+  { bg: 'bg-purple-50',  text: 'text-purple-700',  border: 'border-purple-200'  },
+  { bg: 'bg-rose-50',    text: 'text-rose-700',    border: 'border-rose-200'    },
+  { bg: 'bg-sky-50',     text: 'text-sky-700',     border: 'border-sky-200'     },
+  { bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200'  },
+  { bg: 'bg-teal-50',    text: 'text-teal-700',    border: 'border-teal-200'    },
+]
+
+function pillColor(token) {
+  let h = 0
+  for (const c of String(token)) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return PILL_PALETTE[h % PILL_PALETTE.length]
+}
+
 const MAP_FORMAT_META = {
   pdf: { label: 'PDF',  desc: 'Layout Plan (PDF)',    icon: '📄' },
   svg: { label: 'SVG',  desc: 'Vector Map (SVG)',     icon: '🗺️' },
@@ -202,32 +222,26 @@ export default function PublicColonyDetailPage() {
           )}
         </div>
 
-        {/* ── Khasra list ───────────────────────────────────────────────── */}
+        {/* ── Khasra list (colored pills) ───────────────────────────────── */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
           <h2 className="font-semibold text-slate-700 text-sm mb-3">
             Khasra Numbers ({colony.khasras?.length ?? 0})
           </h2>
 
           {colony.khasras?.length > 0 ? (
-            <div className="overflow-auto max-h-64">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-left pb-2 text-xs text-slate-400 font-medium">Khasra No.</th>
-                    <th className="text-right pb-2 text-xs text-slate-400 font-medium">Area (Bigha)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {colony.khasras.map((k, i) => (
-                    <tr key={i} className="hover:bg-slate-50">
-                      <td className="py-1.5 font-mono text-slate-700">{k.number}</td>
-                      <td className="py-1.5 text-right text-slate-500">
-                        {k.total_bigha != null ? Number(k.total_bigha).toFixed(2) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex flex-wrap gap-1.5">
+              {colony.khasras.map((k, i) => {
+                const c = pillColor(k.number)
+                return (
+                  <span
+                    key={i}
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}
+                    title={k.total_bigha != null ? `${Number(k.total_bigha).toFixed(2)} Bigha` : 'Area not recorded'}
+                  >
+                    {k.number}
+                  </span>
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-slate-400 py-3 text-center">
