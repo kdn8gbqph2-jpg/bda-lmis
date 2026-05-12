@@ -74,11 +74,11 @@ export function TopNavbar({ onMenuClick }) {
 
           <Link
             to="/login"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5
-                       text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100
-                       rounded-lg border border-blue-100 transition"
+            className="inline-flex items-center gap-2 px-4 py-2
+                       text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800
+                       rounded-lg shadow-sm border border-blue-800/20 transition"
           >
-            <LogIn className="w-3.5 h-3.5" />
+            <LogIn className="w-5 h-5" strokeWidth={2.25} />
             <span className="hidden sm:inline">Officer Login</span>
           </Link>
         </div>
