@@ -155,7 +155,8 @@ class CustomLayerViewSet(viewsets.ModelViewSet):
     def _parse_file(file) -> list:
         """
         Returns list of {'geometry': <GEOSGeometry>, 'properties': dict}.
-        Handles GeoJSON (.json/.geojson) and Shapefile ZIP (.zip).
+        Handles GeoJSON (.json/.geojson), KML (.kml), KMZ (.kmz),
+        and Shapefile ZIP (.zip).
         """
         name = file.name.lower()
 
@@ -170,6 +171,21 @@ class CustomLayerViewSet(viewsets.ModelViewSet):
                 return parse_shapefile_zip(tmp_path)
             finally:
                 os.unlink(tmp_path)
+
+        elif name.endswith('.kmz'):
+            from .geo_utils import parse_kmz_file
+            with tempfile.NamedTemporaryFile(suffix='.kmz', delete=False) as tmp:
+                for chunk in file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+            try:
+                return parse_kmz_file(tmp_path)
+            finally:
+                os.unlink(tmp_path)
+
+        elif name.endswith('.kml'):
+            from .geo_utils import parse_kml_bytes
+            return parse_kml_bytes(file.read())
 
         elif name.endswith(('.json', '.geojson')):
             import json as _json
@@ -187,7 +203,8 @@ class CustomLayerViewSet(viewsets.ModelViewSet):
 
         else:
             raise ValueError(
-                f'Unsupported file type: {file.name}. Upload a .geojson or .zip (Shapefile).'
+                f'Unsupported file type: {file.name}. '
+                f'Upload .geojson, .json, .kml, .kmz, or .zip (Shapefile).'
             )
 
 

@@ -26,7 +26,11 @@ const LAYER_TYPES = [
 
 const DEFAULT_COLOUR = '#2563EB'
 const MAX_FILE_BYTES = 20 * 1024 * 1024
-const ACCEPT = '.geojson,.json,.zip,application/json,application/zip'
+const ACCEPT = (
+  '.geojson,.json,.kml,.kmz,.zip,' +
+  'application/json,application/vnd.google-earth.kml+xml,' +
+  'application/vnd.google-earth.kmz,application/zip'
+)
 
 export function UploadLayerModal({ open, onClose }) {
   const queryClient = useQueryClient()
@@ -135,7 +139,7 @@ export function UploadLayerModal({ open, onClose }) {
                   <X className="w-3 h-3" />
                 </button>
               </>
-            ) : <span className="text-slate-400">.geojson, .json, or .zip (Shapefile)</span>}
+            ) : <span className="text-slate-400">.geojson, .json, .kml, .kmz, or .zip (Shapefile)</span>}
           </div>
           {errors.file?.[0] && <p className="text-xs text-red-600 mt-1">{errors.file[0]}</p>}
         </div>
