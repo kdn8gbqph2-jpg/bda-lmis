@@ -75,7 +75,7 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'colony_type', 'colony_type_label',
             'zone', 'chak_number', 'status',
             # survey
-            'dlc_file_number', 'notified_area_bigha',
+            'revenue_village', 'dlc_file_number', 'notified_area_bigha',
             # timeline
             'conversion_date', 'layout_application_date', 'layout_approval_date',
             # notes

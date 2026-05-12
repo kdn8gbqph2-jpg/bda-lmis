@@ -252,6 +252,8 @@ class Command(BaseCommand):
         # Colony name: try col B first, fall back to sheet name.
         # Chak/date/khasras: the actual values are in col D (index 3).
         colony_name            = _str(rows[0][1]) or sheet_name   # row 1, col B or sheet name
+        # Row 2, col D: "ग्राम का नाम" (revenue village)
+        revenue_village        = _str(rows[1][3])
         chak_number            = _int(rows[2][3])                 # row 3, col D
         layout_approval_date   = _date(rows[3][3])                # row 4, col D
         # Row 5, col D: "लेआउट प्लान अनुसार कुल भुखण्डों की संख्या"
@@ -259,8 +261,8 @@ class Command(BaseCommand):
         khasra_raw             = _str(rows[5][3])                 # row 6, col D
 
         self.stdout.write(
-            f'  Colony: {colony_name} | Chak: {chak_number} | '
-            f'Layout date: {layout_approval_date} | '
+            f'  Colony: {colony_name} | Village: {revenue_village} | '
+            f'Chak: {chak_number} | Layout date: {layout_approval_date} | '
             f'Total plots: {total_plots_per_layout} | '
             f'Khasras: {khasra_raw[:60]}'
         )
@@ -269,6 +271,7 @@ class Command(BaseCommand):
         colony, created = Colony.objects.get_or_create(
             name=colony_name,
             defaults={
+                'revenue_village':        revenue_village,
                 'chak_number':            chak_number,
                 'layout_approval_date':   layout_approval_date,
                 'total_plots_per_layout': total_plots_per_layout,
@@ -278,6 +281,9 @@ class Command(BaseCommand):
             # Backfill missing scalar header values without overwriting
             # values already entered by staff.
             updated = False
+            if revenue_village and not colony.revenue_village:
+                colony.revenue_village = revenue_village
+                updated = True
             if layout_approval_date and not colony.layout_approval_date:
                 colony.layout_approval_date = layout_approval_date
                 updated = True

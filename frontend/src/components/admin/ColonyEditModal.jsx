@@ -79,6 +79,7 @@ function parseKhasraInput(raw) {
 
 const SCALAR_FIELDS = [
   'name', 'colony_type', 'zone', 'status',
+  'revenue_village',
   'chak_number', 'dlc_file_number', 'notified_area_bigha',
   'conversion_date', 'layout_application_date', 'layout_approval_date',
   'rejection_reason', 'remarks',
@@ -268,6 +269,12 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
 
         {/* Survey */}
         <Section title="Survey">
+          <Input
+            label="Revenue Village"
+            placeholder="ग्राम का नाम"
+            value={form.revenue_village ?? ''} onChange={set('revenue_village')}
+            error={errors.revenue_village?.[0]}
+          />
           <Input
             label="Chak Number" type="number"
             value={form.chak_number ?? ''} onChange={set('chak_number')}

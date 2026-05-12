@@ -26,7 +26,7 @@ class ColonyAdmin(GISModelAdmin):
             'fields': ('name', 'colony_type', 'zone', 'chak_number', 'status'),
         }),
         ('Survey / Revenue', {
-            'fields': ('dlc_file_number', 'notified_area_bigha'),
+            'fields': ('revenue_village', 'dlc_file_number', 'notified_area_bigha'),
         }),
         ('Timeline', {
             'fields': ('conversion_date', 'layout_application_date', 'layout_approval_date'),

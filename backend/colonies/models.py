@@ -57,6 +57,10 @@ class Colony(models.Model):
 
     # ── Survey / revenue ──────────────────────────────────────────────────────
     chak_number         = models.IntegerField(null=True, blank=True)   # चक नम्बर
+    revenue_village     = models.CharField(
+        max_length=200, blank=True,
+        help_text='Source: Excel row 2 "ग्राम का नाम" (revenue village name).',
+    )
     dlc_file_number     = models.CharField(max_length=100, unique=True, null=True, blank=True)
     notified_area_bigha = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 

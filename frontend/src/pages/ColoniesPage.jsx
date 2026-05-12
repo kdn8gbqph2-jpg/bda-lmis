@@ -116,13 +116,14 @@ function ColonyDetailModal({ colony, onClose }) {
         ) : (
           <div className="space-y-6">
 
-            {/* Flag + dates */}
+            {/* Flag + dates + village */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Colony Flag">
                 <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${FLAG_STYLE[d.colony_type] ?? 'bg-slate-50 text-slate-700 border-slate-200'}`}>
                   {d.colony_type_label || '—'}
                 </span>
               </Field>
+              <Field label="Revenue Village"         value={d.revenue_village} />
               <Field label="Layout Application Date" value={d.layout_application_date} />
               <Field label="Layout Approval Date"    value={d.layout_approval_date} />
             </div>
