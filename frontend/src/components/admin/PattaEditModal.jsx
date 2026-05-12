@@ -144,6 +144,10 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
           </Select>
         </Section>
 
+        {/* ── Linked colony info (read-only — moving a patta between colonies
+              has cascade effects we don't surface in this form) ──────────── */}
+        <LinkedSection patta={patta} />
+
         <Section title="Allottee">
           <Input
             label="Allottee Name"
@@ -243,6 +247,93 @@ function Section({ title, children }) {
         {title}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
+    </div>
+  )
+}
+
+// ── Linked colony info (read-only) ──────────────────────────────────────────
+
+const PILL_PALETTE = [
+  { bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200'    },
+  { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200'   },
+  { bg: 'bg-purple-50',  text: 'text-purple-700',  border: 'border-purple-200'  },
+  { bg: 'bg-rose-50',    text: 'text-rose-700',    border: 'border-rose-200'    },
+  { bg: 'bg-sky-50',     text: 'text-sky-700',     border: 'border-sky-200'     },
+  { bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200'  },
+  { bg: 'bg-teal-50',    text: 'text-teal-700',    border: 'border-teal-200'    },
+]
+
+function pillColor(token) {
+  let h = 0
+  for (const c of String(token)) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return PILL_PALETTE[h % PILL_PALETTE.length]
+}
+
+function LinkedSection({ patta }) {
+  const summary = patta?.colony_summary
+  const plots   = patta?.plot_numbers ?? []
+  const khasras = summary?.khasras ?? []
+  return (
+    <div>
+      <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+        Linked <span className="text-slate-400 normal-case font-normal">· read-only</span>
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <ReadOnlyField label="Colony / Scheme Name" value={summary?.name} />
+        <ReadOnlyField label="Zone"                 value={summary?.zone} />
+        <ReadOnlyField label="Revenue Village"      value={summary?.revenue_village} />
+        <ReadOnlyField label="Plot No(s)"           hint={`${plots.length} plot${plots.length === 1 ? '' : 's'}`}>
+          {plots.length === 0
+            ? <span className="text-xs text-slate-400">No plots linked.</span>
+            : (
+              <div className="flex flex-wrap gap-1.5">
+                {plots.map((p) => {
+                  const c = pillColor(p)
+                  return (
+                    <span key={p}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}>
+                      {p}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+        </ReadOnlyField>
+      </div>
+      <div className="mt-4">
+        <ReadOnlyField label="Khasra No(s)" hint={`${khasras.length} khasra${khasras.length === 1 ? '' : 's'} in colony`}>
+          {khasras.length === 0
+            ? <span className="text-xs text-slate-400">No khasras recorded.</span>
+            : (
+              <div className="flex flex-wrap gap-1.5">
+                {khasras.map((k) => {
+                  const c = pillColor(k)
+                  return (
+                    <span key={k}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}>
+                      {k}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+        </ReadOnlyField>
+      </div>
+    </div>
+  )
+}
+
+function ReadOnlyField({ label, value, children, hint }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <label className="text-sm font-medium text-slate-700">{label}</label>
+        {hint && <span className="text-[11px] text-slate-400">{hint}</span>}
+      </div>
+      <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 min-h-[2.4rem]">
+        {children ?? (value ? value : <span className="text-slate-400">—</span>)}
+      </div>
     </div>
   )
 }

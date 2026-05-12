@@ -63,12 +63,32 @@ class PattaDetailSerializer(serializers.ModelSerializer):
     superseded_by_number = serializers.CharField(
         source='superseded_by.patta_number', read_only=True, allow_null=True,
     )
+    # Lightweight summary of the parent colony — zone, revenue_village and
+    # the colony's khasra numbers — exposed read-only so the edit modal can
+    # display them alongside the patta fields without a second API call.
+    colony_summary = serializers.SerializerMethodField()
+    plot_numbers   = serializers.SerializerMethodField()
+
+    def get_colony_summary(self, obj):
+        if not obj.colony_id:
+            return None
+        c = obj.colony
+        return {
+            'id':              c.id,
+            'name':            c.name,
+            'zone':            c.zone,
+            'revenue_village': c.revenue_village or '',
+            'khasras':         list(c.khasras.values_list('number', flat=True).order_by('number')),
+        }
+
+    def get_plot_numbers(self, obj):
+        return [pm.plot.plot_number for pm in obj.plot_mappings.all() if pm.plot]
 
     class Meta:
         model  = Patta
         fields = (
             'id', 'patta_number',
-            'colony', 'colony_name',
+            'colony', 'colony_name', 'colony_summary',
             'allottee_name', 'allottee_address',
             'issue_date', 'amendment_date',
             'challan_number', 'challan_date',
@@ -78,7 +98,7 @@ class PattaDetailSerializer(serializers.ModelSerializer):
             'document',
             'superseded_by', 'superseded_by_number',
             'remarks',
-            'plot_mappings',
+            'plot_mappings', 'plot_numbers',
             'updated_by', 'created_at', 'updated_at',
         )
         read_only_fields = ('created_at', 'updated_at', 'updated_by')
