@@ -16,3 +16,7 @@ django-extensions==3.2.3
 drf-yasg==1.21.7
 pytest==7.4.3
 pytest-django==4.7.0
+
+# Production WSGI server
+gunicorn==21.2.0
+whitenoise==6.6.0

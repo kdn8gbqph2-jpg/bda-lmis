@@ -178,3 +178,14 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+# ── Behind-proxy / production hardening ──────────────────────────────────────
+# When DEBUG=False (production behind Nginx), trust the X-Forwarded-* headers
+# Nginx sets so request.is_secure() and request.get_host() reflect reality.
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST    = True
+    CSRF_TRUSTED_ORIGINS    = os.getenv(
+        'CSRF_TRUSTED_ORIGINS', ''
+    ).split(',') if os.getenv('CSRF_TRUSTED_ORIGINS') else []

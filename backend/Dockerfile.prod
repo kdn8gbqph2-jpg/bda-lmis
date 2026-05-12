@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=config.settings
+
+# GeoDjango deps (GDAL/GEOS/PROJ)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Collect Django admin static files into /app/staticfiles for Nginx to serve.
+# Use placeholder env vars so collectstatic can boot without a real DB.
+RUN DEBUG=False \
+    SECRET_KEY=build-only \
+    DB_NAME=stub DB_USER=stub DB_PASSWORD=stub DB_HOST=stub DB_PORT=5432 \
+    REDIS_URL=redis://stub:6379/0 \
+    ALLOWED_HOSTS=* \
+    python manage.py collectstatic --noinput
+
+EXPOSE 8000
+
+# Gunicorn with sensible defaults for a 2-CPU box. Workers can be tuned via
+# the GUNICORN_WORKERS env var at runtime.
+CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --access-logfile - --error-logfile -"]
