@@ -86,11 +86,32 @@ services:
       - frontend_dist:/usr/share/nginx/html:ro
       - django_static:/var/www/static:ro
       - django_media:/var/www/media:ro
+      - certbot_webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
     ports:
       - "80:80"
+      - "443:443"
+
+  # Run on-demand to obtain / renew the Let's Encrypt cert:
+  #   docker compose -f docker-compose.prod.yml run --rm certbot
+  # The CERTBOT_EMAIL + CERTBOT_DOMAINS env vars come from .env.
+  certbot:
+    image: certbot/certbot:v3.0.1
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    entrypoint: ["sh", "-c"]
+    command: >
+      "certbot certonly --webroot --webroot-path /var/www/certbot
+       --email ${CERTBOT_EMAIL:-admin@bda.gov.in}
+       --agree-tos --no-eff-email --non-interactive
+       -d ${CERTBOT_DOMAINS:-lmis.bdabharatpur.org}"
+    profiles: ["certbot"]
 
 volumes:
   postgres_data:
   django_static:
   django_media:
   frontend_dist:
+  certbot_webroot:
+  letsencrypt:
