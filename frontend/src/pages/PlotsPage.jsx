@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
 import { plots as plotsApi, colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
 import { Table, Pagination } from '@/components/ui/Table'
+import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
+import { AddPlotModal } from '@/components/admin/AddPlotModal'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const PAGE_SIZE = 25
 
@@ -35,10 +38,12 @@ const COLUMNS = [
 ]
 
 export default function PlotsPage() {
+  const isStaff = useAuthStore((s) => s.isStaffOrAbove)()
   const [search,   setSearch]   = useState('')
   const [status,   setStatus]   = useState('')
   const [colonyId, setColonyId] = useState('')
   const [page,     setPage]     = useState(1)
+  const [addOpen,  setAddOpen]  = useState(false)
 
   const plots = useQuery({
     queryKey: ['plots', page, search, status, colonyId],
@@ -94,7 +99,18 @@ export default function PlotsPage() {
         <span className="text-sm text-slate-500 ml-auto">
           {plots.data?.count ?? '…'} plots
         </span>
+        {isStaff && (
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="w-4 h-4" /> Add Plot
+          </Button>
+        )}
       </div>
+
+      <AddPlotModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        defaultColonyId={colonyId}
+      />
 
       {/* Table */}
       <Card padding={false}>
