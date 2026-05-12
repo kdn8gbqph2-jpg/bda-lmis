@@ -39,24 +39,55 @@ function CreateUserModal({ open, onClose }) {
     email: '', first_name: '', last_name: '',
     emp_id: '', role: 'viewer', password: '',
   })
-  const [error, setError] = useState('')
+  // DRF returns { field: [msg], ... }.  Keep the dict around so we can show
+  // per-field errors next to each Input; top banner only carries the
+  // non-field / unknown-shape messages.
+  const [errors, setErrors] = useState({})
+  const fieldErr = (k) => errors[k]?.[0]
+
+  const reset = () => {
+    setForm({ email: '', first_name: '', last_name: '', emp_id: '', role: 'viewer', password: '' })
+    setErrors({})
+  }
 
   const create = useMutation({
-    mutationFn: () => usersApi.create(form),
+    mutationFn: () => usersApi.create({
+      ...form,
+      // Server requires username (unique). Derive from SSO ID — operators
+      // sign in by SSO ID / email anyway, so the username is plumbing.
+      username: form.emp_id || form.email,
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
       onClose()
-      setForm({ email: '', first_name: '', last_name: '', emp_id: '', role: 'viewer', password: '' })
-      setError('')
+      reset()
     },
     onError: (err) => {
       const data = err.response?.data
-      const msg = typeof data === 'string' ? data : Object.values(data || {}).flat().join(' ')
-      setError(msg || 'Failed to create user.')
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        setErrors(data)
+      } else {
+        setErrors({ _detail: typeof data === 'string' ? data : 'Failed to create user.' })
+      }
     },
   })
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+
+  const handleSubmit = () => {
+    setErrors({})
+    // Light client-side check so users see the most obvious miss immediately.
+    if (!form.emp_id?.trim() || !form.email?.trim() || !form.password) {
+      setErrors({
+        _detail: 'Email, SSO ID, and Password are required.',
+        ...(!form.email?.trim()    && { email:    ['This field is required.'] }),
+        ...(!form.emp_id?.trim()   && { emp_id:   ['This field is required.'] }),
+        ...(!form.password         && { password: ['This field is required.'] }),
+      })
+      return
+    }
+    create.mutate()
+  }
 
   return (
     <Modal
@@ -67,30 +98,42 @@ function CreateUserModal({ open, onClose }) {
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={create.isPending} onClick={() => create.mutate()}>
+          <Button variant="primary" loading={create.isPending} onClick={handleSubmit}>
             Create User
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            {error}
+        {errors._detail && (
+          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {errors._detail}
           </p>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="First Name" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} />
-          <Input label="Last Name"  value={form.last_name}  onChange={(e) => set('last_name',  e.target.value)} />
+          <Input label="First Name" value={form.first_name}
+                 onChange={(e) => set('first_name', e.target.value)}
+                 error={fieldErr('first_name')} />
+          <Input label="Last Name"  value={form.last_name}
+                 onChange={(e) => set('last_name',  e.target.value)}
+                 error={fieldErr('last_name')} />
         </div>
-        <Input label="Email"    type="email" value={form.email}  onChange={(e) => set('email',  e.target.value)} />
-        <Input label="SSO ID"   value={form.emp_id}   onChange={(e) => set('emp_id',   e.target.value)} />
-        <Input label="Password" type="password" value={form.password} onChange={(e) => set('password', e.target.value)} />
-        <Select label="Role" value={form.role} onChange={(e) => set('role', e.target.value)}>
+        <Input label="Email *" type="email" value={form.email}
+               onChange={(e) => set('email', e.target.value)}
+               error={fieldErr('email') ?? fieldErr('username')} />
+        <Input label="SSO ID *" value={form.emp_id}
+               onChange={(e) => set('emp_id', e.target.value)}
+               error={fieldErr('emp_id')} />
+        <Input label="Password *" type="password" value={form.password}
+               onChange={(e) => set('password', e.target.value)}
+               error={fieldErr('password')} />
+        <Select label="Role" value={form.role}
+                onChange={(e) => set('role', e.target.value)}>
           {ROLES.slice(1).map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </Select>
+        {fieldErr('role') && <p className="text-xs text-red-600">{fieldErr('role')}</p>}
       </div>
     </Modal>
   )
