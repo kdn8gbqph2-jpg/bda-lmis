@@ -11,7 +11,10 @@ from users.views import (
 from colonies.urls import khasra_urlpatterns, public_urlpatterns
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # Django admin mounts at /django-admin/ so the /admin/* namespace
+    # stays available for the React app's staff admin routes
+    # (/admin/users, /admin/audit-logs).
+    path('django-admin/', admin.site.urls),
 
     # Auth
     path('api/auth/login/',           CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
