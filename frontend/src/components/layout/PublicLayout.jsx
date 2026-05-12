@@ -81,7 +81,7 @@ function SidebarContent({ onClose }) {
             key={cat.value}
             to={`/public/colonies?colony_type=${cat.value}`}
             icon={cat.icon}
-            label={cat.label}
+            label={cat.sidebarLabel ?? cat.label}
             labelHi={cat.labelHi}
             color={cat.color}
             onClose={onClose}
@@ -94,7 +94,7 @@ function SidebarContent({ onClose }) {
           to="/public/colonies"
           end
           icon={List}
-          label="All Colonies"
+          label="Browse All"
           labelHi="सभी कॉलोनियाँ"
           color="slate"
           onClose={onClose}
