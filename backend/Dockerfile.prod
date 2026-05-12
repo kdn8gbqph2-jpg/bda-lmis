@@ -21,11 +21,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Collect Django admin static files into /app/staticfiles for Nginx to serve.
-# Use placeholder env vars so collectstatic can boot without a real DB.
+# Use placeholder env vars so collectstatic can boot without a real DB/Redis.
 RUN DEBUG=False \
     SECRET_KEY=build-only \
     DB_NAME=stub DB_USER=stub DB_PASSWORD=stub DB_HOST=stub DB_PORT=5432 \
     REDIS_URL=redis://stub:6379/0 \
+    CELERY_BROKER_URL=redis://stub:6379/0 \
+    CELERY_RESULT_BACKEND=redis://stub:6379/0 \
     ALLOWED_HOSTS=* \
     python manage.py collectstatic --noinput
 
