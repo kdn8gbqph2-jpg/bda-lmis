@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 
 import { TopNavbar } from '@/components/public/TopNavbar'
+import { PublicFooter } from '@/components/layout/PublicFooter'
 import { CATEGORIES } from '@/components/public/categories'
 
 // ── Sidebar component ──────────────────────────────────────────────────────────
@@ -223,8 +224,11 @@ export function PublicLayout() {
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopNavbar onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto flex flex-col">
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <PublicFooter />
         </main>
       </div>
     </div>

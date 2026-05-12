@@ -47,7 +47,7 @@ export default function PublicDashboardPage() {
           Bharatpur Development Authority
         </p>
         <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight mb-4">
-          Colony Information Portal
+          Land &amp; Schemes Information Portal
         </h1>
         <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
           {isLoading
