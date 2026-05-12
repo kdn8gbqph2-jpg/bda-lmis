@@ -1,14 +1,19 @@
 /**
  * MapPage — GIS map view.
  *
- * Renders a Mapbox-GL canvas with an OpenStreetMap raster base layer
- * centred on Bharatpur. Future iterations will stack GeoJSON overlays
- * (colonies, khasras, plots, custom utility layers) on top of this base.
+ * Renders a MapLibre-GL canvas with an OpenStreetMap raster base layer
+ * centred on Bharatpur. MapLibre is used over Mapbox-GL because v2+
+ * silently refuses to render tiles without a Mapbox access token, even
+ * for fully custom (non-mapbox://) styles. MapLibre is the open-source
+ * fork built specifically for this use case.
+ *
+ * Future iterations will stack GeoJSON overlays (colonies, khasras,
+ * plots, custom utility layers) on top of this base.
  */
 
 import { useEffect, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 
 const BHARATPUR_CENTER = [77.4933, 27.2152]   // [lng, lat]
 const DEFAULT_ZOOM     = 12
@@ -22,7 +27,7 @@ export default function MapPage() {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
       style: {
         version: 8,
@@ -45,8 +50,8 @@ export default function MapPage() {
       attributionControl: { compact: true },
     })
 
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
-    map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-left')
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left')
 
     mapRef.current = map
     return () => {
