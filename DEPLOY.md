@@ -103,6 +103,25 @@ docker compose -f docker-compose.prod.yml up -d
 Backend container runs `migrate --noinput` on every start, so schema
 changes apply automatically.
 
+### Gotcha — single-file bind mounts
+
+`nginx/nginx.conf` is mounted into the nginx container as
+`./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro`. Docker binds to
+the **inode** of that file when the container starts, but `git pull`
+replaces the file via write-new-then-rename — which produces a *new*
+inode. The container keeps serving the old config.
+
+After any change to `nginx/nginx.conf`, recreate the nginx container
+instead of reloading it:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps nginx
+```
+
+`nginx -s reload` won't help — the file the running process can see is
+still the old one. (Bind-mounted *directories* don't have this problem,
+only single files.)
+
 ## SSL (after DNS is pointing here)
 
 ```bash
