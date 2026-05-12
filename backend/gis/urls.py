@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     CustomLayerViewSet,
+    BasemapSourceViewSet,
     ColonyGeoJSONView,
     KhasraGeoJSONView,
     PlotGeoJSONView,
@@ -9,6 +10,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r'custom-layers', CustomLayerViewSet, basename='custom-layer')
+router.register(r'basemaps',      BasemapSourceViewSet, basename='basemap')
 
 urlpatterns = [
     path('', include(router.urls)),

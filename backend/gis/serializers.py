@@ -1,6 +1,7 @@
 import json
+import re
 from rest_framework import serializers
-from .models import CustomLayer, LayerFeature
+from .models import CustomLayer, LayerFeature, BasemapSource
 
 
 class LayerFeatureSerializer(serializers.ModelSerializer):
@@ -54,6 +55,28 @@ class CustomLayerWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model  = CustomLayer
         fields = ('name', 'layer_type', 'colony', 'style', 'is_public', 'metadata')
+
+
+class BasemapSourceSerializer(serializers.ModelSerializer):
+    """Validates that the URL template carries the {z}/{x}/{y} placeholders."""
+
+    class Meta:
+        model  = BasemapSource
+        fields = ('id', 'name', 'url_template', 'attribution', 'max_zoom',
+                  'created_by', 'created_at')
+        read_only_fields = ('created_by', 'created_at')
+
+    def validate_url_template(self, value):
+        for token in ('{z}', '{x}', '{y}'):
+            if token not in value:
+                raise serializers.ValidationError(
+                    f'URL template is missing the {token} placeholder.'
+                )
+        if not re.match(r'^https?://', value):
+            raise serializers.ValidationError(
+                'URL must start with http:// or https://.'
+            )
+        return value
 
 
 class CustomLayerGeoJSONSerializer:

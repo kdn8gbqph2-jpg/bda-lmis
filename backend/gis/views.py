@@ -9,12 +9,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CustomLayer, LayerFeature
+from .models import CustomLayer, LayerFeature, BasemapSource
 from .serializers import (
     CustomLayerListSerializer,
     CustomLayerDetailSerializer,
     CustomLayerWriteSerializer,
     CustomLayerGeoJSONSerializer,
+    BasemapSourceSerializer,
 )
 from users.permissions import IsAdmin, IsStaffOrAbove
 
@@ -206,6 +207,31 @@ class CustomLayerViewSet(viewsets.ModelViewSet):
                 f'Unsupported file type: {file.name}. '
                 f'Upload .geojson, .json, .kml, .kmz, or .zip (Shapefile).'
             )
+
+
+# ── Basemap sources ──────────────────────────────────────────────────────────
+
+class BasemapSourceViewSet(viewsets.ModelViewSet):
+    """
+    GET    /api/gis/basemaps/         list all user-imported basemaps
+    POST   /api/gis/basemaps/         add a new tile URL template (staff+)
+    GET    /api/gis/basemaps/{id}/
+    PUT    /api/gis/basemaps/{id}/    (staff+)
+    DELETE /api/gis/basemaps/{id}/    admin only
+    """
+    queryset         = BasemapSource.objects.select_related('created_by').all()
+    serializer_class = BasemapSourceSerializer
+    ordering         = ['name']
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            return [IsAuthenticated(), IsAdmin()]
+        if self.action in ('create', 'update', 'partial_update'):
+            return [IsAuthenticated(), IsStaffOrAbove()]
+        return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 
 # ── Proxy GeoJSON endpoints for colonies / khasras / plots ───────────────────

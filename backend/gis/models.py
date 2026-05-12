@@ -60,6 +60,41 @@ class CustomLayer(models.Model):
         return f'{self.get_layer_type_display()} — {self.name}'
 
 
+class BasemapSource(models.Model):
+    """
+    A user-imported raster tile basemap. Stored as a {z}/{x}/{y} URL
+    template plus attribution + zoom cap. Selectable from the map page
+    alongside the four built-in keyless basemaps.
+
+    The URL template must contain literal `{z}`, `{x}`, `{y}` placeholders
+    (validated at the serializer level). Subdomain placeholders like
+    `{s}` aren't supported here — list each subdomain as a separate
+    URL by uploading a comma-separated value to `url_template` if needed,
+    or just pick a single subdomain.
+    """
+    name           = models.CharField(max_length=120, unique=True)
+    url_template   = models.CharField(
+        max_length=500,
+        help_text='Tile URL with {z}/{x}/{y} placeholders.',
+    )
+    attribution    = models.CharField(max_length=255, blank=True)
+    max_zoom       = models.PositiveSmallIntegerField(default=19)
+    created_by     = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.PROTECT,
+        related_name='created_basemaps',
+    )
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'gis_basemapsource'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class LayerFeature(models.Model):
     """
     Individual feature within a CustomLayer.

@@ -16,13 +16,14 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { Layers, Check, Plus, Trash2, ChevronDown, ChevronRight, Upload } from 'lucide-react'
+import { Layers, Check, Plus, Trash2, ChevronDown, ChevronRight, Upload, Globe } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { gis as gisApi } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { UploadLayerModal } from '@/components/map/UploadLayerModal'
+import { ImportBasemapModal } from '@/components/map/ImportBasemapModal'
 
 const BHARATPUR_CENTER = [77.4933, 27.2152]
 const DEFAULT_ZOOM     = 12
@@ -150,7 +151,8 @@ export default function MapPage() {
   // Cache of fetched geojson keyed by layer id (so re-applying after a base
   // swap doesn't refetch).
   const overlayDataRef = useRef(new Map())
-  const [uploadOpen, setUploadOpen] = useState(false)
+  const [uploadOpen, setUploadOpen]   = useState(false)
+  const [basemapOpen, setBasemapOpen] = useState(false)
 
   // Pull the list of custom layers
   const layersQ = useQuery({
@@ -159,6 +161,28 @@ export default function MapPage() {
     staleTime: 60_000,
   })
   const customLayers = layersQ.data?.results ?? layersQ.data ?? []
+
+  // Pull user-imported basemap sources and merge with the built-ins
+  const basemapsQ = useQuery({
+    queryKey: ['gis-basemaps'],
+    queryFn:  gisApi.basemaps,
+    staleTime: 5 * 60 * 1000,
+  })
+  const customBasemaps = (basemapsQ.data?.results ?? basemapsQ.data ?? []).map((b) => ({
+    id:    `custom-${b.id}`,
+    customId: b.id,
+    label: b.name,
+    tiles: [b.url_template],
+    attribution: b.attribution || '',
+    maxzoom: b.max_zoom,
+    isCustom: true,
+  }))
+  const allBaseLayers = [...BASE_LAYERS, ...customBasemaps]
+
+  const deleteBasemapMut = useMutation({
+    mutationFn: (id) => gisApi.deleteBasemap(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gis-basemaps'] }),
+  })
 
   // Apply / refresh overlays whenever the active set changes or the style reloads.
   const reapplyOverlays = useCallback(async () => {
@@ -213,13 +237,14 @@ export default function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Swap base layer when picked
+  // Swap base layer when picked (search both built-ins and user-imported)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const layer = BASE_LAYERS.find((l) => l.id === baseLayerId)
+    const layer = allBaseLayers.find((l) => l.id === baseLayerId)
     if (layer) map.setStyle(styleFor(layer))
-  }, [baseLayerId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseLayerId, customBasemaps.length])
 
   // React to overlay set changes (additions only — removals also handled)
   useEffect(() => { reapplyOverlays() }, [reapplyOverlays])
@@ -262,9 +287,12 @@ export default function MapPage() {
         />
 
         <LayerPanel
-          baseLayers={BASE_LAYERS}
+          baseLayers={allBaseLayers}
           activeBase={baseLayerId}
           onBaseChange={setBaseLayerId}
+          onDeleteBasemap={(id) => {
+            if (window.confirm('Delete this basemap source?')) deleteBasemapMut.mutate(id)
+          }}
           overlays={customLayers}
           activeOverlays={activeOverlays}
           onToggleOverlay={toggleOverlay}
@@ -272,11 +300,13 @@ export default function MapPage() {
           canUpload={isStaff}
           canDelete={isAdmin}
           onUploadClick={() => setUploadOpen(true)}
+          onImportBasemapClick={() => setBasemapOpen(true)}
           loading={layersQ.isPending}
         />
       </div>
 
-      <UploadLayerModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <UploadLayerModal open={uploadOpen}  onClose={() => setUploadOpen(false)} />
+      <ImportBasemapModal open={basemapOpen} onClose={() => setBasemapOpen(false)} />
     </div>
   )
 }
@@ -284,9 +314,9 @@ export default function MapPage() {
 // ── Layer panel (floating top-left) ──────────────────────────────────────────
 
 function LayerPanel({
-  baseLayers, activeBase, onBaseChange,
+  baseLayers, activeBase, onBaseChange, onDeleteBasemap,
   overlays, activeOverlays, onToggleOverlay, onDeleteOverlay,
-  canUpload, canDelete, onUploadClick,
+  canUpload, canDelete, onUploadClick, onImportBasemapClick,
   loading,
 }) {
   const [open,        setOpen]       = useState(true)
@@ -313,17 +343,36 @@ function LayerPanel({
           {baseLayers.map((l) => {
             const isActive = l.id === activeBase
             return (
-              <button
+              <div
                 key={l.id}
-                type="button"
-                onClick={() => onBaseChange(l.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700 hover:bg-slate-50'
+                className={`group relative w-full flex items-center transition-colors ${
+                  isActive ? 'bg-blue-50' : 'hover:bg-slate-50'
                 }`}
               >
-                <span>{l.label}</span>
-                {isActive && <Check className="w-4 h-4 text-blue-600" />}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onBaseChange(l.id)}
+                  className={`flex-1 flex items-center justify-between px-3 py-2 text-sm text-left ${
+                    isActive ? 'text-blue-700 font-medium' : 'text-slate-700'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {l.isCustom && <Globe className="w-3 h-3 text-slate-400" />}
+                    {l.label}
+                  </span>
+                  {isActive && <Check className="w-4 h-4 text-blue-600" />}
+                </button>
+                {l.isCustom && canDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDeleteBasemap(l.customId) }}
+                    className="opacity-0 group-hover:opacity-100 mr-2 text-slate-300 hover:text-red-500 transition"
+                    title="Delete basemap"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             )
           })}
 
@@ -393,7 +442,7 @@ function LayerPanel({
                 <span>Create Custom Layer</span>
               </button>
               {createOpen && (
-                <div className="pl-7 pb-2">
+                <div className="pl-7 pb-2 space-y-1">
                   <button
                     type="button"
                     onClick={onUploadClick}
@@ -405,6 +454,20 @@ function LayerPanel({
                       <div className="font-medium">Import Layer</div>
                       <div className="text-[10px] text-slate-400 leading-tight">
                         .kml / .kmz / .geojson / .zip
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onImportBasemapClick}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md
+                               text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-blue-600" />
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">Import Basemap</div>
+                      <div className="text-[10px] text-slate-400 leading-tight">
+                        Tile URL with {'{z}/{x}/{y}'}
                       </div>
                     </div>
                   </button>

@@ -95,6 +95,11 @@ export const gis = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   deleteLayer:     (id)     => client.delete(`/gis/custom-layers/${id}/`),
+
+  // ── Imported basemap tile sources ──
+  basemaps:        ()       => client.get('/gis/basemaps/'),
+  createBasemap:   (data)   => client.post('/gis/basemaps/', data),
+  deleteBasemap:   (id)     => client.delete(`/gis/basemaps/${id}/`),
 }
 
 // ── Users (admin) ─────────────────────────────────────────────────────────────
