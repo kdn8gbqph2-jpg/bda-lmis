@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, MapPin, ChevronRight, Pencil, FileText, Download, X, Plus } from 'lucide-react'
+import { Search, ChevronRight, Pencil, FileText, Download, X, Plus } from 'lucide-react'
 import { colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
@@ -350,12 +350,8 @@ export default function ColoniesPage() {
               <X className="w-3.5 h-3.5" /> Clear
             </Button>
           )}
-          <div className="flex items-center gap-1.5 text-sm text-slate-500 ml-auto whitespace-nowrap">
-            <MapPin className="w-4 h-4" />
-            <span>{q.data?.count ?? '…'} colonies</span>
-          </div>
           {isAdmin && (
-            <Button onClick={() => setAddOpen(true)}>
+            <Button onClick={() => setAddOpen(true)} className="ml-auto">
               <Plus className="w-4 h-4" /> Add Colony
             </Button>
           )}
