@@ -101,12 +101,6 @@ function SidebarContent({ onClose }) {
         />
       </nav>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <div className="p-3 border-t border-slate-100">
-        <p className="text-[10px] text-slate-400 text-center leading-tight">
-          © 2025 Bharatpur Development Authority
-        </p>
-      </div>
     </div>
   )
 }
