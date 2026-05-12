@@ -91,6 +91,10 @@ export const gis = {
   plotsGeojson:    (params) => client.get('/gis/plots/geojson/', { params }),
   layers:          ()       => client.get('/gis/custom-layers/'),
   layerGeojson:    (id)     => client.get(`/gis/custom-layers/${id}/geojson/`),
+  uploadLayer:     (form)   => client.post('/gis/custom-layers/', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteLayer:     (id)     => client.delete(`/gis/custom-layers/${id}/`),
 }
 
 // ── Users (admin) ─────────────────────────────────────────────────────────────
