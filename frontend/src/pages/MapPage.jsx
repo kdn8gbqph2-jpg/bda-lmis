@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { Layers, Check, Plus, Trash2 } from 'lucide-react'
+import { Layers, Check, Plus, Trash2, ChevronDown, ChevronRight, Upload } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -289,7 +289,8 @@ function LayerPanel({
   canUpload, canDelete, onUploadClick,
   loading,
 }) {
-  const [open, setOpen] = useState(true)
+  const [open,        setOpen]       = useState(true)
+  const [createOpen,  setCreateOpen] = useState(false)
   return (
     <div className="absolute top-3 left-3 z-10">
       <button
@@ -327,17 +328,8 @@ function LayerPanel({
           })}
 
           {/* Custom overlays */}
-          <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-widest border-y border-slate-100 flex items-center justify-between">
-            <span>Overlays</span>
-            {canUpload && (
-              <button
-                type="button"
-                onClick={onUploadClick}
-                className="inline-flex items-center gap-1 text-blue-700 font-medium normal-case tracking-normal text-xs hover:text-blue-900"
-              >
-                <Plus className="w-3 h-3" /> Add
-              </button>
-            )}
+          <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-widest border-y border-slate-100">
+            Overlays
           </div>
 
           {loading ? (
@@ -384,6 +376,42 @@ function LayerPanel({
               </div>
             )
           })}
+
+          {/* Create custom layer (staff+) */}
+          {canUpload && (
+            <div className="border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCreateOpen((v) => !v)}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium
+                           text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                {createOpen
+                  ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                <Plus className="w-3.5 h-3.5 text-slate-500" />
+                <span>Create Custom Layer</span>
+              </button>
+              {createOpen && (
+                <div className="pl-7 pb-2">
+                  <button
+                    type="button"
+                    onClick={onUploadClick}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md
+                               text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">Import Layer</div>
+                      <div className="text-[10px] text-slate-400 leading-tight">
+                        .kml / .kmz / .geojson / .zip
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
