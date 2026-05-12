@@ -68,8 +68,13 @@ jobs:
             echo "── bringing up the stack …"
             docker compose -f docker-compose.prod.yml up -d
             echo "── waiting for backend to be ready …"
+            # Nginx now rejects any Host that isn't the real domain, so
+            # localhost requests get a 444. Hit Django directly inside the
+            # compose network — that bypasses Nginx entirely and tells us
+            # whether the app server itself is healthy.
             for i in $(seq 1 30); do
-              if curl -fsS http://localhost/api/auth/captcha/ >/dev/null; then
+              if docker compose -f docker-compose.prod.yml exec -T backend \
+                   curl -fsS http://localhost:8000/api/auth/captcha/ >/dev/null 2>&1; then
                 echo "backend healthy after ${i}s"
                 exit 0
               fi
