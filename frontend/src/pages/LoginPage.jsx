@@ -83,7 +83,7 @@ export default function LoginPage() {
 
           {/* Blue header band */}
           <div className="bg-blue-700 px-8 py-4">
-            <h2 className="text-white font-semibold text-lg">Staff Login</h2>
+            <h2 className="text-white font-semibold text-lg">Officer Login</h2>
             <p className="text-blue-200 text-xs mt-0.5">Enter your credentials to access the system</p>
           </div>
 

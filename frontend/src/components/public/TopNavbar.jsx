@@ -2,7 +2,7 @@
  * TopNavbar — sticky top bar for the public portal.
  *
  * Houses the global colony search, notification bell placeholder,
- * and a Staff Login chip on the right (desktop only — sidebar shows
+ * and a Officer Login chip on the right (desktop only — sidebar shows
  * a button on mobile).
  *
  * Props:
@@ -79,7 +79,7 @@ export function TopNavbar({ onMenuClick }) {
                        rounded-lg border border-blue-100 transition"
           >
             <LogIn className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Staff Login</span>
+            <span className="hidden sm:inline">Officer Login</span>
           </Link>
         </div>
       </div>
