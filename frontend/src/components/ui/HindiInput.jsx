@@ -7,6 +7,9 @@
  *   ─ Type Latin letters; the trailing word is the "active token".
  *   ─ A small popover lists up to 5 Hindi candidates ranked by Google.
  *   ─ Space auto-accepts the top candidate and inserts a space after it.
+ *     If the user hits Space before the debounced fetch fires, we cancel
+ *     the debounce and fetch synchronously so Space still replaces the
+ *     token instead of leaking through as a literal space.
  *   ─ 1–5 numeric keys pick a specific candidate.
  *   ─ ↑/↓ to highlight, Enter to accept the highlighted candidate.
  *   ─ Esc dismisses the popover; user can keep typing Latin (the field
@@ -15,18 +18,24 @@
  *     preference is persisted per-user in localStorage so the choice
  *     follows them across pages.
  *
+ * The popover renders through a React portal pinned to document.body and
+ * positioned with fixed coords from the input's bounding rect, so it can
+ * escape `overflow:auto` parents (modals, scrolling forms) without being
+ * clipped.
+ *
  * The component is controlled — parents pass `value` + `onChange(e)` and
  * everything else (label, error, prefix, suffix) is forwarded to the
- * underlying <Input> exactly like before. Wiring into an existing form
- * is a one-line import swap.
+ * underlying <input>/<textarea>. Wiring into an existing form is a
+ * one-line import swap.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { clsx } from 'clsx'
 import { transliterate as translitApi } from '@/api/endpoints'
 
 const LS_KEY = 'bda.translit.hi.enabled'
-const DEBOUNCE_MS = 120
+const DEBOUNCE_MS = 80
 const MIN_TOKEN_LEN = 1
 const TOKEN_REGEX = /[A-Za-z]+$/
 
@@ -55,23 +64,41 @@ function tokenAtCaret(text, caret) {
 function useTransliterate({ value, onChange, enabled, fieldRef }) {
   const [suggestions, setSuggestions] = useState([])
   const [highlight,   setHighlight]   = useState(0)
-  const [activeRange, setActiveRange] = useState(null)  // {start,end} of token
+  const [activeRange, setActiveRange] = useState(null)
   const debounceRef = useRef(null)
   const reqIdRef    = useRef(0)
+  const cacheRef    = useRef(new Map())   // token → suggestions[] (session cache)
 
   const dismiss = useCallback(() => {
     setSuggestions([])
     setActiveRange(null)
     setHighlight(0)
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
   }, [])
 
-  // Recompute the active token whenever the value or caret moves.
+  /** Hit the API for `token`, caching by token in-memory. */
+  const fetchSuggestions = useCallback(async (token) => {
+    const hit = cacheRef.current.get(token)
+    if (hit) return hit
+    try {
+      const res = await translitApi.hi(token)
+      const list = Array.isArray(res?.suggestions) ? res.suggestions : []
+      cacheRef.current.set(token, list)
+      return list
+    } catch (err) {
+      const status = err?.response?.status
+      const detail = err?.response?.data?.detail || err?.message || err
+      console.warn('[transliterate] request failed', { status, detail, token })
+      return []
+    }
+  }, [])
+
+  /** Compute active token from caret and schedule a debounced fetch. */
   const refresh = useCallback(() => {
     if (!enabled) { dismiss(); return }
     const el = fieldRef.current
     if (!el) return
     const caret = el.selectionStart ?? 0
-    // Only fire when selectionStart === selectionEnd (no active selection).
     if (caret !== (el.selectionEnd ?? 0)) { dismiss(); return }
 
     const tok = tokenAtCaret(value ?? '', caret)
@@ -82,38 +109,30 @@ function useTransliterate({ value, onChange, enabled, fieldRef }) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     const myId = ++reqIdRef.current
     debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await translitApi.hi(tok.token)
-        if (myId !== reqIdRef.current) return  // stale
-        const list = Array.isArray(res?.suggestions) ? res.suggestions : []
-        setSuggestions(list)
-        setHighlight(0)
-      } catch (err) {
-        // Surface the failure to the console so a silent backend/network
-        // problem doesn't masquerade as "no suggestions for that word".
-        // Common shapes: 404 (app not deployed), 401 (auth lost),
-        // 502 (proxy can't reach Django), or a network error string.
-        const status = err?.response?.status
-        const detail = err?.response?.data?.detail || err?.message || err
-        console.warn('[transliterate] request failed', { status, detail, token: tok.token })
-        if (myId === reqIdRef.current) setSuggestions([])
-      }
+      const list = await fetchSuggestions(tok.token)
+      if (myId !== reqIdRef.current) return
+      setSuggestions(list)
+      setHighlight(0)
     }, DEBOUNCE_MS)
-  }, [value, enabled, fieldRef, dismiss])
+  }, [value, enabled, fieldRef, dismiss, fetchSuggestions])
 
   useEffect(() => { refresh() /* eslint-disable-next-line */ }, [value, enabled])
   useEffect(() => () => debounceRef.current && clearTimeout(debounceRef.current), [])
 
-  /** Replace [start,end) with `replacement`, optionally append a trailing char. */
-  const applyReplacement = useCallback((replacement, trailing = '') => {
+  /**
+   * Replace [start,end) with `replacement`, optionally append a trailing char.
+   * Reads activeRange and the current `value` from the closure so the caller
+   * doesn't need to thread them through.
+   */
+  const applyReplacement = useCallback((replacement, trailing = '', range = null) => {
     const el = fieldRef.current
-    if (!el || !activeRange) return
-    const before = (value ?? '').slice(0, activeRange.start)
-    const after  = (value ?? '').slice(activeRange.end)
+    const r  = range ?? activeRange
+    if (!el || !r) return
+    const before = (value ?? '').slice(0, r.start)
+    const after  = (value ?? '').slice(r.end)
     const next   = before + replacement + trailing + after
     const newCaret = (before + replacement + trailing).length
     onChange({ target: { value: next } })
-    // Restore caret on the next tick after React re-renders.
     requestAnimationFrame(() => {
       if (fieldRef.current) {
         try { fieldRef.current.setSelectionRange(newCaret, newCaret) } catch { /* ignore */ }
@@ -122,8 +141,43 @@ function useTransliterate({ value, onChange, enabled, fieldRef }) {
     dismiss()
   }, [value, onChange, activeRange, fieldRef, dismiss])
 
-  const handleKeyDown = useCallback((e) => {
-    if (!enabled || !suggestions.length || !activeRange) return
+  const handleKeyDown = useCallback(async (e) => {
+    if (!enabled) return
+
+    // Space: auto-accept the top suggestion. If the debounce hasn't
+    // fired yet (user typed quickly), fetch synchronously so Space
+    // still does the right thing instead of leaking through.
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      const el = fieldRef.current
+      if (!el) return
+      const caret = el.selectionStart ?? 0
+      if (caret !== (el.selectionEnd ?? 0)) return
+      const tok = tokenAtCaret(value ?? '', caret)
+      if (!tok || tok.token.length < MIN_TOKEN_LEN) return
+
+      e.preventDefault()
+      // Use the live suggestions list when it matches the current token;
+      // otherwise fetch now (cancels any in-flight debounce).
+      let list = suggestions
+      if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
+      const cached = cacheRef.current.get(tok.token)
+      if (cached) list = cached
+      else if (!list.length || activeRange?.end !== tok.end) {
+        list = await fetchSuggestions(tok.token)
+      }
+
+      const range = { start: tok.start, end: tok.end }
+      if (list.length) {
+        applyReplacement(list[highlight] ?? list[0], ' ', range)
+      } else {
+        // No Hindi candidates — keep the Latin word and append the space.
+        applyReplacement(tok.token, ' ', range)
+      }
+      return
+    }
+
+    if (!suggestions.length || !activeRange) return
+
     if (e.key === 'Escape') { e.preventDefault(); dismiss(); return }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -134,14 +188,8 @@ function useTransliterate({ value, onChange, enabled, fieldRef }) {
       setHighlight((h) => (h - 1 + suggestions.length) % suggestions.length); return
     }
     if (e.key === 'Enter' || e.key === 'Tab') {
-      // Accept the highlighted candidate without injecting a trailing char.
       e.preventDefault()
       applyReplacement(suggestions[highlight] ?? suggestions[0]); return
-    }
-    if (e.key === ' ' || e.key === 'Spacebar') {
-      // Accept top suggestion + keep the space the user just pressed.
-      e.preventDefault()
-      applyReplacement(suggestions[highlight] ?? suggestions[0], ' '); return
     }
     if (/^[1-5]$/.test(e.key)) {
       const idx = Number(e.key) - 1
@@ -150,10 +198,16 @@ function useTransliterate({ value, onChange, enabled, fieldRef }) {
         applyReplacement(suggestions[idx]); return
       }
     }
-  }, [enabled, suggestions, activeRange, highlight, applyReplacement, dismiss])
+  }, [enabled, suggestions, activeRange, highlight,
+      applyReplacement, dismiss, fetchSuggestions, value, fieldRef])
 
-  return { suggestions, highlight, activeRange, handleKeyDown, dismiss, applyReplacement, refresh }
+  return {
+    suggestions, highlight, activeRange,
+    handleKeyDown, dismiss, applyReplacement, refresh,
+  }
 }
+
+// ── UI sub-components ────────────────────────────────────────────────────────
 
 function ToggleButton({ enabled, onToggle }) {
   return (
@@ -174,10 +228,46 @@ function ToggleButton({ enabled, onToggle }) {
   )
 }
 
-function SuggestionPopover({ suggestions, highlight, onPick }) {
-  if (!suggestions.length) return null
-  return (
-    <div className="absolute left-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden min-w-[160px]">
+/**
+ * Suggestion popover. Pinned to document.body via a portal and positioned
+ * with `fixed` coords so it can escape any `overflow:auto`/`overflow:hidden`
+ * ancestor (modal bodies, scrolling forms).
+ */
+function SuggestionPopover({ suggestions, highlight, onPick, anchorRef }) {
+  const [pos, setPos] = useState(null)
+  const popoverRef = useRef(null)
+
+  useLayoutEffect(() => {
+    if (!suggestions.length || !anchorRef.current) { setPos(null); return }
+    const update = () => {
+      const r = anchorRef.current?.getBoundingClientRect()
+      if (!r) return
+      const popoverH = popoverRef.current?.offsetHeight ?? 200
+      const spaceBelow = window.innerHeight - r.bottom
+      const placeAbove = spaceBelow < popoverH + 12 && r.top > popoverH + 12
+      setPos({
+        left:   r.left,
+        top:    placeAbove ? r.top - popoverH - 4 : r.bottom + 4,
+        minWidth: Math.min(r.width, 240),
+      })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [suggestions, anchorRef])
+
+  if (!suggestions.length || !pos) return null
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      style={{ position: 'fixed', left: pos.left, top: pos.top, minWidth: pos.minWidth, zIndex: 9999 }}
+      className="bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"
+    >
       {suggestions.map((s, i) => (
         <button
           type="button"
@@ -195,7 +285,8 @@ function SuggestionPopover({ suggestions, highlight, onPick }) {
       <div className="px-2.5 py-1 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400">
         Space · 1–5 · Esc to dismiss
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -206,7 +297,6 @@ export function HindiInput({
 }) {
   const fieldRef = useRef(null)
   const [enabled, setEnabled] = useState(loadEnabled)
-  const [, force] = useState(0)
   const { suggestions, highlight, handleKeyDown, applyReplacement, refresh, dismiss } =
     useTransliterate({ value, onChange, enabled, fieldRef })
 
@@ -219,7 +309,7 @@ export function HindiInput({
         <input
           ref={fieldRef}
           value={value ?? ''}
-          onChange={(e) => { onChange(e); force((n) => n + 1) }}
+          onChange={onChange}
           onKeyUp={() => refresh()}
           onClick={() => refresh()}
           onKeyDown={handleKeyDown}
@@ -240,6 +330,7 @@ export function HindiInput({
           <SuggestionPopover
             suggestions={suggestions}
             highlight={highlight}
+            anchorRef={fieldRef}
             onPick={(i) => applyReplacement(suggestions[i])}
           />
         )}
@@ -256,7 +347,6 @@ export function HindiTextarea({
 }) {
   const fieldRef = useRef(null)
   const [enabled, setEnabled] = useState(loadEnabled)
-  const [, force] = useState(0)
   const { suggestions, highlight, handleKeyDown, applyReplacement, refresh, dismiss } =
     useTransliterate({ value, onChange, enabled, fieldRef })
 
@@ -270,7 +360,7 @@ export function HindiTextarea({
           ref={fieldRef}
           value={value ?? ''}
           rows={rows}
-          onChange={(e) => { onChange(e); force((n) => n + 1) }}
+          onChange={onChange}
           onKeyUp={() => refresh()}
           onClick={() => refresh()}
           onKeyDown={handleKeyDown}
@@ -291,6 +381,7 @@ export function HindiTextarea({
           <SuggestionPopover
             suggestions={suggestions}
             highlight={highlight}
+            anchorRef={fieldRef}
             onPick={(i) => applyReplacement(suggestions[i])}
           />
         )}
