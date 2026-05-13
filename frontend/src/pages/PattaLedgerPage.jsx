@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Search, Download, Plus, CheckCircle, XCircle } from 'lucide-react'
-import { pattas as pattasApi, colonies as coloniesApi } from '@/api/endpoints'
+import { Search, Download, Plus, CheckCircle, XCircle, FileText, ExternalLink } from 'lucide-react'
+import { pattas as pattasApi, colonies as coloniesApi, dms as dmsApi } from '@/api/endpoints'
 import { PattaStatusBadge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Table'
 import { AddPattaModal } from '@/components/admin/AddPattaModal'
@@ -236,22 +236,15 @@ export default function PattaLedgerPage() {
                   }
                 </td>
                 <td
-                  className="px-4 py-2.5 text-xs font-mono"
-                  title={r.dms_file_path || ''}
+                  className="px-4 py-2.5 text-xs"
                   onClick={(e) => e.stopPropagation()}
+                  title={r.dms_file_path || ''}
                 >
-                  {r.dms_file_number ? (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-slate-700 font-semibold">{r.dms_file_number}</span>
-                      {r.dms_file_path && (
-                        <span className="text-[10px] text-slate-400 truncate max-w-[16rem]">
-                          {r.dms_file_path}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-slate-300">—</span>
-                  )}
+                  <DmsFileCell
+                    number={r.dms_file_number}
+                    hasNs={r.dms_has_ns}
+                    hasCs={r.dms_has_cs}
+                  />
                 </td>
                 <td className="px-4 py-2.5">
                   <PattaStatusBadge status={r.status || 'issued'} />
@@ -276,6 +269,64 @@ export default function PattaLedgerPage() {
         pageSize={PAGE_SIZE}
         onPage={setPage}
       />
+    </div>
+  )
+}
+
+/**
+ * DMS File cell: shows the BHR number and, if scans are available, a
+ * clickable "View" badge per PDF type. Clicking fetches the PDF through
+ * the backend proxy (auth via JWT in header) and opens it in a new tab.
+ *
+ * No scan in the DMS index → just the number.
+ * No number at all (patta never linked to a Document) → em-dash.
+ */
+function DmsFileCell({ number, hasNs, hasCs }) {
+  if (!number) return <span className="text-slate-300">—</span>
+
+  const open = async (type) => {
+    try {
+      await dmsApi.openInTab(number, type)
+    } catch (err) {
+      const status = err?.response?.status
+      // err.response.data is a Blob here because responseType: 'blob' —
+      // try to read it as text so the alert is useful.
+      let detail = err?.message || 'Failed to open file.'
+      if (err?.response?.data instanceof Blob) {
+        try { detail = JSON.parse(await err.response.data.text()).detail || detail }
+        catch { /* keep generic detail */ }
+      }
+      alert(`DMS (${status || 'network'}): ${detail}`)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono font-semibold text-slate-700">{number}</span>
+      {hasNs && (
+        <button
+          type="button"
+          onClick={() => open('ns')}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
+                     border border-blue-200 bg-blue-50 text-blue-700 text-[10px]
+                     font-medium hover:bg-blue-100"
+          title="Open the scanned PDF in a new tab"
+        >
+          <FileText className="w-3 h-3" /> View
+        </button>
+      )}
+      {hasCs && (
+        <button
+          type="button"
+          onClick={() => open('cs')}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
+                     border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px]
+                     font-medium hover:bg-emerald-100"
+          title="Open the classified scan in a new tab"
+        >
+          <FileText className="w-3 h-3" /> CS
+        </button>
+      )}
     </div>
   )
 }

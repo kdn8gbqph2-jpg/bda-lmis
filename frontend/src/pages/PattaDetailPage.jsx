@@ -1,13 +1,95 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, FileText, CheckCircle, Clock, Pencil } from 'lucide-react'
-import { pattas as pattasApi } from '@/api/endpoints'
+import { ArrowLeft, FileText, CheckCircle, Clock, Pencil, ExternalLink } from 'lucide-react'
+import { pattas as pattasApi, dms as dmsApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
 import { PattaEditModal } from '@/components/admin/PattaEditModal'
 import { useAuthStore } from '@/stores/useAuthStore'
+
+/**
+ * DMS file card shown on the Patta detail page.
+ *
+ * Renders the BHR number, the synced filesystem path (for reference)
+ * and one button per available PDF type (NS / CS). Buttons fetch the
+ * PDF through the LMIS backend proxy (auth via JWT) and open it in a
+ * new tab using a transient blob URL.
+ */
+function PattaDmsCard({ number, path, hasNs, hasCs }) {
+  const open = async (type) => {
+    try {
+      await dmsApi.openInTab(number, type)
+    } catch (err) {
+      let detail = err?.message || 'Failed to open file.'
+      if (err?.response?.data instanceof Blob) {
+        try { detail = JSON.parse(await err.response.data.text()).detail || detail }
+        catch { /* keep generic */ }
+      }
+      alert(`DMS (${err?.response?.status || 'network'}): ${detail}`)
+    }
+  }
+
+  return (
+    <Card>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-sm font-semibold text-slate-700">DMS File</h2>
+        {path && (
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(path).catch(() => {})}
+            className="text-xs font-medium text-slate-500 hover:text-slate-800"
+            title="Copy path to clipboard"
+          >
+            Copy path
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span className="text-sm font-mono font-semibold text-slate-800">
+          {number || '—'}
+        </span>
+        {hasNs && (
+          <button
+            type="button"
+            onClick={() => open('ns')}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md
+                       border border-blue-200 bg-blue-50 text-blue-700 text-xs
+                       font-medium hover:bg-blue-100"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            View Scan <ExternalLink className="w-3 h-3 opacity-70" />
+          </button>
+        )}
+        {hasCs && (
+          <button
+            type="button"
+            onClick={() => open('cs')}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md
+                       border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs
+                       font-medium hover:bg-emerald-100"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            View Classified <ExternalLink className="w-3 h-3 opacity-70" />
+          </button>
+        )}
+        {!hasNs && !hasCs && number && (
+          <span className="text-xs text-slate-400">No scan yet in DMS.</span>
+        )}
+      </div>
+
+      <span className="text-xs font-mono text-slate-500 break-all">
+        {path || (
+          <span className="text-slate-400 font-sans not-italic">
+            Path not yet synced from DMS server.
+          </span>
+        )}
+      </span>
+    </Card>
+  )
+}
 
 function Field({ label, value }) {
   return (
@@ -105,33 +187,12 @@ export default function PattaDetailPage() {
 
       {/* DMS File Reference — sourced from the dms_sync mirror, refreshed nightly. */}
       {(patta.dms_file_number || patta.dms_file_path) && (
-        <Card>
-          <div className="flex items-baseline justify-between mb-2">
-            <h2 className="text-sm font-semibold text-slate-700">DMS File</h2>
-            {patta.dms_file_path && (
-              <button
-                type="button"
-                onClick={() => navigator.clipboard?.writeText(patta.dms_file_path).catch(() => {})}
-                className="text-xs font-medium text-blue-700 hover:text-blue-900"
-                title="Copy path to clipboard"
-              >
-                Copy path
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-mono font-semibold text-slate-800">
-              {patta.dms_file_number || '—'}
-            </span>
-            <span className="text-xs font-mono text-slate-600 break-all">
-              {patta.dms_file_path || (
-                <span className="not-italic text-slate-400 font-sans">
-                  Location not yet synced from DMS server.
-                </span>
-              )}
-            </span>
-          </div>
-        </Card>
+        <PattaDmsCard
+          number={patta.dms_file_number}
+          path={patta.dms_file_path}
+          hasNs={patta.dms_has_ns}
+          hasCs={patta.dms_has_cs}
+        />
       )}
 
       {/* Linked Plots */}

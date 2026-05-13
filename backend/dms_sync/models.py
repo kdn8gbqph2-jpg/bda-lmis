@@ -35,9 +35,17 @@ class DmsFile(models.Model):
         help_text='Barcode value from DMS — e.g. "BHR104945"',
     )
     file_number         = models.CharField(max_length=255, blank=True)
+    department_name     = models.CharField(
+        max_length=60, blank=True, db_index=True,
+        help_text='Source masterdepartments.Name — required by DMS API to fetch the PDF.',
+    )
     applicant_name      = models.CharField(max_length=255, blank=True)
     scheme_name         = models.CharField(max_length=255, blank=True)
     allottee_name       = models.CharField(max_length=255, blank=True)
+    has_ns              = models.BooleanField(default=False,
+                                              help_text='DMS reports a "newly scanned" PDF for this file.')
+    has_cs              = models.BooleanField(default=False,
+                                              help_text='DMS reports a "classified scanned" PDF for this file.')
 
     location_path       = models.CharField(
         max_length=500, blank=True,

@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/dashboard/',   include('dashboard.urls')),
     path('api/audit-logs/',  include('audit.urls')),
     path('api/transliterate/', include('transliterate.urls')),
+    path('api/dms/',           include('dms_sync.urls')),
 
     # Public (unauthenticated) colony dashboard
     path('api/public/', include(public_urlpatterns)),

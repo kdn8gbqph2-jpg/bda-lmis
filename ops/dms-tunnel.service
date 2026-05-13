@@ -1,33 +1,38 @@
-# Persistent SSH tunnel from worksserver → dmsserver MySQL.
-# Install on worksserver as /etc/systemd/system/dms-tunnel.service.
+# Persistent SSH tunnel from worksserver → dmsserver.
 #
-# Bind address note: the tunnel listens on 0.0.0.0:3307 (all interfaces).
-# This is the durable choice because the LMIS compose stack uses a
+# Two ports are forwarded:
+#   3307 (LMIS side) → 3306 (dmsserver MySQL)  — for the nightly metadata sync
+#   5101 (LMIS side) → 5001 (dmsserver DMS API) — for fetching the actual scanned PDFs
+#
+# Bind address: 0.0.0.0 on the LMIS side. The compose stack uses a
 # *custom* docker bridge (e.g. 172.18.0.0/16, dynamic interface name
-# like `br-3d28934630f4`), not the default docker0. Binding to a single
-# bridge IP works only until the network is recreated with a new
-# subnet. Public access is blocked by UFW's default-deny policy plus
-# a positive rule scoped to RFC1918 docker bridge ranges:
+# like `br-3d28934630f4`), not the default docker0. Binding to a
+# single bridge IP works only until the network is recreated with a
+# new subnet. Public access is blocked by UFW's default-deny policy
+# plus positive rules scoped to RFC1918 docker bridge ranges:
 #
 #   sudo ufw allow from 172.16.0.0/12 to any port 3307 proto tcp \
-#       comment 'docker bridges → dms-tunnel'
+#       comment 'docker bridges → dms-tunnel mysql'
+#   sudo ufw allow from 172.16.0.0/12 to any port 5101 proto tcp \
+#       comment 'docker bridges → dms-tunnel api'
 #
-# Install:
+# Install / update:
 #   sudo install -m 0644 ops/dms-tunnel.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now dms-tunnel.service
+#   sudo systemctl restart dms-tunnel.service
 #
 # Verify on worksserver:
-#   ss -tln | grep 3307         # expect LISTEN on 0.0.0.0:3307
-#   sudo ufw status verbose     # expect 'from 172.16.0.0/12' allow rule
+#   ss -tln | grep -E '3307|5101'    # expect LISTEN on 0.0.0.0
 #
 # Verify from backend container:
 #   docker compose -f /opt/bda-lmis/docker-compose.prod.yml exec backend \
-#       python -c "import socket; s=socket.socket(); s.settimeout(3); \
-#                  s.connect(('host.docker.internal',3307)); print('OK')"
+#       python -c "import socket
+#                  for p in (3307, 5101):
+#                      s=socket.socket(); s.settimeout(3)
+#                      s.connect(('host.docker.internal', p)); print('OK', p)"
 
 [Unit]
-Description=SSH tunnel to dmsserver MySQL (0.0.0.0:3307 -> dms:3306, UFW-restricted to docker subnets)
+Description=SSH tunnel to dmsserver (MySQL :3307 + DMS API :5101) — UFW-restricted to docker subnets
 After=network-online.target docker.service
 Wants=network-online.target
 
@@ -41,6 +46,7 @@ ExecStart=/usr/bin/ssh -N \
     -o StrictHostKeyChecking=accept-new \
     -i /home/itadmin/.ssh/dms-tunnel \
     -L 0.0.0.0:3307:127.0.0.1:3306 \
+    -L 0.0.0.0:5101:127.0.0.1:5001 \
     -p 2222 \
     itadmin@69.62.80.7
 Restart=always

@@ -7,19 +7,28 @@ def _resolve_dms(patta):
     Look up the DMS metadata for a patta via the joined Document and the
     nightly-synced DmsFile mirror.
 
-    Returns (dms_number, dms_file_path) — either may be empty when there's
-    no linked document, the doc has no DMS number, or the mirror hasn't
-    been synced yet.
+    Returns a dict with `number`, `path`, `has_ns`, `has_cs` — empty
+    fields when there's no linked document, the doc has no DMS number,
+    or the mirror hasn't been synced yet.
     """
     # Heavy import inside the function so app load order (pattas → documents
     # → dms_sync) stays loose.
     from dms_sync.models import DmsFile
 
+    empty = {'number': '', 'path': '', 'has_ns': False, 'has_cs': False}
     doc = getattr(patta, 'document', None)
     if not doc or not getattr(doc, 'dms_file_number', ''):
-        return '', ''
-    mirror = DmsFile.objects.filter(dms_number=doc.dms_file_number).only('location_path').first()
-    return doc.dms_file_number, (mirror.location_path if mirror else '')
+        return empty
+    mirror = (DmsFile.objects
+              .filter(dms_number=doc.dms_file_number)
+              .only('location_path', 'has_ns', 'has_cs')
+              .first())
+    return {
+        'number':  doc.dms_file_number,
+        'path':    mirror.location_path if mirror else '',
+        'has_ns':  bool(mirror.has_ns) if mirror else False,
+        'has_cs':  bool(mirror.has_cs) if mirror else False,
+    }
 
 
 # ── PlotPattaMapping ──────────────────────────────────────────────────────────
@@ -60,19 +69,21 @@ class PattaVersionSerializer(serializers.ModelSerializer):
 # ── Patta list (lightweight) ──────────────────────────────────────────────────
 
 class PattaListSerializer(serializers.ModelSerializer):
-    colony_name    = serializers.CharField(source='colony.name', read_only=True)
-    plot_count     = serializers.SerializerMethodField()
+    colony_name     = serializers.CharField(source='colony.name', read_only=True)
+    plot_count      = serializers.SerializerMethodField()
     dms_file_number = serializers.CharField(
         source='document.dms_file_number', read_only=True, allow_null=True, default='',
     )
-    dms_file_path  = serializers.SerializerMethodField()
+    dms_file_path   = serializers.SerializerMethodField()
+    dms_has_ns      = serializers.SerializerMethodField()
+    dms_has_cs      = serializers.SerializerMethodField()
 
     def get_plot_count(self, obj):
         return obj.plot_mappings.count()
 
-    def get_dms_file_path(self, obj):
-        _, path = _resolve_dms(obj)
-        return path
+    def get_dms_file_path(self, obj):  return _resolve_dms(obj)['path']
+    def get_dms_has_ns(self, obj):     return _resolve_dms(obj)['has_ns']
+    def get_dms_has_cs(self, obj):     return _resolve_dms(obj)['has_cs']
 
     class Meta:
         model  = Patta
@@ -80,7 +91,7 @@ class PattaListSerializer(serializers.ModelSerializer):
             'id', 'patta_number', 'colony', 'colony_name',
             'allottee_name', 'issue_date', 'status',
             'regulation_file_present', 'plot_count',
-            'dms_file_number', 'dms_file_path',
+            'dms_file_number', 'dms_file_path', 'dms_has_ns', 'dms_has_cs',
         )
 
 
@@ -101,10 +112,12 @@ class PattaDetailSerializer(serializers.ModelSerializer):
         source='document.dms_file_number', read_only=True, allow_null=True, default='',
     )
     dms_file_path   = serializers.SerializerMethodField()
+    dms_has_ns      = serializers.SerializerMethodField()
+    dms_has_cs      = serializers.SerializerMethodField()
 
-    def get_dms_file_path(self, obj):
-        _, path = _resolve_dms(obj)
-        return path
+    def get_dms_file_path(self, obj):  return _resolve_dms(obj)['path']
+    def get_dms_has_ns(self, obj):     return _resolve_dms(obj)['has_ns']
+    def get_dms_has_cs(self, obj):     return _resolve_dms(obj)['has_cs']
 
     def get_colony_summary(self, obj):
         if not obj.colony_id:
@@ -136,7 +149,7 @@ class PattaDetailSerializer(serializers.ModelSerializer):
             'superseded_by', 'superseded_by_number',
             'remarks',
             'plot_mappings', 'plot_numbers',
-            'dms_file_number', 'dms_file_path',
+            'dms_file_number', 'dms_file_path', 'dms_has_ns', 'dms_has_cs',
             'updated_by', 'created_at', 'updated_at',
         )
         read_only_fields = ('created_at', 'updated_at', 'updated_by')

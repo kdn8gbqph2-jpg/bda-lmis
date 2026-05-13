@@ -46,14 +46,21 @@ SOURCE_QUERY = """
         f.ID                AS source_file_id,
         f.Barcode           AS dms_number,
         COALESCE(f.FileNumber, '')      AS file_number,
+        COALESCE(m.Name, '')            AS department_name,
         COALESCE(f.NameOfApplicant, '') AS applicant_name,
         COALESCE(f.SchemeName, '')      AS scheme_name,
         COALESCE(f.AllotteeName, '')    AS allottee_name,
         f.CreatedDateTime   AS source_created_at,
         d.ID                AS source_directory_id,
         COALESCE(d.Path, '') AS location_path,
-        COALESCE(d.Name, '') AS directory_name
+        COALESCE(d.Name, '') AS directory_name,
+        -- A1Count / A2Count are scan-page counters; >0 implies that PDF
+        -- type exists. We map A1→NS ("newly scanned") and A2→CS
+        -- ("classified scanned") to match the DMS API's pdfType param.
+        (f.A1Count > 0)     AS has_ns,
+        (f.A2Count > 0)     AS has_cs
     FROM filedetails f
+    LEFT JOIN masterdepartments m ON m.ID = f.DepartmentID
     LEFT JOIN (
         SELECT t.*
         FROM filedirectories t
@@ -192,7 +199,9 @@ class Command(BaseCommand):
                 d.dms_number: d for d in DmsFile.objects.all().only(
                     'id', 'dms_number', 'location_path', 'directory_name',
                     'source_file_id', 'source_directory_id',
-                    'file_number', 'applicant_name', 'scheme_name', 'allottee_name',
+                    'file_number', 'department_name',
+                    'applicant_name', 'scheme_name', 'allottee_name',
+                    'has_ns', 'has_cs',
                     'source_created_at',
                 )
             }
@@ -203,11 +212,14 @@ class Command(BaseCommand):
                 payload = dict(
                     dms_number          = _truncate(dms_number, 40),
                     file_number         = _truncate(r.get('file_number'), 255),
+                    department_name     = _truncate(r.get('department_name'), 60),
                     applicant_name      = _truncate(r.get('applicant_name'), 255),
                     scheme_name         = _truncate(r.get('scheme_name'), 255),
                     allottee_name       = _truncate(r.get('allottee_name'), 255),
                     location_path       = _truncate(r.get('location_path'), 500),
                     directory_name      = _truncate(r.get('directory_name'), 255),
+                    has_ns              = bool(r.get('has_ns')),
+                    has_cs              = bool(r.get('has_cs')),
                     source_file_id      = r.get('source_file_id'),
                     source_directory_id = r.get('source_directory_id'),
                     source_created_at   = r.get('source_created_at'),
@@ -230,8 +242,10 @@ class Command(BaseCommand):
             if to_update:
                 DmsFile.objects.bulk_update(
                     to_update, batch_size=500,
-                    fields=['file_number', 'applicant_name', 'scheme_name',
-                            'allottee_name', 'location_path', 'directory_name',
+                    fields=['file_number', 'department_name',
+                            'applicant_name', 'scheme_name', 'allottee_name',
+                            'location_path', 'directory_name',
+                            'has_ns', 'has_cs',
                             'source_file_id', 'source_directory_id',
                             'source_created_at'],
                 )

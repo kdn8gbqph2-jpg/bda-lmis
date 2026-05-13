@@ -123,6 +123,25 @@ export const transliterate = {
   hi: (token) => client.get('/transliterate/', { params: { q: token } }),
 }
 
+// ── DMS file viewer ──────────────────────────────────────────────────────────
+// Backend streams the PDF; the helper fetches with auth and opens it in a
+// new tab via a blob URL so the JWT never leaves the Authorization header.
+export const dms = {
+  fetchPdf: (dmsNumber, type = 'ns') =>
+    client.get(`/dms/file/${encodeURIComponent(dmsNumber)}/`, {
+      params: { type },
+      responseType: 'blob',
+    }),
+  async openInTab(dmsNumber, type = 'ns') {
+    const blob = await this.fetchPdf(dmsNumber, type)
+    const url  = URL.createObjectURL(blob)
+    // Open in a new tab. Browser will show built-in PDF viewer.
+    window.open(url, '_blank', 'noopener,noreferrer')
+    // Revoke after a beat so the new tab has time to load.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  },
+}
+
 // ── Public (no auth required) ─────────────────────────────────────────────────
 // Uses the same Axios instance but the server permits AllowAny for these URLs.
 export const publicApi = {
