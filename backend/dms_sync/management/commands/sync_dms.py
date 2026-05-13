@@ -170,6 +170,22 @@ class Command(BaseCommand):
 
     def _upsert(self, rows: Iterable[dict]) -> tuple[int, int, int]:
         inserted = updated = skipped = 0
+
+        # Dedup the source rows by dms_number before touching the DB.
+        # DMS allows multiple filedetails rows with the same Barcode (we
+        # saw ~hundreds in May 2026, e.g. BHR106012 ×3). The mirror keys
+        # on dms_number with a UNIQUE constraint, so we keep the row with
+        # the highest source_file_id (the most recently created scan).
+        latest: dict[str, dict] = {}
+        for r in rows:
+            dms_number = (r.get('dms_number') or '').strip()
+            if not dms_number:
+                skipped += 1
+                continue
+            prev = latest.get(dms_number)
+            if prev is None or (r.get('source_file_id') or 0) > (prev.get('source_file_id') or 0):
+                latest[dms_number] = r
+
         # One transaction so a partial failure leaves the previous mirror intact.
         with transaction.atomic():
             existing = {
@@ -183,11 +199,7 @@ class Command(BaseCommand):
             to_create: list[DmsFile] = []
             to_update: list[DmsFile] = []
 
-            for r in rows:
-                dms_number = (r.get('dms_number') or '').strip()
-                if not dms_number:
-                    skipped += 1
-                    continue
+            for dms_number, r in latest.items():
                 payload = dict(
                     dms_number          = _truncate(dms_number, 40),
                     file_number         = _truncate(r.get('file_number'), 255),
