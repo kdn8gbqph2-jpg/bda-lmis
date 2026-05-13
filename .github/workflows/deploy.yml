@@ -67,6 +67,13 @@ jobs:
             docker compose -f docker-compose.prod.yml build
             echo "── bringing up the stack …"
             docker compose -f docker-compose.prod.yml up -d
+            # When a container is recreated it gets a new IP on the
+            # bridge network. nginx caches the upstream IP on first
+            # resolve, so after `up -d` it can keep proxying to the
+            # *old* backend IP and return 502 forever. A SIGHUP forces
+            # it to re-resolve the `backend` hostname.
+            echo "── reloading nginx so it picks up the new backend IP …"
+            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload || true
             echo "── waiting for backend to be ready …"
             # Nginx now rejects any Host that isn't the real domain, so
             # localhost requests get a 444. Hit Django directly inside the
