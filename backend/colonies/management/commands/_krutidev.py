@@ -83,6 +83,13 @@ _PATTERNS = [
     ('A', '।'),                    # devanagari danda
     ('~', '्'),                    # explicit halant / virama
     ('+', '़'),                    # nukta dot
+    # Conjunct + diacritic helpers
+    ('z', '्र'),                   # rakar — ्र attaches below the previous C
+                                   #         (covers iz→प्र, dz→क्र, etc. via
+                                   #          longest-match preserving any 2-char
+                                   #          ligature override above)
+    ('¡', 'ँ'),                    # chandrabindu (CP1252 byte 161 — common in
+                                   #               बाँके, कुंज variants)
     # Garbage cleanup
     ('�', ''),                # CP1252 replacement char from broken cells
 ]
