@@ -44,6 +44,7 @@ const EMPTY = {
   regulation_file_present: '',
   status: 'issued',
   remarks: '',
+  dms_file_number: '',
 }
 
 function cleanPayload(form) {
@@ -63,6 +64,10 @@ function cleanPayload(form) {
   // Tri-state boolean
   if (out.regulation_file_present === 'true')  out.regulation_file_present = true
   if (out.regulation_file_present === 'false') out.regulation_file_present = false
+  // DMS file number — uppercase + trim so 'bhr104758  ' becomes 'BHR104758'
+  if (typeof out.dms_file_number === 'string') {
+    out.dms_file_number = out.dms_file_number.trim().toUpperCase()
+  }
   return out
 }
 
@@ -200,6 +205,15 @@ export function AddPattaModal({ open, onClose, onCreated }) {
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </Select>
+          <Input
+            label="DMS File Number"
+            placeholder="e.g. BHR104758"
+            value={form.dms_file_number}
+            onChange={(e) => set('dms_file_number')({
+              target: { value: e.target.value.toUpperCase() }
+            })}
+            error={errors.dms_file_number?.[0]}
+          />
         </Section>
 
         <HindiTextarea

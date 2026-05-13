@@ -163,8 +163,18 @@ class PattaWriteSerializer(serializers.ModelSerializer):
       - All scalar patta fields
       - plots: [{plot_id, ownership_share_pct, allottee_role, document_status, notes}]
         → written to PlotPattaMapping (replaces existing mappings on update)
+      - dms_file_number: free-text BHR-style number. On save we get-or-create
+        a Document row keyed on this value and bind patta.document to it.
+        Blank / null clears the link (but leaves the Document row alone in
+        case other pattas reference it).
     """
     plots = PlotPattaMappingWriteSerializer(many=True, required=False, write_only=True)
+    dms_file_number = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, write_only=True,
+        max_length=20,
+        help_text='Optional DMS reference, e.g. "BHR104758". Creates or '
+                  'reuses a Document and links it to this patta.',
+    )
 
     class Meta:
         model  = Patta
@@ -177,6 +187,7 @@ class PattaWriteSerializer(serializers.ModelSerializer):
             'regulation_file_present',
             'status', 'document', 'superseded_by', 'remarks',
             'plots',
+            'dms_file_number',
         )
 
     def _save_plots(self, patta, plots_data):
@@ -187,16 +198,60 @@ class PattaWriteSerializer(serializers.ModelSerializer):
         for item in plots_data:
             PlotPattaMapping.objects.create(patta=patta, **item)
 
+    def _link_dms_document(self, patta, dms_number):
+        """Get-or-create a Document with this DMS number and bind it."""
+        from documents.models import Document
+
+        cleaned = (dms_number or '').strip()
+        if not cleaned:
+            # User cleared the field. Detach the link; leave the Document
+            # in place (it may be linked from another patta).
+            if patta.document_id:
+                patta.document = None
+                patta.save(update_fields=['document'])
+            return
+
+        doc, created = Document.objects.get_or_create(
+            dms_file_number=cleaned,
+            defaults={
+                'original_filename': f'{cleaned}.pdf',
+                'document_type':     'patta',
+                'status':            'linked',
+                'linked_patta':      patta,
+                # uploaded_by is required (PROTECT FK). Use the request user;
+                # falls back to None only if serializer was used outside a
+                # request context, which DRF treats as an integrity error.
+                'uploaded_by':       self.context.get('request').user
+                                     if self.context.get('request') else None,
+            },
+        )
+        # If the doc already existed and now points at a different patta,
+        # update the back-pointer so the import script's invariant holds.
+        if not created and doc.linked_patta_id != patta.pk:
+            doc.linked_patta = patta
+            doc.save(update_fields=['linked_patta'])
+        if patta.document_id != doc.pk:
+            patta.document = doc
+            patta.save(update_fields=['document'])
+
     def create(self, validated_data):
         plots_data = validated_data.pop('plots', None)
+        dms_number = validated_data.pop('dms_file_number', None)
         patta      = super().create(validated_data)
         self._save_plots(patta, plots_data)
+        if dms_number is not None:
+            self._link_dms_document(patta, dms_number)
         return patta
 
     def update(self, instance, validated_data):
         plots_data = validated_data.pop('plots', None)
+        dms_number = validated_data.pop('dms_file_number', None)
         patta      = super().update(instance, validated_data)
         self._save_plots(patta, plots_data)
+        # `dms_number is None` means the client didn't send the field at
+        # all — preserve existing link. Empty string means "clear it".
+        if dms_number is not None:
+            self._link_dms_document(patta, dms_number)
         return patta
 
     def validate(self, attrs):

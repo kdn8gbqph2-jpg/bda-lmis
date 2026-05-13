@@ -46,6 +46,7 @@ const FIELD_ORDER = [
   'regulation_file_present',
   'status',
   'remarks',
+  'dms_file_number',
 ]
 
 function fromPatta(patta) {
@@ -67,6 +68,15 @@ function cleanPayload(form) {
   // regulation_file_present: must be true | false | null
   if (out.regulation_file_present === 'true')  out.regulation_file_present = true
   if (out.regulation_file_present === 'false') out.regulation_file_present = false
+  // DMS file number — send as cleaned UPPERCASE string (or null to clear).
+  // Note: backend treats null as "don't touch" but empty string ("") as
+  // "clear link". The cleanPayload above already mapped '' → null which
+  // would lose the clear semantics, so send back an empty string if the
+  // form's value was an empty string after trim.
+  if (typeof form.dms_file_number === 'string') {
+    const trimmed = form.dms_file_number.trim().toUpperCase()
+    out.dms_file_number = trimmed === '' ? '' : trimmed
+  }
   return out
 }
 
@@ -221,6 +231,15 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
               <option key={String(c.value)} value={String(c.value)}>{c.label}</option>
             ))}
           </Select>
+          <Input
+            label="DMS File Number"
+            placeholder="e.g. BHR104758 — leave blank to unlink"
+            value={form.dms_file_number ?? ''}
+            onChange={(e) => set('dms_file_number')({
+              target: { value: e.target.value.toUpperCase() }
+            })}
+            error={errors.dms_file_number?.[0]}
+          />
         </Section>
 
         <HindiTextarea
