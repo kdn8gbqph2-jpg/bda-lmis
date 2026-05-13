@@ -14,7 +14,10 @@ We import each row as a Colony with:
     revenue_village = English revenue village string (already Latin)
     khasras_input   = parsed comma-separated khasra numbers
     rejection_reason = Krutidev → Unicode-converted reason
-    status          = 'archived'
+    status          = 'active'   (public views filter on status='active';
+                                  rejected layouts are still meant to be
+                                  discoverable on the public portal so
+                                  citizens can see what was rejected)
 
 Skipped:
   · layout_application_date — by design (column dropped from Colony model)
@@ -186,7 +189,7 @@ class Command(BaseCommand):
             name=name_u, zone=zone,
             defaults={
                 'colony_type':       'rejected_layout',
-                'status':            'archived',
+                'status':            'active',
                 'revenue_village':   revenue_village,
                 'rejection_reason':  reason_u,
             },
