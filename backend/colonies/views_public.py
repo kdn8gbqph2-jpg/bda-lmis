@@ -46,13 +46,13 @@ class PublicColonyListView(generics.ListAPIView):
     filterset_class    = ColonyFilter
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ['name']
-    ordering_fields    = ['name', 'layout_approval_date', 'layout_application_date']
+    ordering_fields    = ['name', 'layout_approval_date']
     ordering           = ['name']
 
     def get_queryset(self):
         return Colony.objects.filter(status='active').only(
             'id', 'name', 'colony_type', 'zone',
-            'layout_application_date', 'layout_approval_date',
+            'layout_approval_date',
             'total_residential_plots', 'total_commercial_plots',
             'map_pdf', 'map_jpeg', 'map_png', 'map_svg',
         )

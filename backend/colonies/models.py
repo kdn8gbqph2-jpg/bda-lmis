@@ -70,10 +70,6 @@ class Colony(models.Model):
 
     # ── Timeline ──────────────────────────────────────────────────────────────
     conversion_date          = models.DateField(null=True, blank=True)
-    layout_application_date  = models.DateField(
-        null=True, blank=True,
-        help_text='Date on which the layout plan was submitted for approval.',
-    )
     layout_approval_date     = models.DateField(
         null=True, blank=True,
         help_text='Date on which the layout plan was formally approved.',

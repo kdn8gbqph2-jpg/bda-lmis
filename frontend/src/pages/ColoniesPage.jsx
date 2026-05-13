@@ -143,7 +143,6 @@ function ColonyDetailModal({ colony, onClose }) {
                 </span>
               </Field>
               <Field label="Revenue Village"         value={d.revenue_village} />
-              <Field label="Layout Application Date" value={d.layout_application_date} />
               <Field label="Layout Approval Date"    value={d.layout_approval_date} />
             </div>
 

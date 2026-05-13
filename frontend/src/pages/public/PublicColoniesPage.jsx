@@ -213,11 +213,6 @@ export default function PublicColoniesPage() {
                         <Calendar className="w-3.5 h-3.5" /> Approved: {colony.layout_approval_date}
                       </span>
                     )}
-                    {colony.layout_application_date && !colony.layout_approval_date && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" /> Applied: {colony.layout_application_date}
-                      </span>
-                    )}
                     {colony.total_plots > 0 && (
                       <span className="flex items-center gap-1">
                         <FileText className="w-3.5 h-3.5" /> {colony.total_plots} plots

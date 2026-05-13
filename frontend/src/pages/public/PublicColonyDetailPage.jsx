@@ -122,14 +122,6 @@ export default function PublicColonyDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
           <div>
             <div className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> Application Date
-            </div>
-            <div className="text-sm font-medium text-slate-700">
-              {colony.layout_application_date ?? '—'}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
               <Calendar className="w-3 h-3" /> Approval Date
             </div>
             <div className="text-sm font-medium text-slate-700">

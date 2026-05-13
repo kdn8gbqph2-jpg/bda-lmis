@@ -86,7 +86,7 @@ const SCALAR_FIELDS = [
   'name', 'colony_type', 'zone', 'status',
   'revenue_village',
   'chak_number', 'dlc_file_number', 'notified_area_bigha',
-  'conversion_date', 'layout_application_date', 'layout_approval_date',
+  'conversion_date', 'layout_approval_date',
   'rejection_reason', 'remarks',
 ]
 
@@ -95,7 +95,6 @@ const NULLISH_WHEN_EMPTY = new Set([
   'dlc_file_number',
   'notified_area_bigha',
   'conversion_date',
-  'layout_application_date',
   'layout_approval_date',
 ])
 
@@ -103,7 +102,7 @@ const EMPTY_FORM = {
   name: '', colony_type: 'bda_scheme', zone: 'East', status: 'active',
   revenue_village: '',
   chak_number: '', dlc_file_number: '', notified_area_bigha: '',
-  conversion_date: '', layout_application_date: '', layout_approval_date: '',
+  conversion_date: '', layout_approval_date: '',
   rejection_reason: '', remarks: '',
   khasras_input: '',
 }
@@ -326,8 +325,6 @@ export function AddColonyModal({ open, onClose, onCreated }) {
         <Section title="Timeline">
           <Input label="Conversion Date" type="date"
             value={form.conversion_date} onChange={set('conversion_date')} />
-          <Input label="Layout Application Date" type="date"
-            value={form.layout_application_date} onChange={set('layout_application_date')} />
           <Input label="Layout Approval Date" type="date"
             value={form.layout_approval_date} onChange={set('layout_approval_date')} />
         </Section>

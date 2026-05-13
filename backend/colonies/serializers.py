@@ -44,7 +44,7 @@ class ColonyListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'colony_type', 'colony_type_label',
             'zone', 'chak_number', 'status',
-            'layout_application_date', 'layout_approval_date',
+            'layout_approval_date',
             'total_residential_plots', 'total_commercial_plots', 'total_plots',
             'has_map', 'available_map_formats',
         )
@@ -77,7 +77,7 @@ class ColonyDetailSerializer(serializers.ModelSerializer):
             # survey
             'revenue_village', 'dlc_file_number', 'notified_area_bigha',
             # timeline
-            'conversion_date', 'layout_application_date', 'layout_approval_date',
+            'conversion_date', 'layout_approval_date',
             # notes
             'rejection_reason', 'remarks',
             # plots
@@ -198,7 +198,7 @@ class PublicColonyListSerializer(serializers.ModelSerializer):
         model  = Colony
         fields = (
             'id', 'name', 'colony_type', 'colony_type_label', 'zone',
-            'layout_application_date', 'layout_approval_date',
+            'layout_approval_date',
             'total_plots', 'has_map',
         )
 
@@ -219,7 +219,7 @@ class PublicColonyDetailSerializer(serializers.ModelSerializer):
         model  = Colony
         fields = (
             'id', 'name', 'colony_type', 'colony_type_label', 'zone',
-            'layout_application_date', 'layout_approval_date',
+            'layout_approval_date',
             'rejection_reason', 'remarks',
             'total_residential_plots', 'total_commercial_plots', 'total_plots',
             'khasras',

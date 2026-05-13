@@ -15,7 +15,7 @@ class ColonyAdmin(GISModelAdmin):
     list_display  = (
         'name', 'colony_type', 'zone', 'status',
         'total_residential_plots', 'total_commercial_plots',
-        'layout_application_date', 'layout_approval_date', 'has_map',
+        'layout_approval_date', 'has_map',
     )
     list_filter   = ('colony_type', 'zone', 'status')
     search_fields = ('name', 'dlc_file_number')
@@ -29,7 +29,7 @@ class ColonyAdmin(GISModelAdmin):
             'fields': ('revenue_village', 'dlc_file_number', 'notified_area_bigha'),
         }),
         ('Timeline', {
-            'fields': ('conversion_date', 'layout_application_date', 'layout_approval_date'),
+            'fields': ('conversion_date', 'layout_approval_date'),
         }),
         ('Rejection / Notes', {
             'fields': ('rejection_reason', 'remarks'),
