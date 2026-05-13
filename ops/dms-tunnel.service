@@ -1,23 +1,25 @@
 # Persistent SSH tunnel from worksserver → dmsserver MySQL.
 # Install on worksserver as /etc/systemd/system/dms-tunnel.service.
 #
-# Bind address note: the tunnel listens on 172.17.0.1:3307 (the docker0
-# bridge gateway), NOT 127.0.0.1:3307. Reason: the LMIS backend lives in
-# a docker bridge network and reaches the host via 172.17.0.1 (mapped
-# to `host.docker.internal` via the extra_hosts entry in
-# docker-compose.prod.yml). Binding to 127.0.0.1 makes the tunnel only
-# reachable from the host's own loopback — useless to the container.
-# Binding to 172.17.0.1 keeps it off the public network while letting
-# the docker bridge reach it.
+# Bind address note: the tunnel listens on 0.0.0.0:3307 (all interfaces).
+# This is the durable choice because the LMIS compose stack uses a
+# *custom* docker bridge (e.g. 172.18.0.0/16, dynamic interface name
+# like `br-3d28934630f4`), not the default docker0. Binding to a single
+# bridge IP works only until the network is recreated with a new
+# subnet. Public access is blocked by UFW's default-deny policy plus
+# a positive rule scoped to RFC1918 docker bridge ranges:
+#
+#   sudo ufw allow from 172.16.0.0/12 to any port 3307 proto tcp \
+#       comment 'docker bridges → dms-tunnel'
 #
 # Install:
 #   sudo install -m 0644 ops/dms-tunnel.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now dms-tunnel.service
-#   sudo systemctl status dms-tunnel.service
 #
 # Verify on worksserver:
-#   ss -tln | grep 3307        # expect LISTEN on 172.17.0.1:3307
+#   ss -tln | grep 3307         # expect LISTEN on 0.0.0.0:3307
+#   sudo ufw status verbose     # expect 'from 172.16.0.0/12' allow rule
 #
 # Verify from backend container:
 #   docker compose -f /opt/bda-lmis/docker-compose.prod.yml exec backend \
@@ -25,7 +27,7 @@
 #                  s.connect(('host.docker.internal',3307)); print('OK')"
 
 [Unit]
-Description=SSH tunnel to dmsserver MySQL (172.17.0.1:3307 -> dms:3306)
+Description=SSH tunnel to dmsserver MySQL (0.0.0.0:3307 -> dms:3306, UFW-restricted to docker subnets)
 After=network-online.target docker.service
 Wants=network-online.target
 
@@ -38,7 +40,7 @@ ExecStart=/usr/bin/ssh -N \
     -o ExitOnForwardFailure=yes \
     -o StrictHostKeyChecking=accept-new \
     -i /home/itadmin/.ssh/dms-tunnel \
-    -L 172.17.0.1:3307:127.0.0.1:3306 \
+    -L 0.0.0.0:3307:127.0.0.1:3306 \
     -p 2222 \
     itadmin@69.62.80.7
 Restart=always
