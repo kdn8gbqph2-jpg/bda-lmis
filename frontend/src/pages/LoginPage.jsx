@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, ArrowLeft } from 'lucide-react'
 import { auth } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
 
@@ -65,6 +65,18 @@ export default function LoginPage() {
       />
 
       <div className="relative z-10 w-full max-w-md">
+
+        {/* Back to public landing page — small unobtrusive link above the card */}
+        <div className="mb-4">
+          <Link
+            to="/public"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700
+                       hover:text-blue-900 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Public Portal
+          </Link>
+        </div>
 
         {/* Logo */}
         <div className="text-center mb-8">
