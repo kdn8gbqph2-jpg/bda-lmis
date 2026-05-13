@@ -66,23 +66,6 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-md">
 
-        {/* Back to public landing page — pill button positioned top-left.
-            On wide screens (sm+) it floats slightly outside the column so
-            it doesn't compete with the centered logo. On mobile it sits
-            in the normal flow above the logo. */}
-        <div className="mb-6 sm:mb-2 sm:absolute sm:-top-4 sm:left-4 z-20">
-          <Link
-            to="/public"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
-                       bg-white/90 backdrop-blur border border-slate-200 shadow-sm
-                       text-sm font-medium text-blue-700 hover:bg-white hover:text-blue-900
-                       hover:shadow transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Public Portal
-          </Link>
-        </div>
-
         {/* Logo */}
         <div className="text-center mb-8">
           <img
@@ -98,10 +81,23 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
 
-          {/* Blue header band */}
-          <div className="bg-blue-700 px-8 py-4">
-            <h2 className="text-white font-semibold text-lg">Officer Login</h2>
-            <p className="text-blue-200 text-xs mt-0.5">Enter your credentials to access the system</p>
+          {/* Blue header band — title on the left, back-link on the right.
+              Tucks neatly into the same band so there's no extra chrome
+              floating around the centered card. */}
+          <div className="bg-blue-700 px-8 py-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-white font-semibold text-lg">Officer Login</h2>
+              <p className="text-blue-200 text-xs mt-0.5">Enter your credentials to access the system</p>
+            </div>
+            <Link
+              to="/public"
+              className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 mt-0.5 rounded-md
+                         bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white
+                         text-xs font-medium transition"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Public Dashboard
+            </Link>
           </div>
 
           <form onSubmit={handleSubmit} className="px-8 py-7 space-y-5">
