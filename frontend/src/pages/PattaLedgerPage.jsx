@@ -183,13 +183,14 @@ export default function PattaLedgerPage() {
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Date</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Challan No.</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reg. File</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">DMS File</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
           <tbody>
             {pattasQ.isPending && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-400">
+                <td colSpan={11} className="px-4 py-10 text-center text-sm text-slate-400">
                   Loading…
                 </td>
               </tr>
@@ -234,6 +235,24 @@ export default function PattaLedgerPage() {
                     : <span className="text-slate-300">—</span>
                   }
                 </td>
+                <td
+                  className="px-4 py-2.5 text-xs font-mono"
+                  title={r.dms_file_path || ''}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {r.dms_file_number ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-slate-700 font-semibold">{r.dms_file_number}</span>
+                      {r.dms_file_path && (
+                        <span className="text-[10px] text-slate-400 truncate max-w-[16rem]">
+                          {r.dms_file_path}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-2.5">
                   <PattaStatusBadge status={r.status || 'issued'} />
                 </td>
@@ -241,7 +260,7 @@ export default function PattaLedgerPage() {
             ))}
             {!pattasQ.isPending && rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-400">
+                <td colSpan={11} className="px-4 py-10 text-center text-sm text-slate-400">
                   No patta records found.
                 </td>
               </tr>

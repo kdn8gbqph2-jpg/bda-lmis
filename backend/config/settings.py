@@ -41,6 +41,7 @@ LOCAL_APPS = [
     'dashboard',
     'audit',
     'transliterate',
+    'dms_sync',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -150,6 +151,32 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Kolkata'
+
+# Celery beat schedule. Lives in-code (vs. django-celery-beat in the DB)
+# because we have one operator-managed schedule and prefer it under
+# version control. Times are interpreted in CELERY_TIMEZONE above.
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    'dms-sync-nightly': {
+        'task':     'dms_sync.sync',
+        'schedule': crontab(hour=2, minute=0),   # 02:00 IST daily
+    },
+}
+
+
+# ── DMS workflow DB (source of truth for file locations) ──────────────────────
+#
+# We don't connect Django directly — pymysql reaches host.docker.internal:3307,
+# which is the SSH tunnel maintained by `dms-tunnel.service` on worksserver.
+# These vars are read by `manage.py sync_dms` / the dms_sync.sync Celery task.
+
+DMS_DB_HOST     = os.environ.get('DMS_DB_HOST',     'host.docker.internal')
+DMS_DB_PORT     = int(os.environ.get('DMS_DB_PORT', '3307'))
+DMS_DB_USER     = os.environ.get('DMS_DB_USER',     'dmsuser')
+DMS_DB_PASSWORD = os.environ.get('DMS_DB_PASSWORD', '')
+DMS_DB_NAME     = os.environ.get('DMS_DB_NAME',     'dmsworkflow')
+
 
 # ── Static & Media ────────────────────────────────────────────────────────────
 

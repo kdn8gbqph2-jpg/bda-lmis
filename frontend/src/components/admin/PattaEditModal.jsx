@@ -323,6 +323,48 @@ function LinkedSection({ patta }) {
             )}
         </ReadOnlyField>
       </div>
+      <div className="mt-4">
+        <DmsLocationField number={patta?.dms_file_number} path={patta?.dms_file_path} />
+      </div>
+    </div>
+  )
+}
+
+function DmsLocationField({ number, path }) {
+  // Mirrors the rest of the linked section: read-only, two-line layout.
+  // Copy button is only useful when there's a path to copy, so we hide
+  // it on rows where the nightly sync hasn't found a match yet.
+  const copy = () => {
+    if (!path) return
+    navigator.clipboard?.writeText(path).catch(() => {})
+  }
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <label className="text-sm font-medium text-slate-700">DMS File</label>
+        {path && (
+          <button
+            type="button"
+            onClick={copy}
+            className="text-[11px] text-blue-700 hover:text-blue-900"
+            title="Copy path to clipboard"
+          >
+            Copy path
+          </button>
+        )}
+      </div>
+      <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm min-h-[2.4rem]">
+        {number ? (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-mono font-semibold text-slate-800">{number}</span>
+            {path
+              ? <span className="text-xs font-mono text-slate-500 break-all">{path}</span>
+              : <span className="text-xs text-slate-400">Location not yet synced from DMS server.</span>}
+          </div>
+        ) : (
+          <span className="text-slate-400">No DMS file linked.</span>
+        )}
+      </div>
     </div>
   )
 }

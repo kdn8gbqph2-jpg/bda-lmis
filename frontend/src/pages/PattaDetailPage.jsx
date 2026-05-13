@@ -103,6 +103,37 @@ export default function PattaDetailPage() {
         </Card>
       </div>
 
+      {/* DMS File Reference — sourced from the dms_sync mirror, refreshed nightly. */}
+      {(patta.dms_file_number || patta.dms_file_path) && (
+        <Card>
+          <div className="flex items-baseline justify-between mb-2">
+            <h2 className="text-sm font-semibold text-slate-700">DMS File</h2>
+            {patta.dms_file_path && (
+              <button
+                type="button"
+                onClick={() => navigator.clipboard?.writeText(patta.dms_file_path).catch(() => {})}
+                className="text-xs font-medium text-blue-700 hover:text-blue-900"
+                title="Copy path to clipboard"
+              >
+                Copy path
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-mono font-semibold text-slate-800">
+              {patta.dms_file_number || '—'}
+            </span>
+            <span className="text-xs font-mono text-slate-600 break-all">
+              {patta.dms_file_path || (
+                <span className="not-italic text-slate-400 font-sans">
+                  Location not yet synced from DMS server.
+                </span>
+              )}
+            </span>
+          </div>
+        </Card>
+      )}
+
       {/* Linked Plots */}
       {patta.plots?.length > 0 && (
         <Card>
