@@ -391,7 +391,11 @@ class Command(BaseCommand):
             if not patta_number_raw:
                 continue   # no patta for this plot yet
 
-            patta_number = patta_number_raw.strip()
+            # Run the raw value through the same normalizer Patta.save()
+            # uses, so the get_or_create lookup hits the canonical form
+            # already in the DB (avoids creating "23" alongside "0023").
+            from pattas.models import normalize_patta_number
+            patta_number = normalize_patta_number(patta_number_raw)
 
             patta, patta_created = Patta.objects.get_or_create(
                 patta_number=patta_number,

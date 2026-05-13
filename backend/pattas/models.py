@@ -1,6 +1,26 @@
 from django.db import models
 
 
+def normalize_patta_number(raw) -> str:
+    """
+    Canonical form for patta_number storage and lookup.
+
+    Pure-digit values are zero-padded to 4 characters ("23" → "0023") so
+    that the ledger sorts and displays uniformly. Alphanumeric values
+    (e.g. "23A", "A-100") are returned trimmed but otherwise untouched —
+    we don't try to guess which substring is the "number part".
+
+    Used by Patta.save() AND the import command's get_or_create lookup,
+    so the same string is always what hits the unique index.
+    """
+    if raw is None:
+        return ''
+    s = str(raw).strip()
+    if s.isdigit():
+        return s.zfill(4)
+    return s
+
+
 PATTA_STATUS_CHOICES = [
     ('issued',     'Issued'),
     ('missing',    'Missing'),
@@ -99,6 +119,10 @@ class Patta(models.Model):
             models.Index(fields=['colony', 'status']),
             models.Index(fields=['allottee_name']),
         ]
+
+    def save(self, *args, **kwargs):
+        self.patta_number = normalize_patta_number(self.patta_number)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'Patta {self.patta_number} – {self.allottee_name}'
