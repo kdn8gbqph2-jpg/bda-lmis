@@ -29,6 +29,7 @@ import {
 import { publicApi } from '@/api/endpoints'
 import { CATEGORIES } from '@/components/public/categories'
 import { useCountUp } from '@/hooks/useCountUp'
+import { Backdrop } from '@/components/ui/Backdrop'
 
 // ── Static content ────────────────────────────────────────────────────────────
 
@@ -131,17 +132,7 @@ export default function PublicDashboardPage() {
       {/* ────────────────────────────── HERO ────────────────────────────── */}
 
       <section className="relative overflow-hidden border-b border-slate-200">
-        {/* Soft gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50" />
-        {/* Decorative grid texture — very low opacity, only on lg+ */}
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none hidden sm:block"
-          style={{
-            backgroundImage: `linear-gradient(#0f172a 1px, transparent 1px),
-                              linear-gradient(90deg, #0f172a 1px, transparent 1px)`,
-            backgroundSize: '32px 32px',
-          }}
-        />
+        <Backdrop />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <div className="grid lg:grid-cols-[1fr,520px] gap-8 lg:gap-12 items-center">

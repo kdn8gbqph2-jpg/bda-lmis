@@ -3,12 +3,13 @@ import { Outlet } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { Backdrop } from '@/components/ui/Backdrop'
 
 export function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
 
       {/* Desktop sidebar — always present at ≥ lg */}
       <div className="hidden lg:flex">
@@ -36,9 +37,12 @@ export function MainLayout() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 relative">
+        {/* Portal-wide backdrop — same as public surfaces. Each page's
+            cards / tables sit on top in `relative` containers. */}
+        <Backdrop />
         <Topbar onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="relative flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

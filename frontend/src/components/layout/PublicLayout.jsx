@@ -22,6 +22,7 @@ import {
 import { TopNavbar } from '@/components/public/TopNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { CATEGORIES } from '@/components/public/categories'
+import { Backdrop } from '@/components/ui/Backdrop'
 
 // ── Sidebar component ──────────────────────────────────────────────────────────
 
@@ -29,20 +30,9 @@ function SidebarContent({ onClose }) {
   return (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
 
-      {/* ── Brand band ──
-          Matches the rest of the portal: very-light slate base with a
-          tiny coordinate-grid texture so the sidebar feels like part of
-          the same GIS surface, not a separate panel. */}
+      {/* ── Brand band ── shared portal Backdrop, tighter grid scale ── */}
       <div className="relative px-4 py-4 border-b border-slate-200/80 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50" />
-        <div
-          className="absolute inset-0 opacity-[0.05] pointer-events-none"
-          style={{
-            backgroundImage: `linear-gradient(#0f172a 1px, transparent 1px),
-                              linear-gradient(90deg, #0f172a 1px, transparent 1px)`,
-            backgroundSize: '24px 24px',
-          }}
-        />
+        <Backdrop subtle gridSize={24} />
         <div className="relative flex items-center justify-between gap-2">
           <Link to="/public" onClick={onClose} className="flex items-center gap-2.5 group min-w-0">
             <img

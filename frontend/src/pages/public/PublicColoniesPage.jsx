@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { publicApi } from '@/api/endpoints'
 import { useCountUp } from '@/hooks/useCountUp'
+import { Backdrop } from '@/components/ui/Backdrop'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -104,17 +105,9 @@ export default function PublicColoniesPage() {
   return (
     <div className="bg-slate-50">
 
-      {/* ── Header band — soft gradient + subtle grid texture ── */}
+      {/* ── Header band — shared portal Backdrop ── */}
       <section className="relative overflow-hidden border-b border-slate-200">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50" />
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none hidden sm:block"
-          style={{
-            backgroundImage: `linear-gradient(#0f172a 1px, transparent 1px),
-                              linear-gradient(90deg, #0f172a 1px, transparent 1px)`,
-            backgroundSize: '32px 32px',
-          }}
-        />
+        <Backdrop />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-9">
           {/* Breadcrumb */}
