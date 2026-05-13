@@ -66,12 +66,17 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-md">
 
-        {/* Back to public landing page — small unobtrusive link above the card */}
-        <div className="mb-4">
+        {/* Back to public landing page — pill button positioned top-left.
+            On wide screens (sm+) it floats slightly outside the column so
+            it doesn't compete with the centered logo. On mobile it sits
+            in the normal flow above the logo. */}
+        <div className="mb-6 sm:mb-2 sm:absolute sm:-top-4 sm:left-4 z-20">
           <Link
             to="/public"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700
-                       hover:text-blue-900 transition"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
+                       bg-white/90 backdrop-blur border border-slate-200 shadow-sm
+                       text-sm font-medium text-blue-700 hover:bg-white hover:text-blue-900
+                       hover:shadow transition"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Public Portal
