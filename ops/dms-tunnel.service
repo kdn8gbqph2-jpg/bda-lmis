@@ -1,9 +1,14 @@
 # Persistent SSH tunnel from worksserver → dmsserver MySQL.
 # Install on worksserver as /etc/systemd/system/dms-tunnel.service.
 #
-# The LMIS backend container reaches MySQL at host.docker.internal:3307
-# (the loopback side of this tunnel). dmsserver only exposes 3306 on
-# 127.0.0.1, which is why the tunnel is needed.
+# Bind address note: the tunnel listens on 172.17.0.1:3307 (the docker0
+# bridge gateway), NOT 127.0.0.1:3307. Reason: the LMIS backend lives in
+# a docker bridge network and reaches the host via 172.17.0.1 (mapped
+# to `host.docker.internal` via the extra_hosts entry in
+# docker-compose.prod.yml). Binding to 127.0.0.1 makes the tunnel only
+# reachable from the host's own loopback — useless to the container.
+# Binding to 172.17.0.1 keeps it off the public network while letting
+# the docker bridge reach it.
 #
 # Install:
 #   sudo install -m 0644 ops/dms-tunnel.service /etc/systemd/system/
@@ -11,20 +16,17 @@
 #   sudo systemctl enable --now dms-tunnel.service
 #   sudo systemctl status dms-tunnel.service
 #
-# Verify from worksserver:
-#   ss -tln | grep 3307
-#   mysql -h 127.0.0.1 -P 3307 -udmsuser -p dmsworkflow -e 'SELECT 1'
+# Verify on worksserver:
+#   ss -tln | grep 3307        # expect LISTEN on 172.17.0.1:3307
 #
 # Verify from backend container:
 #   docker compose -f /opt/bda-lmis/docker-compose.prod.yml exec backend \
-#       python -c "import socket; s=socket.socket(); s.connect(('host.docker.internal',3307)); print('OK')"
-#
-# (host.docker.internal resolves on Linux via the extra_hosts entry on
-# the backend service in docker-compose.prod.yml — see the deploy doc.)
+#       python -c "import socket; s=socket.socket(); s.settimeout(3); \
+#                  s.connect(('host.docker.internal',3307)); print('OK')"
 
 [Unit]
-Description=SSH tunnel to dmsserver MySQL (127.0.0.1:3307 -> dms:3306)
-After=network-online.target
+Description=SSH tunnel to dmsserver MySQL (172.17.0.1:3307 -> dms:3306)
+After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
@@ -36,7 +38,7 @@ ExecStart=/usr/bin/ssh -N \
     -o ExitOnForwardFailure=yes \
     -o StrictHostKeyChecking=accept-new \
     -i /home/itadmin/.ssh/dms-tunnel \
-    -L 127.0.0.1:3307:127.0.0.1:3306 \
+    -L 172.17.0.1:3307:127.0.0.1:3306 \
     -p 2222 \
     itadmin@69.62.80.7
 Restart=always
