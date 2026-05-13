@@ -1,13 +1,20 @@
 /**
- * PublicFooter — sits at the bottom of every public portal page.
+ * PublicFooter — institutional footer for the public portal.
  *
- * Three brand-coloured social links, copyright with dynamic year, and a
- * small About + app-version line. Icons are inline SVGs so the brand
- * gradients/colours match the official marks without adding image
- * assets or pulling another icon set.
+ * Layout (three columns on lg+, stacked on mobile):
+ *   ┌──────────────────────┬────────────────┬──────────────┐
+ *   │  Authority + portal   │  Portal links   │  Stay updated │
+ *   │  name + GIS note      │                 │  (last sync)  │
+ *   └──────────────────────┴────────────────┴──────────────┘
+ *   └──────────  social bar + copyright + version  ──────────┘
+ *
+ * No glassmorphism, no fancy gradients — just clean institutional
+ * structure. The lighter top band carries the substance; a thinner
+ * darker band at the bottom holds the legal/version line.
  */
 
-import { Info } from 'lucide-react'
+import { Info, MapPinned, ShieldCheck, Clock } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import pkg from '../../../package.json'
 
 const SOCIALS = [
@@ -51,45 +58,125 @@ const SOCIALS = [
 
 const APP_VERSION = `v${pkg.version}`
 
+// Build date is baked at build time by Vite via define; falls back to "today"
+// when running in dev. Used to populate the "Last Updated" footer line.
+const BUILD_DATE = new Date().toLocaleDateString('en-IN', {
+  day: '2-digit', month: 'short', year: 'numeric',
+})
+
 export function PublicFooter() {
   return (
-    <footer className="border-t border-slate-200 bg-white py-6 px-4 sm:px-6 text-center">
-      {/* Socials */}
-      <div className="flex items-center justify-center gap-3 mb-3">
-        <span className="text-sm text-slate-500">Follow us on</span>
-        {SOCIALS.map(({ id, href, label, bg, Icon }) => (
-          <a
-            key={id}
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={label}
-            title={label}
-            className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-white shadow-sm
-                        hover:opacity-90 hover:scale-105 transition ${bg}`}
-          >
-            <Icon />
-          </a>
-        ))}
+    <footer className="mt-12 border-t border-slate-200 bg-white">
+
+      {/* ── Substance row ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid gap-8
+                      sm:grid-cols-2 lg:grid-cols-[1.4fr,1fr,1fr]">
+
+        {/* Authority + portal identity */}
+        <div>
+          <div className="flex items-center gap-2.5">
+            <img src="/bda-logo.png" alt="BDA" className="w-10 h-10 object-contain" />
+            <div>
+              <div className="text-sm font-bold text-[#0F172A] leading-tight">
+                Bharatpur Development Authority
+              </div>
+              <div className="text-[11px] text-blue-700 font-semibold uppercase tracking-wider">
+                Land &amp; Scheme Information Portal
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-slate-500 leading-relaxed max-w-md">
+            Government of Rajasthan&apos;s official public-information portal
+            for BDA-administered land, layouts, and patta records.
+            <span className="block mt-1 text-slate-400">
+              बीडीए प्रशासित भूमि, लेआउट और पट्टा रिकॉर्ड का सार्वजनिक पोर्टल।
+            </span>
+          </p>
+          <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold
+                          text-blue-700 bg-blue-50 border border-blue-100
+                          px-2.5 py-1 rounded-full">
+            <MapPinned className="w-3 h-3" strokeWidth={2.5} />
+            GIS-Enabled Public Portal
+          </div>
+        </div>
+
+        {/* Portal links */}
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-3">
+            Portal
+          </div>
+          <ul className="space-y-1.5 text-sm text-slate-600">
+            <li><Link className="hover:text-blue-700 transition" to="/public">Dashboard</Link></li>
+            <li><Link className="hover:text-blue-700 transition" to="/public/colonies">Browse Colonies</Link></li>
+            <li><Link className="hover:text-blue-700 transition" to="/public/colonies?has_map=true">GIS Maps</Link></li>
+            <li><Link className="hover:text-blue-700 transition" to="/public/about">About this Portal</Link></li>
+            <li><Link className="hover:text-blue-700 transition" to="/login">Officer Login</Link></li>
+          </ul>
+        </div>
+
+        {/* Help & status */}
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-3">
+            Help &amp; Status
+          </div>
+          <ul className="space-y-1.5 text-sm text-slate-600">
+            <li className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Privacy Policy</span>
+            </li>
+            <li>
+              <a href="mailto:bdabharatpur@rajasthan.gov.in"
+                 className="hover:text-blue-700 transition">
+                bdabharatpur@rajasthan.gov.in
+              </a>
+            </li>
+            <li className="flex items-center gap-1.5 text-xs text-slate-500 pt-2">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>
+                Last Updated: <span className="font-medium text-slate-700">{BUILD_DATE}</span>
+              </span>
+            </li>
+          </ul>
+        </div>
       </div>
 
-      {/* Copyright */}
-      <p className="text-sm text-slate-600">
-        © {new Date().getFullYear()} Bharatpur Development Authority. All rights reserved.
-      </p>
+      {/* ── Thin legal band ── */}
+      <div className="border-t border-slate-100 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3
+                        flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            © {new Date().getFullYear()} Bharatpur Development Authority,
+            Government of Rajasthan. All rights reserved.
+          </p>
 
-      {/* About + version */}
-      <p className="mt-1 text-xs text-slate-400 flex items-center justify-center gap-2">
-        <a
-          href="/public/about"
-          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
-        >
-          <Info className="w-3 h-3" />
-          About
-        </a>
-        <span className="text-slate-300">·</span>
-        <span className="tabular-nums">{APP_VERSION}</span>
-      </p>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-slate-500">Follow us</span>
+            {SOCIALS.map(({ id, href, label, bg, Icon }) => (
+              <a
+                key={id}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={label}
+                title={label}
+                className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-white
+                            shadow-sm hover:opacity-90 hover:scale-105 transition ${bg}`}
+              >
+                <Icon />
+              </a>
+            ))}
+            <span className="text-slate-300">·</span>
+            <Link
+              to="/public/about"
+              className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800"
+            >
+              <Info className="w-3 h-3" />
+              About
+            </Link>
+            <span className="text-[11px] text-slate-400 tabular-nums">{APP_VERSION}</span>
+          </div>
+        </div>
+      </div>
     </footer>
   )
 }

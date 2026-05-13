@@ -44,20 +44,32 @@ export function TopNavbar({ onMenuClick }) {
           <span className="text-slate-700 font-medium">Dashboard</span>
         </div>
 
-        {/* Search — center, grows to fill */}
+        {/* Search — center, grows to fill. Slightly elevated input with
+            a muted icon chip on the left for better visual weight. */}
         <form onSubmit={handleSubmit} className="flex-1 max-w-xl mx-auto">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <div className="relative group">
+            <span
+              aria-hidden
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7
+                         rounded-md bg-slate-100 text-slate-500
+                         inline-flex items-center justify-center
+                         group-focus-within:bg-blue-50 group-focus-within:text-blue-700
+                         transition-colors"
+            >
+              <Search className="w-3.5 h-3.5" strokeWidth={2.25} />
+            </span>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search colonies, schemes, layouts…"
-              className="w-full pl-9 pr-4 py-2 text-sm
-                         bg-slate-50 border border-slate-200 rounded-lg
+              placeholder="Search colony, khasra, layout or scheme..."
+              className="w-full pl-11 pr-4 py-2.5 text-sm text-slate-800
+                         bg-white border border-slate-200 rounded-xl
+                         shadow-[0_1px_2px_rgba(15,23,42,0.04)]
                          placeholder:text-slate-400
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/20
-                         focus:border-blue-400 focus:bg-white transition"
+                         focus:outline-none focus:ring-4 focus:ring-blue-500/10
+                         focus:border-blue-400 focus:shadow-[0_2px_8px_-2px_rgba(29,78,216,0.18)]
+                         hover:border-slate-300 transition-all duration-200"
             />
           </div>
         </form>
