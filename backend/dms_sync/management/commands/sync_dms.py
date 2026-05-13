@@ -54,11 +54,16 @@ SOURCE_QUERY = """
         d.ID                AS source_directory_id,
         COALESCE(d.Path, '') AS location_path,
         COALESCE(d.Name, '') AS directory_name,
-        -- A1Count / A2Count are scan-page counters; >0 implies that PDF
-        -- type exists. We map A1→NS ("newly scanned") and A2→CS
-        -- ("classified scanned") to match the DMS API's pdfType param.
-        (f.A1Count > 0)     AS has_ns,
-        (f.A2Count > 0)     AS has_cs
+        -- The DMS app organizes scans into named subdirectories under
+        -- each file's directory: 'NS' (newly scanned) and 'CS'
+        -- (classified scanned). Presence + non-zero FileCount means
+        -- that PDF type is fetchable via the DMS API's pdfType param.
+        EXISTS (SELECT 1 FROM subdirectories s
+                WHERE s.FileDirectoryID = d.ID AND s.Name = 'NS'
+                  AND s.FileCount > 0) AS has_ns,
+        EXISTS (SELECT 1 FROM subdirectories s
+                WHERE s.FileDirectoryID = d.ID AND s.Name = 'CS'
+                  AND s.FileCount > 0) AS has_cs
     FROM filedetails f
     LEFT JOIN masterdepartments m ON m.ID = f.DepartmentID
     LEFT JOIN (
