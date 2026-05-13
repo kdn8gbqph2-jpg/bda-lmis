@@ -19,7 +19,7 @@ import { publicApi } from '@/api/endpoints'
 const COLONY_TYPE_LABELS = {
   bda_scheme:       'BDA Scheme',
   private_approved: 'Private Approved',
-  suo_moto:         'SUO-Moto Case',
+  suo_moto:         'Regularized Colony',
   pending_layout:   'Pending Layout',
   rejected_layout:  'Rejected Layout',
 }
@@ -97,7 +97,7 @@ export default function PublicColoniesPage() {
               {{
                 bda_scheme:       'बीडीए योजनाएँ',
                 private_approved: 'निजी अनुमोदित कॉलोनियाँ',
-                suo_moto:         'स्वतः संज्ञान कॉलोनी प्रकरण',
+                suo_moto:         'नियमित कॉलोनियाँ',
                 pending_layout:   'लंबित कॉलोनी लेआउट',
                 rejected_layout:  'अस्वीकृत कॉलोनी लेआउट',
               }[colonyType]}

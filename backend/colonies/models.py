@@ -11,7 +11,11 @@ logger = logging.getLogger(__name__)
 COLONY_TYPE_CHOICES = [
     ('bda_scheme',        'BDA Scheme'),
     ('private_approved',  'BDA Approved'),
-    ('suo_moto',          'SUO-Moto'),
+    # NOTE: stored value stays 'suo_moto' for back-compat with the
+    # public URL/query param and audit-log history. Only the human
+    # label was renamed when the authority adopted the "Regularized
+    # Colonies" branding for these cases.
+    ('suo_moto',          'Regularized Colonies'),
     ('pending_layout',    'Pending Layout Approval'),
     ('rejected_layout',   'Rejected Layout'),
 ]

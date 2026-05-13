@@ -25,7 +25,7 @@ import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
 const COLONY_TYPE_CHOICES = [
   { value: 'bda_scheme',       label: 'BDA Scheme'              },
   { value: 'private_approved', label: 'BDA Approved'            },
-  { value: 'suo_moto',         label: 'SUO-Moto'                },
+  { value: 'suo_moto',         label: 'Regularized Colonies'    },
   { value: 'pending_layout',   label: 'Pending Layout Approval' },
   { value: 'rejected_layout',  label: 'Rejected Layout'         },
 ]
