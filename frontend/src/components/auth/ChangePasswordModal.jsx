@@ -101,6 +101,7 @@ export function ChangePasswordModal({ open, onClose }) {
       onClose={onClose}
       title="Change Password"
       size="sm"
+      privateBackdrop
       footer={success ? (
         <Button onClick={onClose}>Close</Button>
       ) : (

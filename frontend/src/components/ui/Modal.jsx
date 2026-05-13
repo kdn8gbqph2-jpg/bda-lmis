@@ -10,7 +10,15 @@ const sizes = {
   full:'max-w-full mx-4',
 }
 
-export function Modal({ open, onClose, title, children, size = 'md', footer }) {
+export function Modal({
+  open, onClose, title, children, size = 'md', footer,
+  // When true, the backdrop is fully opaque (white) instead of a
+  // translucent blur. Use for sensitive flows where the underlying
+  // page content shouldn't be readable behind the dialog — most
+  // notably the Change Password modal, where dashboard cards were
+  // still visible to a bystander through the blur.
+  privateBackdrop = false,
+}) {
   const overlayRef = useRef(null)
 
   // Close on Escape
@@ -36,7 +44,13 @@ export function Modal({ open, onClose, title, children, size = 'md', footer }) {
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-md" />
+      <div
+        className={
+          privateBackdrop
+            ? 'absolute inset-0 bg-slate-100'   // opaque — hides page content
+            : 'absolute inset-0 bg-slate-900/70 backdrop-blur-md'
+        }
+      />
 
       {/* Dialog */}
       <div className={clsx(
