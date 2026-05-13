@@ -29,40 +29,53 @@ function SidebarContent({ onClose }) {
   return (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
 
-      {/* ── Brand ─────────────────────────────────────────────────────────── */}
-      <div className="px-4 py-4 bg-gradient-to-br from-indigo-50 via-white to-blue-50
-                      border-b border-slate-200/70 flex items-center justify-between">
-        <Link to="/public" onClick={onClose} className="flex items-center gap-2.5 group min-w-0">
-          <img
-            src="/bda-logo.png"
-            alt="BDA"
-            className="w-10 h-10 object-contain flex-shrink-0 drop-shadow-sm
-                       group-hover:scale-105 transition-transform"
-          />
-          <div className="min-w-0">
-            <div className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition leading-tight truncate">
-              BDA LMIS
+      {/* ── Brand band ──
+          Matches the rest of the portal: very-light slate base with a
+          tiny coordinate-grid texture so the sidebar feels like part of
+          the same GIS surface, not a separate panel. */}
+      <div className="relative px-4 py-4 border-b border-slate-200/80 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50" />
+        <div
+          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(#0f172a 1px, transparent 1px),
+                              linear-gradient(90deg, #0f172a 1px, transparent 1px)`,
+            backgroundSize: '24px 24px',
+          }}
+        />
+        <div className="relative flex items-center justify-between gap-2">
+          <Link to="/public" onClick={onClose} className="flex items-center gap-2.5 group min-w-0">
+            <img
+              src="/bda-logo.png"
+              alt="BDA"
+              className="w-10 h-10 object-contain flex-shrink-0 drop-shadow-sm
+                         group-hover:scale-105 transition-transform duration-200"
+            />
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-[#0F172A] leading-tight truncate
+                              group-hover:text-blue-700 transition-colors">
+                BDA LMIS
+              </div>
+              <div className="text-[10px] text-blue-700 font-semibold uppercase tracking-wider leading-tight mt-0.5">
+                Public Portal
+              </div>
             </div>
-            <div className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider leading-tight mt-0.5">
-              Public Portal
-            </div>
-          </div>
-        </Link>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="lg:hidden p-1 rounded-md text-slate-400 hover:bg-slate-100 transition"
-            aria-label="Close menu"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+          </Link>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden p-1 rounded-md text-slate-400 hover:bg-slate-100 transition"
+              aria-label="Close menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── Navigation ────────────────────────────────────────────────────── */}
+      {/* ── Navigation ── */}
       <nav className="flex-1 overflow-y-auto py-3">
 
-        {/* Section: Overview */}
         <SectionLabel>Overview</SectionLabel>
         <NavItem
           to="/public"
@@ -74,7 +87,6 @@ function SidebarContent({ onClose }) {
           onClose={onClose}
         />
 
-        {/* Section: Colony Categories */}
         <SectionLabel>Colony Categories</SectionLabel>
         {CATEGORIES.map((cat) => (
           <NavItem
@@ -88,7 +100,6 @@ function SidebarContent({ onClose }) {
           />
         ))}
 
-        {/* Section: Browse */}
         <SectionLabel>Browse</SectionLabel>
         <NavItem
           to="/public/colonies"
@@ -101,6 +112,16 @@ function SidebarContent({ onClose }) {
         />
       </nav>
 
+      {/* ── Footer chip in the sidebar — institutional note ── */}
+      <div className="px-3 py-3 border-t border-slate-200/80">
+        <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mb-1">
+          Government of Rajasthan
+        </div>
+        <div className="text-[11px] text-slate-500 leading-snug">
+          Bharatpur Development Authority · GIS-Enabled
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -109,8 +130,10 @@ function SidebarContent({ onClose }) {
 
 function SectionLabel({ children }) {
   return (
-    <div className="px-4 pt-4 pb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-      {children}
+    <div className="px-4 pt-5 pb-2 text-[10px] font-semibold text-slate-400
+                    uppercase tracking-[0.14em] flex items-center gap-2">
+      <span>{children}</span>
+      <span className="flex-1 h-px bg-slate-100" />
     </div>
   )
 }
@@ -136,40 +159,47 @@ function NavItem({ to, end, icon: Icon, label, labelHi, color = 'slate', onClose
       end={end}
       onClick={onClose}
       className={({ isActive }) =>
-        `relative flex items-center gap-2.5 mx-2 px-2.5 py-2 rounded-lg text-sm
-         transition-all duration-150 group
+        `relative flex items-center gap-2.5 mx-2 px-2.5 py-2 my-0.5 rounded-lg text-sm
+         transition-all duration-200 group
          ${isActive
-            ? `${s.activeBg} font-semibold`
-            : 'text-slate-700 hover:bg-slate-50'}`
+            ? `${s.activeBg} shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]`
+            : 'text-slate-700 hover:bg-slate-50 hover:translate-x-0.5'}`
       }
     >
       {({ isActive }) => (
         <>
-          {/* Left active-border indicator */}
+          {/* Animated left active-border indicator. framer-motion's
+              layoutId makes it slide between items, the only motion
+              flourish in the otherwise calm sidebar. */}
           {isActive && (
             <motion.span
               layoutId="public-nav-active"
-              className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full ${s.bar}`}
+              className={`absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full ${s.bar}`}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             />
           )}
 
-          {/* Colored icon chip — always tinted, even at idle */}
+          {/* Colored icon chip — always tinted, brighter when active. */}
           <span className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0
-                            ${s.chipBg} transition-transform group-hover:scale-105`}>
+                            ${s.chipBg} transition-transform duration-200 group-hover:scale-[1.04]`}>
             <Icon className={`w-4 h-4 ${s.chipIcon}`} strokeWidth={2.25} />
           </span>
 
           <div className="min-w-0 flex-1">
-            <div className={`truncate leading-tight ${isActive ? s.activeText : 'text-slate-800'}`}>
+            <div className={`truncate leading-tight font-medium
+                              ${isActive ? s.activeText : 'text-slate-800'}`}>
               {label}
             </div>
-            <div className="text-[10px] text-slate-400 truncate leading-tight">{labelHi}</div>
+            <div className="text-[10px] text-slate-400 truncate leading-tight mt-px">
+              {labelHi}
+            </div>
           </div>
 
           <ChevronRight
             className={`w-3 h-3 transition
-                        ${isActive ? 'text-slate-400' : 'text-slate-300 opacity-0 group-hover:opacity-100'}`}
+                        ${isActive
+                          ? `${s.activeText} opacity-70`
+                          : 'text-slate-300 opacity-0 group-hover:opacity-100'}`}
           />
         </>
       )}
