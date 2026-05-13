@@ -88,8 +88,14 @@ function useTransliterate({ value, onChange, enabled, fieldRef }) {
         const list = Array.isArray(res?.suggestions) ? res.suggestions : []
         setSuggestions(list)
         setHighlight(0)
-      } catch {
-        // Network error → silently fall back to no suggestions.
+      } catch (err) {
+        // Surface the failure to the console so a silent backend/network
+        // problem doesn't masquerade as "no suggestions for that word".
+        // Common shapes: 404 (app not deployed), 401 (auth lost),
+        // 502 (proxy can't reach Django), or a network error string.
+        const status = err?.response?.status
+        const detail = err?.response?.data?.detail || err?.message || err
+        console.warn('[transliterate] request failed', { status, detail, token: tok.token })
         if (myId === reqIdRef.current) setSuggestions([])
       }
     }, DEBOUNCE_MS)
