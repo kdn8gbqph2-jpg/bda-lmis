@@ -42,10 +42,22 @@ const KPI_THEMES = {
   amber:   { tile: 'from-amber-50   via-white to-white', icon: 'bg-amber-100   text-amber-700',   accent: 'bg-amber-500'   },
 }
 
-function KpiCard({ label, value, icon: Icon, theme = 'blue', sub }) {
+function KpiCard({ label, value, icon: Icon, theme = 'blue', sub, to }) {
   const t = KPI_THEMES[theme] ?? KPI_THEMES.blue
+  // When `to` is set the card becomes a navigation link; otherwise it
+  // stays as a static panel so dashboards without targets don't get a
+  // misleading affordance.
+  const Wrapper      = to ? Link : 'div'
+  const wrapperProps = to ? { to, 'aria-label': `Open ${label}` } : {}
+
   return (
-    <div className={`relative bg-gradient-to-br ${t.tile} rounded-2xl border border-slate-200 shadow-sm overflow-hidden`}>
+    <Wrapper
+      {...wrapperProps}
+      className={`relative bg-gradient-to-br ${t.tile} rounded-2xl border border-slate-200
+                  shadow-sm overflow-hidden block ${to
+        ? 'cursor-pointer transition transform hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
+        : ''}`}
+    >
       <span className={`absolute inset-x-0 top-0 h-1 ${t.accent}`} />
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -60,8 +72,13 @@ function KpiCard({ label, value, icon: Icon, theme = 'blue', sub }) {
           {value}
         </p>
         {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+        {to && (
+          <span className="absolute right-3 bottom-3 text-slate-400">
+            <ArrowRight className="w-3.5 h-3.5" />
+          </span>
+        )}
       </div>
-    </div>
+    </Wrapper>
   )
 }
 
@@ -191,12 +208,14 @@ export default function DashboardPage() {
           value={num(s.total_colonies)}
           icon={Building2}
           theme="blue"
+          to="/colonies"
         />
         <KpiCard
           label="Total Plots"
           value={num(s.total_plots)}
           icon={Grid3x3}
           theme="indigo"
+          to="/plots"
         />
         <KpiCard
           label="Total Pattas"
@@ -204,6 +223,7 @@ export default function DashboardPage() {
           icon={FileText}
           theme="emerald"
           sub={s.pattas_issued != null ? `${num(s.pattas_issued)} issued` : null}
+          to="/patta-ledger"
         />
         <KpiCard
           label="Approved Layouts"
@@ -211,6 +231,8 @@ export default function DashboardPage() {
           icon={CheckCircle2}
           theme="amber"
           sub={approvedPct != null ? `${approvedPct}% of colonies` : null}
+          // Filter the Colonies page to only those with an approval date set.
+          to="/colonies?layout_approved=1"
         />
       </div>
 

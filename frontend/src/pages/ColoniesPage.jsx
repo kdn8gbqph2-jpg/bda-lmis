@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { Search, ChevronRight, Pencil, FileText, Download, X, Plus } from 'lucide-react'
 import { colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
@@ -274,20 +275,35 @@ export default function ColoniesPage() {
   const [selected, setSelected] = useState(null)
   const [addOpen, setAddOpen]   = useState(false)
 
+  // URL-driven filters that aren't in the regular filter bar — currently
+  // just `layout_approved=1` from the Dashboard "Approved Layouts" KPI.
+  // Kept out of the `filters` state so the user can clear it via the
+  // dedicated chip below rather than appearing as a select.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const layoutApproved = searchParams.get('layout_approved') === '1'
+
   const setFilter = (key) => (e) => {
     setFilters((f) => ({ ...f, [key]: e.target.value }))
     setPage(1)
   }
 
-  const hasAny = Object.values(filters).some(Boolean)
+  const clearLayoutApproved = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('layout_approved')
+    setSearchParams(next, { replace: true })
+    setPage(1)
+  }
+
+  const hasAny = Object.values(filters).some(Boolean) || layoutApproved
 
   const q = useQuery({
-    queryKey: ['colonies', page, filters],
+    queryKey: ['colonies', page, filters, layoutApproved],
     queryFn: () => coloniesApi.list({
       page,
       page_size: PAGE_SIZE,
       // omit empty strings — backend filters treat presence as "filter applied"
       ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      ...(layoutApproved ? { layout_approved: 'true' } : {}),
     }),
     placeholderData: (prev) => prev,
   })
@@ -344,11 +360,29 @@ export default function ColoniesPage() {
               size="sm"
               onClick={() => {
                 setFilters({ search: '', colony_type: '', zone: '', khasra: '', revenue_village: '' })
+                clearLayoutApproved()
                 setPage(1)
               }}
             >
               <X className="w-3.5 h-3.5" /> Clear
             </Button>
+          )}
+          {layoutApproved && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium
+                         bg-amber-50 text-amber-800 border border-amber-200 rounded-full"
+              title="Filter applied from the dashboard 'Approved Layouts' card"
+            >
+              Approved layouts only
+              <button
+                type="button"
+                onClick={clearLayoutApproved}
+                className="ml-1 hover:text-amber-900"
+                aria-label="Remove approved-layouts filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
           )}
           {isAdmin && (
             <Button onClick={() => setAddOpen(true)} className="ml-auto">

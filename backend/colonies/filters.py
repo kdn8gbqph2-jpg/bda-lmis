@@ -10,6 +10,14 @@ class ColonyFilter(django_filters.FilterSet):
     khasra          = django_filters.CharFilter(method='filter_khasra', label='Khasra number')
     search          = django_filters.CharFilter(method='filter_search', label='Search')
     has_map         = django_filters.BooleanFilter(method='filter_has_map', label='Has map')
+    layout_approved = django_filters.BooleanFilter(method='filter_layout_approved',
+                                                   label='Layout-approval date set')
+
+    def filter_layout_approved(self, queryset, name, value):
+        """Truthy → only colonies that have a layout_approval_date set."""
+        if value:
+            return queryset.filter(layout_approval_date__isnull=False)
+        return queryset.filter(layout_approval_date__isnull=True)
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(name__icontains=value)
