@@ -1,7 +1,10 @@
+import logging
 import os
 import tempfile
 
 from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -125,32 +128,51 @@ class CustomLayerViewSet(viewsets.ModelViewSet):
         """
         Parse file and create LayerFeature records.
         Returns an error string on failure, None on success.
+
+        The whole pipeline (parse → per-feature insert → layer-level
+        GeometryCollection assemble) sits inside one try/except so that
+        downstream failures — most commonly PostGIS rejecting an
+        un-flattened nested GeometryCollection, or `GeometryCollection`
+        construction blowing up on heterogeneous member types — become
+        a 400 with a useful message instead of a 500 with empty body.
         """
+        from django.contrib.gis.geos import GeometryCollection
+
         try:
             features = CustomLayerViewSet._parse_file(file)
+
+            geoms = []
+            for feat in features:
+                LayerFeature.objects.create(
+                    custom_layer=layer,
+                    geometry=feat['geometry'],
+                    properties=feat['properties'],
+                )
+                geoms.append(feat['geometry'])
+
+            if geoms:
+                # PostGIS rejects nested GeometryCollections; flatten any
+                # member that's itself a collection by lifting its parts
+                # into the top-level list before constructing the wrapper.
+                flat = []
+                for g in geoms:
+                    if g.geom_type == 'GeometryCollection':
+                        flat.extend(list(g))
+                    else:
+                        flat.append(g)
+                layer.geometry    = GeometryCollection(*flat, srid=4326)
+                layer.source_file = file.name
+                layer.save(update_fields=['geometry', 'source_file', 'updated_at'])
+
+            return None
+
         except Exception as exc:
-            return str(exc)
-
-        from django.contrib.gis.geos import GeometryCollection
-        geoms = []
-
-        for feat in features:
-            geom  = feat['geometry']
-            props = feat['properties']
-            LayerFeature.objects.create(
-                custom_layer=layer,
-                geometry=geom,
-                properties=props,
+            logger.error(
+                'Custom layer ingest failed for %s (layer=%s): %s',
+                getattr(file, 'name', '?'), layer.pk, exc,
+                exc_info=True,
             )
-            geoms.append(geom)
-
-        # Build a GeometryCollection for the layer-level geometry
-        if geoms:
-            layer.geometry     = GeometryCollection(*geoms, srid=4326)
-            layer.source_file  = file.name
-            layer.save(update_fields=['geometry', 'source_file', 'updated_at'])
-
-        return None
+            return f'{type(exc).__name__}: {exc}'
 
     @staticmethod
     def _parse_file(file) -> list:
