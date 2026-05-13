@@ -55,9 +55,10 @@ SOURCE_QUERY = """
         COALESCE(d.Path, '') AS location_path,
         COALESCE(d.Name, '') AS directory_name,
         -- The DMS app organizes scans into named subdirectories under
-        -- each file's directory: 'NS' (newly scanned) and 'CS'
-        -- (classified scanned). Presence + non-zero FileCount means
-        -- that PDF type is fetchable via the DMS API's pdfType param.
+        -- each file's directory: 'NS' (Notesheet Side — the noting
+        -- pages) and 'CS' (Correspondence Side — letters and replies).
+        -- Presence + non-zero FileCount means that PDF type is
+        -- fetchable via the DMS API's pdfType param.
         EXISTS (SELECT 1 FROM subdirectories s
                 WHERE s.FileDirectoryID = d.ID AND s.Name = 'NS'
                   AND s.FileCount > 0) AS has_ns,

@@ -310,9 +310,9 @@ function DmsFileCell({ number, hasNs, hasCs }) {
           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
                      border border-blue-200 bg-blue-50 text-blue-700 text-[10px]
                      font-medium hover:bg-blue-100"
-          title="Open the scanned PDF in a new tab"
+          title="Notesheet Side — open the noting scan in a new tab"
         >
-          <FileText className="w-3 h-3" /> View
+          <FileText className="w-3 h-3" /> NS
         </button>
       )}
       {hasCs && (
@@ -322,7 +322,7 @@ function DmsFileCell({ number, hasNs, hasCs }) {
           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
                      border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px]
                      font-medium hover:bg-emerald-100"
-          title="Open the classified scan in a new tab"
+          title="Correspondence Side — open the correspondence scan in a new tab"
         >
           <FileText className="w-3 h-3" /> CS
         </button>

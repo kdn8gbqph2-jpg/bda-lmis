@@ -42,10 +42,14 @@ class DmsFile(models.Model):
     applicant_name      = models.CharField(max_length=255, blank=True)
     scheme_name         = models.CharField(max_length=255, blank=True)
     allottee_name       = models.CharField(max_length=255, blank=True)
-    has_ns              = models.BooleanField(default=False,
-                                              help_text='DMS reports a "newly scanned" PDF for this file.')
-    has_cs              = models.BooleanField(default=False,
-                                              help_text='DMS reports a "classified scanned" PDF for this file.')
+    has_ns              = models.BooleanField(
+        default=False,
+        help_text='DMS has a "Notesheet Side" (noting) scan for this file.',
+    )
+    has_cs              = models.BooleanField(
+        default=False,
+        help_text='DMS has a "Correspondence Side" scan for this file.',
+    )
 
     location_path       = models.CharField(
         max_length=500, blank=True,
