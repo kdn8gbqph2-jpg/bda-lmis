@@ -105,7 +105,8 @@ function Field({ label, value }) {
 export default function PattaDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const isAdmin  = useAuthStore((s) => s.isAdmin)()
+  // Staff can edit too; their saves go through the approval queue.
+  const canEdit  = useAuthStore((s) => s.isStaffOrAbove)()
   const [editing, setEditing] = useState(false)
 
   const { data: patta, isPending, isError } = useQuery({
@@ -126,7 +127,7 @@ export default function PattaDetailPage() {
 
   return (
     <div className="max-w-4xl space-y-5">
-      {isAdmin && (
+      {canEdit && (
         <PattaEditModal
           patta={patta}
           open={editing}
@@ -138,7 +139,7 @@ export default function PattaDetailPage() {
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
-        {isAdmin && (
+        {canEdit && (
           <Button variant="primary" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="w-4 h-4" /> Edit Patta
           </Button>
