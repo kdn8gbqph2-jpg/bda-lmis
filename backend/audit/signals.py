@@ -13,6 +13,8 @@ Geometry and file fields are excluded from JSON snapshots to keep
 audit entries readable and storage-efficient.
 """
 
+import logging
+
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 
@@ -20,6 +22,8 @@ from .middleware import (
     get_current_user, get_current_request_meta, get_current_change_request,
 )
 from .models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 # ── Fields to exclude from JSON snapshots ─────────────────────────────────────
@@ -109,8 +113,22 @@ def _write_log(entity_type: str, entity_id, action: str,
                 ip_address=ip,
                 user_agent=ua or '',
             )
-    except Exception:
+    except Exception as exc:
+        # Log so silent audit failures aren't invisible — past bug where
+        # an unexpected exception (JSON encoding, FK violation, etc.)
+        # produced 0-entry Edit History because the create rolled back
+        # without anyone noticing.
+        logger.warning(
+            'AuditLog write failed for %s #%s (action=%s): %s',
+            entity_type, entity_id, action, exc, exc_info=True,
+        )
         return                      # never let audit failures propagate
+
+    logger.info(
+        'AuditLog %s written for %s #%s (action=%s, fields=%d)',
+        entry.pk, entity_type, entity_id, action,
+        len(new_values or {}),
+    )
 
     # Prune in a separate savepoint so a failure here can't undo the write
     # we just made. Only runs for state-changing actions: a delete row is
@@ -120,8 +138,11 @@ def _write_log(entity_type: str, entity_id, action: str,
         try:
             with _tx.atomic():
                 _prune_prior(entry, set(new_values.keys()))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                'AuditLog prune failed for %s #%s: %s',
+                entity_type, entity_id, exc, exc_info=True,
+            )
 
 
 def _prune_prior(new_entry, superseded_keys):
