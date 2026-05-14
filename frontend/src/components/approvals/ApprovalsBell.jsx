@@ -29,6 +29,7 @@ import {
 import { approvals as approvalsApi } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { FieldDiff } from '@/components/history/FieldDiff'
+import { valuesEqual } from '@/components/approvals/recentApprovalMap'
 
 const TARGET_META = {
   patta:  { label: 'Patta',  icon: FileText,  listUrl: () => '/patta-ledger', detailUrl: (id) => `/patta-ledger/${id}` },
@@ -362,11 +363,7 @@ function DiffBlock({ loading, detail }) {
     if (key.startsWith('_')) continue
     const newV = proposed[key]
     const oldV = current[key]
-    if (!isCreate) {
-      try {
-        if (JSON.stringify(oldV ?? null) === JSON.stringify(newV ?? null)) continue
-      } catch { /* fall through and include */ }
-    }
+    if (!isCreate && valuesEqual(oldV, newV)) continue
     rows.push([key, oldV, newV])
   }
 

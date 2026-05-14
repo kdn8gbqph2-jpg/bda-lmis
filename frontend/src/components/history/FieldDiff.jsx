@@ -27,6 +27,7 @@
 
 import { ChevronRight } from 'lucide-react'
 import { fieldLabel } from '@/lib/fieldLabels'
+import { valuesEqual } from '@/components/approvals/recentApprovalMap'
 
 /** Compact display of any value type. Truncates strings > 200 chars. */
 export function fmt(v) {
@@ -106,11 +107,7 @@ export function diffEntries(oldVals, newVals) {
     if (_IGNORED.has(k) || k.startsWith('_')) continue
     const a = (oldVals ?? {})[k]
     const b = (newVals ?? {})[k]
-    try {
-      if (JSON.stringify(a ?? null) === JSON.stringify(b ?? null)) continue
-    } catch {
-      /* fall through and include */
-    }
+    if (valuesEqual(a, b)) continue
     out.push([k, a, b])
   }
   return out

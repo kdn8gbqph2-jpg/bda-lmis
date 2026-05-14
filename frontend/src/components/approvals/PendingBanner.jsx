@@ -34,6 +34,7 @@ import { approvals as approvalsApi } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { fieldLabel } from '@/lib/fieldLabels'
 import { FieldDiff } from '@/components/history/FieldDiff'
+import { valuesEqual } from '@/components/approvals/recentApprovalMap'
 
 const MAX_FIELDS_SHOWN_COMPACT = 6
 
@@ -66,16 +67,17 @@ export function PendingBanner({ cr, record, onResolved }) {
 
   // Build the list of (key, oldValue, newValue) tuples. Filters out
   // payload keys whose value already matches the live record so the
-  // diff only shows what's actually changing.
+  // diff only shows what's actually changing. valuesEqual normalizes
+  // '', null, undefined to a single empty state so untouched nullable
+  // fields don't appear in the diff just because the form sent null
+  // where the record stores '' (or vice versa).
   const payload = cr.payload || {}
   const rows = []
   for (const k of Object.keys(payload)) {
     if (k.startsWith('_')) continue
     const cur = record?.[k]
     const nxt = payload[k]
-    try {
-      if (JSON.stringify(cur ?? null) === JSON.stringify(nxt ?? null)) continue
-    } catch { /* fall through and include */ }
+    if (valuesEqual(cur, nxt)) continue
     rows.push([k, cur, nxt])
   }
   const changedLabels = rows.map(([k]) => fieldLabel(k))

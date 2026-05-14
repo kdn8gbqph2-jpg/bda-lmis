@@ -15,8 +15,20 @@
 
 const APPROVAL_WINDOW_MS = 24 * 60 * 60 * 1000
 
-function valuesEqual(a, b) {
-  try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null) }
+/**
+ * Loose equality for diff/chip code. Normalizes the three "empty"
+ * representations — '', null, undefined — to a single sentinel so the
+ * chip doesn't fire on fields the user didn't actually change.
+ *
+ * The asymmetry comes from cleanPayload normalizing form '' to null
+ * for nullable columns, while DRF serializes Django CharField(blank=True)
+ * as '' from records that have never been set. JSON.stringify('') !==
+ * JSON.stringify(null), so a strict compare would flag every empty
+ * nullable field as "pending approval" on every save.
+ */
+export function valuesEqual(a, b) {
+  const norm = (v) => (v === '' || v === undefined ? null : v)
+  try { return JSON.stringify(norm(a)) === JSON.stringify(norm(b)) }
   catch { return false }
 }
 

@@ -26,11 +26,7 @@
 import { Clock, BadgeCheck, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { fmt } from '@/components/history/FieldDiff'
-
-function valuesEqual(a, b) {
-  try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null) }
-  catch { return false }
-}
+import { valuesEqual } from '@/components/approvals/recentApprovalMap'
 
 export function PendingFieldChip({ fieldKey, record, pendingCR, formValue, recentApproval }) {
   const role = useAuthStore((s) => s.user?.role)
