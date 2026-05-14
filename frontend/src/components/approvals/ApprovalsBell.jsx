@@ -23,7 +23,7 @@ import {
 } from '@tanstack/react-query'
 import {
   Bell, Check, X, Inbox, Building2, FileText, Grid3x3,
-  Loader2, ChevronDown, ExternalLink, Plus, Pencil,
+  Loader2, ChevronDown, ExternalLink, Plus, Pencil, XCircle,
 } from 'lucide-react'
 
 import { approvals as approvalsApi } from '@/api/endpoints'
@@ -64,9 +64,15 @@ export function ApprovalsBell() {
     enabled:  visible,
   })
 
+  // Resolvers see only pending work (resolved CRs are gone for them).
+  // Staff see their own pending + rejected so they can acknowledge a
+  // rejection — the unfiltered list relies on the viewset already
+  // scoping non-resolvers to requested_by=self.
   const listQ = useQuery({
-    queryKey: ['approvals', 'pending'],
-    queryFn:  () => approvalsApi.list({ status: 'pending', page_size: 25 }),
+    queryKey: ['approvals', canResolve ? 'pending' : 'mine'],
+    queryFn:  () => canResolve
+      ? approvalsApi.list({ status: 'pending', page_size: 25 })
+      : approvalsApi.list({ page_size: 25 }),
     enabled:  visible && open,
     refetchOnWindowFocus: true,
   })
@@ -85,6 +91,13 @@ export function ApprovalsBell() {
   const reject = useMutation({
     mutationFn: (id) => approvalsApi.reject(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['approvals'] }),
+  })
+  // Staff-only: clear a rejected CR from your own bell once you've
+  // seen it. Server-side this hard-deletes the row.
+  const dismiss = useMutation({
+    mutationFn: (id) => approvalsApi.dismiss(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['approvals'] }),
+    onError: (err) => alert(err?.response?.data?.detail || 'Could not dismiss.'),
   })
 
   useEffect(() => {
@@ -134,12 +147,14 @@ export function ApprovalsBell() {
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold text-slate-800">
-                {canResolve ? 'Pending Approvals' : 'My Pending Submissions'}
+                {canResolve ? 'Pending Approvals' : 'My Submissions'}
               </div>
               <div className="text-[11px] text-slate-500">
                 {count === 0
                   ? 'Nothing waiting'
-                  : `${count} ${count === 1 ? 'item' : 'items'} awaiting review`}
+                  : canResolve
+                    ? `${count} ${count === 1 ? 'item' : 'items'} awaiting review`
+                    : `${count} ${count === 1 ? 'item' : 'items'} — pending or recently rejected`}
               </div>
             </div>
             <Inbox className="w-4 h-4 text-slate-300" />
@@ -163,10 +178,12 @@ export function ApprovalsBell() {
                 onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}
                 onApprove={() => approve.mutate(r.id)}
                 onReject={()  => reject.mutate(r.id)}
+                onDismiss={() => dismiss.mutate(r.id)}
                 onClose={()   => { setOpen(false); setExpandedId(null) }}
                 busy={
                   (approve.isPending && approve.variables === r.id) ||
-                  (reject.isPending  && reject.variables  === r.id)
+                  (reject.isPending  && reject.variables  === r.id) ||
+                  (dismiss.isPending && dismiss.variables === r.id)
                 }
               />
             ))}
@@ -191,13 +208,14 @@ export function ApprovalsBell() {
 
 // ── Row ─────────────────────────────────────────────────────────────────────
 
-function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose, busy }) {
+function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onDismiss, onClose, busy }) {
   const meta = TARGET_META[row.target_type] || {
     label: row.target_type, icon: FileText, listUrl: () => '/dashboard', detailUrl: () => '/dashboard',
   }
   const Icon = meta.icon
   const OpIcon = row.operation === 'create' ? Plus : Pencil
   const opVerb = row.operation === 'create' ? 'created' : 'updated'
+  const isRejected = row.status === 'rejected'
 
   // Lazy-fetch the full detail (with current snapshot + payload) only
   // when the row is expanded. Keeps the bell open quick when there
@@ -211,15 +229,17 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
 
   return (
     <div className={`border-b border-slate-100 last:border-b-0 transition
-                     ${expanded ? 'bg-blue-50/30' : 'hover:bg-slate-50/60'}`}>
+                     ${expanded
+                       ? (isRejected ? 'bg-red-50/30' : 'bg-blue-50/30')
+                       : 'hover:bg-slate-50/60'}`}>
       {/* Summary line — click anywhere to expand */}
       <button
         type="button"
         onClick={onToggle}
         className="w-full text-left px-4 py-3 flex items-start gap-3"
       >
-        <span className="w-7 h-7 rounded-md bg-blue-50 text-blue-700
-                         inline-flex items-center justify-center flex-shrink-0">
+        <span className={`w-7 h-7 rounded-md inline-flex items-center justify-center flex-shrink-0
+                          ${isRejected ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
           <Icon className="w-3.5 h-3.5" strokeWidth={2.25} />
         </span>
         <div className="min-w-0 flex-1">
@@ -233,15 +253,37 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
                 · <span className="font-medium text-slate-700">{row.target_label}</span>
               </span>
             )}
+            {isRejected && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full
+                               text-[9px] font-semibold uppercase tracking-wider
+                               bg-red-50 text-red-700 border border-red-200">
+                <XCircle className="w-2.5 h-2.5" strokeWidth={2.5} />
+                Rejected
+              </span>
+            )}
             <span className="text-[10px] text-slate-400 ml-auto whitespace-nowrap">
-              {timeAgo(row.requested_at)}
+              {timeAgo(isRejected ? row.resolved_at : row.requested_at)}
             </span>
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
-            <span className="font-medium text-slate-600">
-              {row.requested_by_name || 'Unknown'}
-            </span>{' '}
-            {opVerb} this record.
+            {isRejected ? (
+              <>
+                Rejected by{' '}
+                <span className="font-medium text-slate-600">
+                  {row.resolved_by_name || 'Admin'}
+                </span>
+                {row.resolution_notes && (
+                  <span className="text-slate-500"> · {row.resolution_notes}</span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-slate-600">
+                  {row.requested_by_name || 'Unknown'}
+                </span>{' '}
+                {opVerb} this record.
+              </>
+            )}
           </div>
         </div>
         <ChevronDown
@@ -259,9 +301,10 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
             targetType={row.target_type}
           />
 
-          {/* Approve / Reject + "View record" */}
+          {/* Actions row. Pending + resolver → Approve/Reject. Rejected
+              → submitter sees Dismiss (clears the row from their bell). */}
           <div className="flex items-center gap-2 mt-3 flex-wrap">
-            {canResolve && (
+            {!isRejected && canResolve && (
               <>
                 <button
                   type="button"
@@ -289,6 +332,20 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
                 </button>
               </>
             )}
+            {isRejected && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                disabled={busy}
+                className="inline-flex items-center gap-1 px-2.5 py-1
+                           text-[11px] font-semibold rounded-md
+                           bg-white hover:bg-slate-100 text-slate-700 border border-slate-300
+                           disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                Dismiss
+              </button>
+            )}
             {row.target_id && (
               <Link
                 to={meta.detailUrl(row.target_id)}
@@ -305,9 +362,10 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
         </div>
       )}
 
-      {/* Inline Approve / Reject when not expanded (only for resolvers
-          so the queue stays scannable). */}
-      {!expanded && canResolve && (
+      {/* Inline action buttons when not expanded. Resolvers see
+          Approve/Reject on pending rows; submitters see Dismiss on
+          their rejected rows. */}
+      {!expanded && !isRejected && canResolve && (
         <div className="flex items-center gap-1.5 px-4 pb-3">
           <button
             type="button"
@@ -332,6 +390,22 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
           >
             <X className="w-3 h-3" />
             Reject
+          </button>
+        </div>
+      )}
+      {!expanded && isRejected && (
+        <div className="flex items-center gap-1.5 px-4 pb-3">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDismiss() }}
+            disabled={busy}
+            className="inline-flex items-center gap-1 px-2.5 py-1
+                       text-[11px] font-semibold rounded-md
+                       bg-white hover:bg-slate-100 text-slate-700 border border-slate-300
+                       disabled:opacity-60 disabled:cursor-not-allowed transition"
+          >
+            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+            Dismiss
           </button>
         </div>
       )}

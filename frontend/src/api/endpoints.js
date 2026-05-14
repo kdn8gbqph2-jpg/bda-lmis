@@ -129,6 +129,8 @@ export const approvals = {
   detail:  (id)     => client.get(`/approvals/${id}/`),
   approve: (id, notes = '') => client.post(`/approvals/${id}/approve/`, { notes }),
   reject:  (id, notes = '') => client.post(`/approvals/${id}/reject/`, { notes }),
+  /** Submitter clears their own rejected CR from the bell. */
+  dismiss: (id)     => client.post(`/approvals/${id}/dismiss/`),
 }
 
 // ── Transliterate (English → Hindi) ──────────────────────────────────────────

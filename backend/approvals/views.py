@@ -105,10 +105,12 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def count(self, request):
         if not _is_resolver(request.user):
-            # Staff can see their own pending count too — it's a useful
-            # "your submissions awaiting review" indicator.
+            # Staff: count both 'awaiting decision' and 'recently
+            # rejected — needs your attention' so the bell badge nags
+            # them until they dismiss the rejection.
             n = ChangeRequest.objects.filter(
-                status='pending', requested_by=request.user,
+                requested_by=request.user,
+                status__in=('pending', 'rejected'),
             ).count()
             return Response({'pending': n, 'role': 'staff'})
 
@@ -233,28 +235,50 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': f'Request is already {cr.status}.'},
                             status=status.HTTP_409_CONFLICT)
 
-        cr_pk       = cr.pk
-        target_type = cr.target_type
-        target_id   = cr.target_id
+        # Keep the rejected CR row so the submitter can see in the bell
+        # that their proposal was turned down (plus the optional notes).
+        # The DB cost is bounded by the weekly sweep task that purges
+        # rejected rows older than the retention window.
+        cr.status           = 'rejected'
+        cr.resolved_by      = request.user
+        cr.resolved_at      = timezone.now()
+        cr.resolution_notes = (request.data.get('notes') or '').strip()
+        cr.save(update_fields=['status', 'resolved_by', 'resolved_at', 'resolution_notes'])
 
-        # Hard-delete the rejected CR and any sibling pending CRs for
-        # the same record. Reject doesn't apply anything to the model
-        # so there is no AuditLog written here — the rejected proposal
-        # leaves no trace, matching the 'keep only pending + latest
-        # state' DB policy.
+        # Drop sibling pending CRs on the same record — once one variant
+        # is decided, the others are stale and shouldn't sit in the queue.
         ChangeRequest.objects.filter(
-            target_type=target_type,
-            target_id=target_id,
+            target_type=cr.target_type,
+            target_id=cr.target_id,
             status='pending',
-        ).exclude(pk=cr_pk).delete()
-        cr.delete()
+        ).exclude(pk=cr.pk).delete()
 
-        logger.info(
-            'ChangeRequest #%s rejected by %s — discarded',
-            cr_pk, request.user.username,
-        )
+        logger.info('ChangeRequest #%s rejected by %s', cr.pk, request.user.username)
         return Response({
-            'detail':      'Rejected and discarded.',
-            'target_type': target_type,
-            'target_id':   target_id,
+            'detail':      'Rejected.',
+            'target_type': cr.target_type,
+            'target_id':   cr.target_id,
         })
+
+    # ── /{id}/dismiss/ ──────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['post'])
+    def dismiss(self, request, pk=None):
+        """
+        Submitter clears their own rejected ChangeRequest from the bell
+        after acknowledging it. Admins don't need this — they already
+        have approve/reject. Only the original requester can dismiss,
+        and only rejected rows (pending ones stay until resolved).
+        """
+        cr = self.get_object()
+        if cr.requested_by_id != request.user.id:
+            return Response({'detail': 'Not your request.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        if cr.status != 'rejected':
+            return Response({'detail': 'Only rejected requests can be dismissed.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        cr_pk = cr.pk
+        cr.delete()
+        logger.info('ChangeRequest #%s dismissed by submitter %s',
+                    cr_pk, request.user.username)
+        return Response({'detail': 'Dismissed.'})

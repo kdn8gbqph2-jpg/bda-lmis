@@ -163,6 +163,14 @@ CELERY_BEAT_SCHEDULE = {
         'task':     'dms_sync.sync',
         'schedule': crontab(hour=2, minute=0),   # 02:00 IST daily
     },
+    'approvals-sweep-old-rejected': {
+        # Hard-deletes rejected ChangeRequests older than the retention
+        # window (default 7 days). Keeps the approvals table bounded
+        # while still letting submitters see and acknowledge their
+        # rejections.
+        'task':     'approvals.sweep_old_rejected',
+        'schedule': crontab(hour=3, minute=0),   # 03:00 IST daily
+    },
 }
 
 
