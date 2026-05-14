@@ -28,10 +28,20 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { fmt } from '@/components/history/FieldDiff'
 import { valuesEqual } from '@/components/approvals/recentApprovalMap'
 
+// Mirror of backend approvals.mixins.BYPASS_FIELDS — fields that
+// bypass the approval queue entirely (free-form notes + DMS linkage
+// + filing flags). The chip stays silent on these so the UI doesn't
+// claim "Pending approval" for a value that's about to save directly.
+const BYPASS_FIELDS = new Set([
+  'remarks', 'rejection_reason',
+  'regulation_file_present', 'dms_file_number',
+])
+
 export function PendingFieldChip({ fieldKey, record, pendingCR, formValue, recentApproval }) {
   const role = useAuthStore((s) => s.user?.role)
 
   if (!fieldKey) return null
+  if (BYPASS_FIELDS.has(fieldKey)) return null
   const current = record?.[fieldKey]
 
   // ── Pending: server-side queued OR local staff edit ─────────────────

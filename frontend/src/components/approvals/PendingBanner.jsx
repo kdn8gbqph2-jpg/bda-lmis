@@ -36,6 +36,15 @@ import { fieldLabel } from '@/lib/fieldLabels'
 import { FieldDiff } from '@/components/history/FieldDiff'
 import { valuesEqual } from '@/components/approvals/recentApprovalMap'
 
+// Mirror of backend approvals.mixins.BYPASS_FIELDS. Hidden from the
+// banner so a mixed save (tracked + bypass fields) doesn't surface
+// the bypass ones — they apply silently and don't belong in an
+// "awaiting review" rundown.
+const BYPASS_FIELDS = new Set([
+  'remarks', 'rejection_reason',
+  'regulation_file_present', 'dms_file_number',
+])
+
 const MAX_FIELDS_SHOWN_COMPACT = 6
 
 export function PendingBanner({ cr, record, onResolved }) {
@@ -75,6 +84,7 @@ export function PendingBanner({ cr, record, onResolved }) {
   const rows = []
   for (const k of Object.keys(payload)) {
     if (k.startsWith('_')) continue
+    if (BYPASS_FIELDS.has(k)) continue
     const cur = record?.[k]
     const nxt = payload[k]
     if (valuesEqual(cur, nxt)) continue

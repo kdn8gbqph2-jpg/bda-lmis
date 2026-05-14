@@ -30,16 +30,29 @@ _SKIP_FIELD_TYPES = (
     'FileField',
 )
 
+# Field names that audit deliberately ignores — these are either system-
+# managed (DMS linkage, re-synced nightly) or low-importance filing
+# flags that staff toggle freely and don't need an audit trail for.
+# Match by attname so '_id' suffixed FK columns wouldn't accidentally
+# match a non-FK field of the same base name.
+_UNTRACKED_FIELDS = {
+    'regulation_file_present',
+    'dms_file_number',
+}
+
 
 def _serialize(instance) -> dict:
     """
-    Produce a plain dict of an instance's non-spatial, non-file field values.
-    FK fields are stored as `field_id` integers.
+    Produce a plain dict of an instance's non-spatial, non-file field
+    values, with audit-untracked fields stripped. FK fields are stored
+    as `field_id` integers.
     """
     data = {}
     for field in instance._meta.concrete_fields:
         field_type = type(field).__name__
         if field_type in _SKIP_FIELD_TYPES:
+            continue
+        if field.attname in _UNTRACKED_FIELDS:
             continue
         value = field.value_from_object(instance)
         # Make datetimes and dates JSON-safe
@@ -167,6 +180,13 @@ def _register(model_class, entity_type: str):
         old    = cache.pop(id(instance), None)
         action = 'create' if created else 'update'
         new    = _serialize(instance)
+        # Skip the audit write for updates that produced no tracked
+        # diff. Common after the _UNTRACKED_FIELDS filter: a save that
+        # only touched a below-the-radar field (regulation_file_present,
+        # dms_file_number) yields old == new and there's nothing
+        # meaningful to log. Creates always go through.
+        if action == 'update' and old == new:
+            return
         _write_log(entity_type, instance.pk, action,
                    old_values=old if not created else None,
                    new_values=new)

@@ -432,9 +432,17 @@ function DiffBlock({ loading, detail }) {
   // For creates everything in the payload is "new"; for updates we
   // include only fields whose value actually differs from the live
   // record so the reviewer isn't scrolling through unchanged data.
+  // Same bypass list the chip / banner use — these fields don't go
+  // through approval semantically, so they shouldn't surface in the
+  // resolver's diff view either (a mixed save can drag them along).
+  const BYPASS = new Set([
+    'remarks', 'rejection_reason',
+    'regulation_file_present', 'dms_file_number',
+  ])
   const rows = []
   for (const key of Object.keys(proposed)) {
     if (key.startsWith('_')) continue
+    if (BYPASS.has(key)) continue
     const newV = proposed[key]
     const oldV = current[key]
     if (!isCreate && valuesEqual(oldV, newV)) continue
