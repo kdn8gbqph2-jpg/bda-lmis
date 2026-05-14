@@ -1,6 +1,7 @@
 import React from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
+import { ApprovalsBell } from '@/components/approvals/ApprovalsBell'
 
 const ROUTE_META = {
   '/dashboard':        { title: 'Dashboard',       sub: 'Overview of all colonies and land records' },
@@ -68,9 +69,10 @@ export function Topbar({ onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <button className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-          <Bell className="w-5 h-5" />
-        </button>
+        {/* Pending change-request bell. Hidden for viewers; shows
+            the count of pending submissions for staff (their own)
+            and admins / superintendents (everyone's). */}
+        <ApprovalsBell />
         <Clock />
       </div>
     </header>

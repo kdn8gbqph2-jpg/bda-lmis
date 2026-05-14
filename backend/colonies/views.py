@@ -18,16 +18,17 @@ from .serializers import (
 )
 from .filters import ColonyFilter, KhasraFilter
 from users.permissions import IsAdmin, IsStaffOrAbove
+from approvals.mixins import StaffApprovalMixin
 
 logger = logging.getLogger(__name__)
 
 
-class ColonyViewSet(viewsets.ModelViewSet):
+class ColonyViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
     """
     GET    /api/colonies/              list  (all authenticated)
-    POST   /api/colonies/              create (admin only)
+    POST   /api/colonies/              create (staff+; staff goes through approval queue)
     GET    /api/colonies/{id}/         detail
-    PUT    /api/colonies/{id}/         update (admin only)
+    PUT    /api/colonies/{id}/         update (staff+; staff goes through approval queue)
     DELETE /api/colonies/{id}/         delete (admin only)
     GET    /api/colonies/{id}/stats/   aggregate stats
     GET    /api/colonies/{id}/geojson/ single boundary as GeoJSON Feature
@@ -39,9 +40,20 @@ class ColonyViewSet(viewsets.ModelViewSet):
     ordering_fields  = ['name', 'zone', 'status']
     ordering         = ['name']
 
+    # ── Staff approval gate ──
+    # Staff JSON writes get queued as ChangeRequest rows; admin/super
+    # writes (and any multipart file submission) pass through directly.
+    approval_target_type        = 'colony'
+    approval_target_label_field = 'name'
+
     def get_permissions(self):
-        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+        # Delete stays admin-only. Create / update now admits staff so
+        # the approval mixin can intercept; pure admin saves continue
+        # to apply directly.
+        if self.action == 'destroy':
             return [IsAuthenticated(), IsAdmin()]
+        if self.action in ('create', 'update', 'partial_update'):
+            return [IsAuthenticated(), IsStaffOrAbove()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):

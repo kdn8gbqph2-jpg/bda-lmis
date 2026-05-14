@@ -17,11 +17,12 @@ from .serializers import (
     PattaVersionSerializer,
 )
 from users.permissions import IsAdmin, IsStaffOrAbove
+from approvals.mixins import StaffApprovalMixin
 
 logger = logging.getLogger(__name__)
 
 
-class PattaViewSet(viewsets.ModelViewSet):
+class PattaViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
     """
     GET    /api/pattas/                     list   (authenticated)
     POST   /api/pattas/                     create (staff+)
@@ -40,6 +41,12 @@ class PattaViewSet(viewsets.ModelViewSet):
     search_fields   = ['patta_number', 'allottee_name']
     ordering_fields = ['patta_number', 'allottee_name', 'issue_date', 'status']
     ordering        = ['colony', 'patta_number']
+
+    # ── Staff approval gate ─────────────────────────────────────────────────
+    # Staff JSON writes get queued as ChangeRequest rows; admin/super
+    # writes (and any multipart submission) pass through directly.
+    approval_target_type        = 'patta'
+    approval_target_label_field = 'patta_number'
 
     def get_permissions(self):
         if self.action == 'destroy':

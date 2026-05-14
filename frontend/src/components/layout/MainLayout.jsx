@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { Backdrop } from '@/components/ui/Backdrop'
+import { ToastViewport } from '@/components/ui/ToastViewport'
 
 export function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -46,6 +47,8 @@ export function MainLayout() {
           <Outlet />
         </main>
       </div>
+
+      <ToastViewport />
     </div>
   )
 }

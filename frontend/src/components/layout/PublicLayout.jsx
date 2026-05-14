@@ -23,6 +23,7 @@ import { TopNavbar } from '@/components/public/TopNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { CATEGORIES } from '@/components/public/categories'
 import { Backdrop } from '@/components/ui/Backdrop'
+import { ToastViewport } from '@/components/ui/ToastViewport'
 
 // ── Sidebar component ──────────────────────────────────────────────────────────
 
@@ -245,6 +246,8 @@ export function PublicLayout() {
           <PublicFooter />
         </main>
       </div>
+
+      <ToastViewport />
     </div>
   )
 }

@@ -117,6 +117,17 @@ export const auditLogs = {
   list: (params) => client.get('/audit-logs/', { params }),
 }
 
+// ── Approvals (ChangeRequest queue) ──────────────────────────────────────────
+// Pending changes submitted by staff. Admin/Superintendent approve or
+// reject; bell badge on the topbar reads from /count/.
+export const approvals = {
+  list:    (params) => client.get('/approvals/', { params }),
+  count:   ()       => client.get('/approvals/count/'),
+  detail:  (id)     => client.get(`/approvals/${id}/`),
+  approve: (id, notes = '') => client.post(`/approvals/${id}/approve/`, { notes }),
+  reject:  (id, notes = '') => client.post(`/approvals/${id}/reject/`, { notes }),
+}
+
 // ── Transliterate (English → Hindi) ──────────────────────────────────────────
 // Backend proxies Google Input Tools and caches in Redis for 24h.
 export const transliterate = {

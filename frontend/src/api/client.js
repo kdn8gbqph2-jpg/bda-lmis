@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useToastStore } from '@/stores/useToastStore'
 
 const client = axios.create({
   baseURL: '/api',
@@ -17,7 +18,19 @@ client.interceptors.request.use((config) => {
 let refreshing = null   // deduplicate concurrent refresh calls
 
 client.interceptors.response.use(
-  (res) => res.data,   // unwrap so callers get the JSON body directly
+  (res) => {
+    // Surface the "Sent for approval" toast automatically. The mixin
+    // on the backend returns 202 Accepted + change_request_id when a
+    // staff member's write got queued instead of applied.
+    if (res.status === 202 && res.data?.change_request_id) {
+      try {
+        useToastStore.getState().push(
+          res.data.detail || 'Sent for approval. An Admin or Superintendent will review your changes shortly.',
+          { kind: 'success', duration: 6000 },
+        )
+      } catch { /* toast is best-effort */ }
+    }
+    return res.data   // unwrap so callers get the JSON body directly
   async (error) => {
     const original = error.config
 

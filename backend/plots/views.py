@@ -21,6 +21,7 @@ from .serializers import (
     PlotGeoJSONSerializer,
 )
 from users.permissions import IsAdmin, IsStaffOrAbove
+from approvals.mixins import StaffApprovalMixin
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ _TEMPLATE_HINTS = [
 ]
 
 
-class PlotViewSet(viewsets.ModelViewSet):
+class PlotViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
     """
     GET    /api/plots/              list  (authenticated)
     POST   /api/plots/              create (staff+)
@@ -62,6 +63,10 @@ class PlotViewSet(viewsets.ModelViewSet):
     search_fields    = ['plot_number']
     ordering_fields  = ['plot_number', 'area_sqm', 'status', 'type']
     ordering         = ['colony', 'plot_number']
+
+    # Staff approval gate — see approvals.mixins for the rules.
+    approval_target_type        = 'plot'
+    approval_target_label_field = 'plot_number'
 
     def get_permissions(self):
         if self.action == 'destroy':
