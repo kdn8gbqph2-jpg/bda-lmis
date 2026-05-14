@@ -2,11 +2,13 @@
  * PendingFieldChip — small inline badge that flags a single form field's
  * approval state. Three lifecycle states, only one rendered at a time:
  *
- *   1. PENDING (amber, Clock)
+ *   1. PENDING (amber, Clock) + inline strikethrough diff
  *      · Staff has typed a new value locally (form differs from record), OR
  *      · A ChangeRequest is queued on the server for this field.
- *      Both share one visual because in both cases an approval is in
- *      flight (or about to be).
+ *      The chip is followed by `~~old~~ → new` so the change is visible
+ *      without opening a separate diff panel. The strikethrough stays
+ *      until the change is approved (chip turns green) or rejected
+ *      (chip disappears).
  *
  *   2. APPROVED (green, BadgeCheck) — transient, 24h window
  *      · The field's most recent audit-log change came through an
@@ -21,19 +23,13 @@
  * `labelExtra` slot on Input / Select / HindiInput / HindiTextarea.
  */
 
-import { Clock, BadgeCheck } from 'lucide-react'
+import { Clock, BadgeCheck, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { fmt } from '@/components/history/FieldDiff'
 
 function valuesEqual(a, b) {
   try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null) }
   catch { return false }
-}
-
-function proposedLabel(v) {
-  if (v === null || v === undefined || v === '') return '—'
-  if (Array.isArray(v))      return `[${v.length} items]`
-  if (typeof v === 'object') return JSON.stringify(v).slice(0, 80)
-  return String(v).slice(0, 80)
 }
 
 export function PendingFieldChip({ fieldKey, record, pendingCR, formValue, recentApproval }) {
@@ -58,14 +54,25 @@ export function PendingFieldChip({ fieldKey, record, pendingCR, formValue, recen
   if (hasServerPending || hasLocalDiff) {
     const proposed = hasServerPending ? serverProposed : formValue
     return (
-      <span
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
-                   text-[10px] font-semibold uppercase tracking-wider
-                   bg-amber-50 text-amber-800 border border-amber-200 align-middle"
-        title={`Pending approval · proposed value: ${proposedLabel(proposed)}`}
-      >
-        <Clock className="w-2.5 h-2.5" strokeWidth={2.5} />
-        Pending approval
+      <span className="inline-flex items-center gap-1.5 flex-wrap align-middle">
+        <span
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
+                     text-[10px] font-semibold uppercase tracking-wider
+                     bg-amber-50 text-amber-800 border border-amber-200"
+          title="Pending approval — will revert on reject, stay on approve"
+        >
+          <Clock className="w-2.5 h-2.5" strokeWidth={2.5} />
+          Pending approval
+        </span>
+        <span className="inline-flex items-baseline gap-1 text-[11px] leading-none">
+          <span className="line-through text-slate-400 max-w-[10rem] truncate">
+            {fmt(current)}
+          </span>
+          <ChevronRight className="w-3 h-3 text-slate-300 self-center flex-shrink-0" />
+          <span className="font-semibold text-slate-700 max-w-[10rem] truncate">
+            {fmt(proposed)}
+          </span>
+        </span>
       </span>
     )
   }
