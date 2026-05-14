@@ -73,9 +73,14 @@ function UserFormModal({ open, onClose, user }) {
   const mutation = useMutation({
     mutationFn: () => {
       if (isEdit) {
-        // Don't include password if blank (means "leave unchanged")
+        // Don't include password if blank (means "leave unchanged").
+        // Always send `username` — the model has it as a required
+        // unique field and DRF rejects PUT bodies without it.
+        // We preserve the existing username unless the SSO ID changed,
+        // in which case we mirror the new SSO ID so the two stay synced.
         const { password, ...rest } = form
-        const payload = password ? { ...rest, password } : rest
+        const username = form.emp_id?.trim() || user.username
+        const payload = { ...rest, username, ...(password ? { password } : {}) }
         return usersApi.update(user.id, payload)
       }
       // On create, derive username from SSO ID since the model requires it.
@@ -95,7 +100,22 @@ function UserFormModal({ open, onClose, user }) {
     },
   })
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  // Setting a value also clears that field's stale error so the red
+  // hint goes away as soon as the user starts correcting it.
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }))
+    setErrors((e) => {
+      if (!e || (!e[k] && !(k === 'emp_id' && e.username))) return e
+      const next = { ...e }
+      delete next[k]
+      // The email input also displays username errors as a fallback
+      // (since the user doesn't see a separate username field). Clear
+      // the linked one when its visible field is edited.
+      if (k === 'email')  delete next.username
+      if (k === 'emp_id') delete next.username
+      return next
+    })
+  }
 
   const handleSubmit = () => {
     setErrors({})
