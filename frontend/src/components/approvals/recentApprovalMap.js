@@ -44,7 +44,11 @@ export function buildRecentApprovalMap(entries) {
     for (const k of keys) {
       if (k in out) continue
       if (valuesEqual(oldV[k], newV[k])) continue
-      out[k] = e.change_request_id
+      // Approval-sourced rows have submitted_by_name populated (the
+      // audit signal sets it only when a ChangeRequest was in flight).
+      // We used to check change_request_id but that FK gets nulled
+      // after the CR is hard-deleted; submitted_by is the durable mark.
+      out[k] = e.submitted_by_name
         ? { approverName: e.user_name, timestamp: e.timestamp }
         : null
     }

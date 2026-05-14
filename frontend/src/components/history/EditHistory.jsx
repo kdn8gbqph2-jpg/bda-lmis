@@ -111,7 +111,13 @@ function Entry({ entry }) {
 
   const submitter = entry.submitted_by_name
   const resolver  = entry.user_name
-  const wasApproval = !!(entry.change_request_id && submitter)
+  // `submitted_by` is set by the audit signal ONLY when the save fired
+  // inside an approval-resolution flow — direct admin/staff writes
+  // leave it null. We used to also gate on change_request_id but that
+  // FK gets SET_NULL when the resolved CR is hard-deleted (queue
+  // cleanup keeps ChangeRequest holding only pending work), so we now
+  // rely on the submitter alone, which survives the deletion.
+  const wasApproval = !!submitter
 
   // Build a compact one-line summary of changed fields by label. Used
   // as the default subtle preview so a long history doesn't scream

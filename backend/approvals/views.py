@@ -187,20 +187,38 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
             )
         finally:
             # Clear the context so the next save on this thread (e.g. the
-            # cr.save() below) doesn't accidentally inherit the CR FK.
+            # bulk delete below) doesn't accidentally inherit the CR FK.
             set_current_change_request(None)
 
-        cr.status           = 'approved'
-        cr.resolved_by      = request.user
-        cr.resolved_at      = timezone.now()
-        cr.resolution_notes = (request.data.get('notes') or '').strip()
-        if cr.target_id is None:
-            cr.target_id = instance.pk
-        cr.save(update_fields=['status', 'resolved_by', 'resolved_at',
-                                'resolution_notes', 'target_id'])
+        # Capture identifying info before deleting the CR — we want it
+        # for the log line and the response body.
+        cr_pk         = cr.pk
+        target_type   = cr.target_type
+        target_id     = cr.target_id or instance.pk
+        resolver_name = request.user.get_full_name() or request.user.username
 
-        logger.info('ChangeRequest %s approved by %s', cr.pk, request.user.username)
-        return Response(ChangeRequestDetailSerializer(cr).data)
+        # Hard-delete the resolved CR and any sibling pending CRs for
+        # the same record. Intent: ChangeRequest table holds only
+        # pending work, never historical decisions. AuditLog row written
+        # above had `change_request=cr`; on_delete=SET_NULL nulls that
+        # FK but preserves `submitted_by`, which is what the UI uses to
+        # mark approval-sourced rows.
+        ChangeRequest.objects.filter(
+            target_type=target_type,
+            target_id=target_id,
+            status='pending',
+        ).exclude(pk=cr_pk).delete()
+        cr.delete()
+
+        logger.info(
+            'ChangeRequest #%s approved by %s — %s #%s applied; CR removed',
+            cr_pk, resolver_name, target_type, target_id,
+        )
+        return Response({
+            'detail':      'Approved and applied.',
+            'target_type': target_type,
+            'target_id':   target_id,
+        })
 
     # ── /{id}/reject/ ───────────────────────────────────────────────────────
 
@@ -215,11 +233,28 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': f'Request is already {cr.status}.'},
                             status=status.HTTP_409_CONFLICT)
 
-        cr.status           = 'rejected'
-        cr.resolved_by      = request.user
-        cr.resolved_at      = timezone.now()
-        cr.resolution_notes = (request.data.get('notes') or '').strip()
-        cr.save(update_fields=['status', 'resolved_by', 'resolved_at', 'resolution_notes'])
+        cr_pk       = cr.pk
+        target_type = cr.target_type
+        target_id   = cr.target_id
 
-        logger.info('ChangeRequest %s rejected by %s', cr.pk, request.user.username)
-        return Response(ChangeRequestDetailSerializer(cr).data)
+        # Hard-delete the rejected CR and any sibling pending CRs for
+        # the same record. Reject doesn't apply anything to the model
+        # so there is no AuditLog written here — the rejected proposal
+        # leaves no trace, matching the 'keep only pending + latest
+        # state' DB policy.
+        ChangeRequest.objects.filter(
+            target_type=target_type,
+            target_id=target_id,
+            status='pending',
+        ).exclude(pk=cr_pk).delete()
+        cr.delete()
+
+        logger.info(
+            'ChangeRequest #%s rejected by %s — discarded',
+            cr_pk, request.user.username,
+        )
+        return Response({
+            'detail':      'Rejected and discarded.',
+            'target_type': target_type,
+            'target_id':   target_id,
+        })

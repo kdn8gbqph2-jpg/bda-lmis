@@ -71,14 +71,20 @@ def _write_log(entity_type: str, entity_id, action: str,
     audit.middleware.set_current_change_request), the resulting AuditLog
     captures both the resolver (current request user) AND the original
     staff submitter, plus a FK back to the ChangeRequest itself.
+
+    After a successful write, prior audit rows for the same record are
+    pruned per-field so the AuditLog grows by unique field, not by save
+    event — see _prune_prior. Skips pruning for delete/reject actions.
     """
     from django.db import transaction as _tx
+    user = get_current_user()
+    ip, ua = get_current_request_meta()
+    cr = get_current_change_request()
+
+    entry = None
     try:
         with _tx.atomic():          # savepoint — rolls back only THIS write on failure
-            user = get_current_user()
-            ip, ua = get_current_request_meta()
-            cr = get_current_change_request()
-            AuditLog.objects.create(
+            entry = AuditLog.objects.create(
                 user=user,
                 submitted_by=(cr.requested_by if cr else None),
                 change_request=cr,
@@ -91,7 +97,50 @@ def _write_log(entity_type: str, entity_id, action: str,
                 user_agent=ua or '',
             )
     except Exception:
-        pass   # never let audit failures propagate
+        return                      # never let audit failures propagate
+
+    # Prune in a separate savepoint so a failure here can't undo the write
+    # we just made. Only runs for state-changing actions: a delete row is
+    # already terminal (no later updates) and an informational row would
+    # incorrectly look like the latest truth for the fields it carries.
+    if entry and action in ('create', 'update') and new_values:
+        try:
+            with _tx.atomic():
+                _prune_prior(entry, set(new_values.keys()))
+        except Exception:
+            pass
+
+
+def _prune_prior(new_entry, superseded_keys):
+    """
+    Walk older AuditLog rows for the same (entity_type, entity_id) and
+    strip out any field key that's in `superseded_keys` (the keys the
+    new entry just wrote). A row that loses every field this way is
+    deleted entirely. Result: each (record, field) has at most one
+    AuditLog row — the most recent one to touch it.
+
+    Caller's responsibility to wrap in its own savepoint.
+    """
+    if not superseded_keys:
+        return
+    prior = AuditLog.objects.filter(
+        entity_type=new_entry.entity_type,
+        entity_id=new_entry.entity_id,
+    ).exclude(pk=new_entry.pk).only('pk', 'old_values', 'new_values', 'action')
+
+    for prev in prior:
+        new_v = prev.new_values or {}
+        if not (set(new_v.keys()) & superseded_keys):
+            continue
+        kept_new = {k: v for k, v in new_v.items() if k not in superseded_keys}
+        if not kept_new:
+            prev.delete()
+            continue
+        old_v    = prev.old_values or {}
+        kept_old = {k: v for k, v in old_v.items() if k not in superseded_keys}
+        prev.new_values = kept_new
+        prev.old_values = kept_old or None
+        prev.save(update_fields=['new_values', 'old_values'])
 
 
 # ── Thread-local pre-save cache ───────────────────────────────────────────────
