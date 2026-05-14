@@ -121,21 +121,35 @@ function DonutChart({ id, data, loading }) {
 
     series.data.setAll(data)
 
+    // Wrap the legend onto multiple lines when the card is narrow.
+    // root.gridLayout flows items left-to-right then breaks to the
+    // next row, which is what we want for 5 colony types in a small
+    // donut card — the horizontalLayout we had was clipping at the
+    // right edge.
     const legend = chart.children.push(
       am5.Legend.new(root, {
-        centerX:  am5.percent(50),
-        x:        am5.percent(50),
-        marginTop: 12,
-        layout:   root.horizontalLayout,
+        centerX:    am5.percent(50),
+        x:          am5.percent(50),
+        marginTop:  12,
+        layout:     root.gridLayout,
+        useDefaultMarker: true,
       })
     )
+    legend.markers.template.setAll({ width: 10, height: 10 })
+    legend.markerRectangles.template.setAll({ cornerRadiusTL: 2, cornerRadiusTR: 2, cornerRadiusBL: 2, cornerRadiusBR: 2 })
+    legend.labels.template.setAll({ fontSize: 12, fill: am5.color(0x334155) })
+    legend.valueLabels.template.setAll({ fontSize: 12, fill: am5.color(0x64748b) })
+    // Cap label width so a long category doesn't push neighbours off
+    // the card. Long labels truncate with ellipsis on amCharts side.
+    legend.labels.template.setAll({ maxWidth: 130, oversizedBehavior: 'truncate' })
+
     legend.data.setAll(series.dataItems)
 
     series.appear(800, 100)
     return () => root.dispose()
   }, [data, loading])
 
-  return <ChartCanvas innerRef={ref} loading={loading} empty={!data.some((d) => d.count)} />
+  return <ChartCanvas innerRef={ref} loading={loading} empty={!data.some((d) => d.count)} height={320} />
 }
 
 // ── Column: pattas by year ───────────────────────────────────────────────────
@@ -209,10 +223,10 @@ function YearlyColumnChart({ id, data, loading }) {
 
 // ── Common canvas wrapper (handles loading + empty states) ───────────────────
 
-function ChartCanvas({ innerRef, loading, empty }) {
+function ChartCanvas({ innerRef, loading, empty, height = 280 }) {
   return (
     <div className="relative">
-      <div ref={innerRef} style={{ width: '100%', height: 280 }} />
+      <div ref={innerRef} style={{ width: '100%', height }} />
       {(loading || empty) && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-400 pointer-events-none">
           {loading ? 'Loading chart…' : 'No data yet'}
