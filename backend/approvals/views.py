@@ -135,21 +135,13 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Stamp the audit trail into the `remarks` field. Two lines —
-        # who submitted and who approved — appended to whatever the
-        # staff member already typed. Survives across re-edits via the
-        # normal audit log.
+        # Apply the staff submission verbatim. We used to stamp
+        # "Submitted by X / Approved by Y" into the remarks field here,
+        # but that duplicated what EditHistory already shows via the
+        # green 'Approved by …' pill (driven by AuditLog.submitted_by
+        # + user). Polluting remarks made the field unusable for actual
+        # internal notes.
         payload = dict(cr.payload or {})
-        submitted = (
-            f'Submitted by {cr.requested_by_name} '
-            f'on {cr.requested_at:%Y-%m-%d %H:%M}'
-        )
-        approved = (
-            f'Approved by {request.user.get_full_name() or request.user.username} '
-            f'on {timezone.now():%Y-%m-%d %H:%M}'
-        )
-        existing = (payload.get('remarks') or '').strip()
-        payload['remarks'] = '\n'.join(filter(None, [existing, submitted, approved]))
 
         # Run the original write serializer so all validation /
         # cascade-effects (PlotPattaMapping, khasras_input, etc.)
