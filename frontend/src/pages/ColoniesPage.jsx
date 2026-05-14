@@ -93,7 +93,7 @@ const COLUMNS = [
 // ── Detail Modal ─────────────────────────────────────────────────────────────
 
 function ColonyDetailModal({ colony, onClose }) {
-  const isAdmin = useAuthStore((s) => s.isAdmin)()
+  const canWrite = useAuthStore((s) => s.isStaffOrAbove)()
   const [editing, setEditing] = useState(false)
 
   // Full detail — needed for all the spec fields (file slots, khasras list,
@@ -109,7 +109,7 @@ function ColonyDetailModal({ colony, onClose }) {
 
   return (
     <>
-      {isAdmin && full.data && (
+      {canWrite && full.data && (
         <ColonyEditModal
           colony={full.data}
           open={editing}
@@ -123,7 +123,7 @@ function ColonyDetailModal({ colony, onClose }) {
         title={d.name || colony?.name || 'Colony Detail'}
         size="lg"
         footer={
-          isAdmin && (
+          canWrite && (
             <Button variant="primary" onClick={() => setEditing(true)} disabled={!full.data}>
               <Pencil className="w-4 h-4" /> Edit Colony
             </Button>
@@ -262,7 +262,7 @@ function FileLink({ label, url }) {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function ColoniesPage() {
-  const isAdmin = useAuthStore((s) => s.isAdmin)()
+  const canWrite = useAuthStore((s) => s.isStaffOrAbove)()
   const [filters, setFilters] = useState({
     search:          '',
     colony_type:     '',
@@ -383,7 +383,7 @@ export default function ColoniesPage() {
               </button>
             </span>
           )}
-          {isAdmin && (
+          {canWrite && (
             <Button onClick={() => setAddOpen(true)} className="ml-auto">
               <Plus className="w-4 h-4" /> Add Colony
             </Button>

@@ -110,6 +110,10 @@ export const users = {
   update:         (id, d)  => client.put(`/users/${id}/`, d),
   destroy:        (id)     => client.delete(`/users/${id}/`),
   assignColonies: (id, d)  => client.post(`/users/${id}/assign-colonies/`, d),
+  /** Liveness check used by the Edit User modal's SSO ID / User ID field. */
+  checkEmpId:     (value, exclude) => client.get('/users/check-emp-id/', {
+    params: { value, ...(exclude ? { exclude } : {}) },
+  }),
 }
 
 // ── Audit logs (admin) ────────────────────────────────────────────────────────

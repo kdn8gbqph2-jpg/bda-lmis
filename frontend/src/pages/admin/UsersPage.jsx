@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, UserPlus, Pencil, UserX, UserCheck } from 'lucide-react'
+import { Search, UserPlus, Pencil, UserX, UserCheck, Check, AlertCircle, Loader2 } from 'lucide-react'
 import { users as usersApi } from '@/api/endpoints'
+import { useDebounce } from '@/hooks/useDebounce'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
 import { Table, Pagination } from '@/components/ui/Table'
@@ -34,6 +35,44 @@ function RoleBadge({ role }) {
 }
 
 // ── User form modal (create + edit) ──────────────────────────────────────────
+
+/**
+ * Inline availability hint for the SSO ID / User ID field. Three
+ * states surface to the user:
+ *   · checking — spinner while the debounced /check-emp-id/ call runs
+ *   · available — green tick
+ *   · taken    — red warning + who's holding it
+ */
+function SsoIdHint({ value, debounced, query, available }) {
+  if (!value) return null
+  // Show "checking" while the user is still typing (value !== debounced)
+  // or while the request is in flight.
+  const settling = value !== debounced || query.isFetching
+  if (settling) {
+    return (
+      <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+        <Loader2 className="w-3 h-3 animate-spin" /> Checking availability…
+      </p>
+    )
+  }
+  if (available === true) {
+    return (
+      <p className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
+        <Check className="w-3 h-3" /> Available
+      </p>
+    )
+  }
+  if (available === false) {
+    const who = query.data?.taken_by
+    return (
+      <p className="text-[11px] text-red-700 mt-1 flex items-center gap-1">
+        <AlertCircle className="w-3 h-3" />
+        Already in use{who ? ` by ${who}` : ''}.
+      </p>
+    )
+  }
+  return null
+}
 
 function emptyForm() {
   return {
@@ -117,19 +156,43 @@ function UserFormModal({ open, onClose, user }) {
     })
   }
 
+  // ── SSO ID / User ID liveness check ──
+  // Hit the backend after the user pauses typing for 400ms and show a
+  // green tick / red warning inline below the input. The user's own
+  // current SSO ID counts as available (we exclude the editing user).
+  const debouncedEmpId = useDebounce(form.emp_id?.trim() ?? '', 400)
+  const empIdQ = useQuery({
+    queryKey: ['users', 'check-emp-id', debouncedEmpId, user?.id ?? null],
+    queryFn:  () => usersApi.checkEmpId(debouncedEmpId, user?.id),
+    enabled:  open && !!debouncedEmpId,
+    staleTime: 30_000,
+  })
+  const empIdAvailable = debouncedEmpId
+    ? (empIdQ.data?.available ?? null)
+    : null
+
   const handleSubmit = () => {
     setErrors({})
+    // Email is optional now — SSO ID alone is enough to identify a user.
     const required = isEdit
-      ? !form.email?.trim() || !form.emp_id?.trim()
-      : !form.email?.trim() || !form.emp_id?.trim() || !form.password
+      ? !form.emp_id?.trim()
+      : !form.emp_id?.trim() || !form.password
     if (required) {
       setErrors({
         _detail: isEdit
-          ? 'Email and SSO ID are required.'
-          : 'Email, SSO ID, and Password are required.',
-        ...(!form.email?.trim()         && { email:    ['This field is required.'] }),
+          ? 'SSO ID / User ID is required.'
+          : 'SSO ID / User ID and Password are required.',
         ...(!form.emp_id?.trim()        && { emp_id:   ['This field is required.'] }),
         ...(!isEdit && !form.password   && { password: ['This field is required.'] }),
+      })
+      return
+    }
+    // Block submission if the SSO ID was reported as taken. The backend
+    // would reject anyway; surfacing it client-side is friendlier.
+    if (empIdAvailable === false) {
+      setErrors({
+        _detail: `SSO ID "${form.emp_id}" is already in use.`,
+        emp_id: ['Already in use.'],
       })
       return
     }
@@ -167,14 +230,28 @@ function UserFormModal({ open, onClose, user }) {
                  error={fieldErr('last_name')} />
         </div>
 
-        <Input label="Email *" type="email" value={form.email}
+        <Input label="Email" type="email" value={form.email}
                onChange={(e) => set('email', e.target.value)}
                error={fieldErr('email') ?? fieldErr('username')} />
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="SSO ID *" value={form.emp_id}
-                 onChange={(e) => set('emp_id', e.target.value)}
-                 error={fieldErr('emp_id')} />
+          <div>
+            <Input
+              label="SSO ID / User ID *"
+              value={form.emp_id}
+              onChange={(e) => set('emp_id', e.target.value)}
+              error={fieldErr('emp_id')}
+            />
+            <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+              Enter custom User ID if SSO ID not available.
+            </p>
+            <SsoIdHint
+              value={form.emp_id?.trim() ?? ''}
+              debounced={debouncedEmpId}
+              query={empIdQ}
+              available={empIdAvailable}
+            />
+          </div>
           <Input label="Mobile" type="tel" inputMode="numeric"
                  placeholder="10 digits"
                  value={form.mobile}

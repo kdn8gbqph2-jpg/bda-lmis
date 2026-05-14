@@ -13,7 +13,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     ]
 
     username        = models.CharField(max_length=150, unique=True)
-    email           = models.EmailField(max_length=254, unique=True)
+    # email is optional: many internal users have only an SSO ID. Postgres
+    # treats NULLs as distinct so the unique constraint still holds across
+    # the users who DO have an email.
+    email           = models.EmailField(max_length=254, unique=True, blank=True, null=True)
     first_name      = models.CharField(max_length=150, blank=True)
     last_name       = models.CharField(max_length=150, blank=True)
     emp_id          = models.CharField(max_length=20, unique=True)

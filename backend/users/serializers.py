@@ -39,6 +39,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
         source='colony_assignments', many=True, read_only=True
     )
     password = serializers.CharField(write_only=True, required=False)
+    # Email is optional now — internal staff frequently sign up with
+    # only an SSO ID. allow_blank handles the empty-string form value
+    # the modal sends; allow_null lets the model store SQL NULL.
+    email = serializers.EmailField(
+        required=False, allow_blank=True, allow_null=True,
+    )
 
     class Meta:
         model = CustomUser
@@ -54,6 +60,17 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+    def validate_email(self, value):
+        """
+        The frontend sends an empty string when the operator leaves the
+        Email field blank. Convert that to None so the unique constraint
+        treats it as missing rather than colliding with other blank
+        rows.
+        """
+        if value in (None, '', '   '):
+            return None
+        return value
 
     def create(self, validated_data):
         password = validated_data.pop('password')

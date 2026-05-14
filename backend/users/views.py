@@ -178,6 +178,37 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserListSerializer
         return UserDetailSerializer
 
+    @action(detail=False, methods=['get'], url_path='check-emp-id')
+    def check_emp_id(self, request):
+        """
+        Liveness check for the SSO ID / User ID field on the Edit User
+        modal. Returns whether the proposed value is free.
+
+        Query params:
+          value=<str>         the proposed emp_id / username
+          exclude=<user_id>   id of the row currently being edited
+
+        Response:
+          {available: bool, taken_by: '<user-label>' | null}
+        """
+        value   = (request.query_params.get('value') or '').strip()
+        exclude = request.query_params.get('exclude')
+        if not value:
+            return Response({'available': False, 'taken_by': None,
+                              'reason': 'empty'})
+
+        qs = CustomUser.objects.filter(emp_id__iexact=value)
+        if exclude:
+            qs = qs.exclude(pk=exclude)
+        clashing = qs.first()
+        if clashing:
+            label = (clashing.get_full_name()
+                     or clashing.username
+                     or clashing.email
+                     or f'user #{clashing.pk}')
+            return Response({'available': False, 'taken_by': label})
+        return Response({'available': True, 'taken_by': None})
+
     @action(detail=True, methods=['post'], url_path='assign-colonies')
     def assign_colonies(self, request, pk=None):
         """
