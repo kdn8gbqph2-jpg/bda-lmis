@@ -76,10 +76,25 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        params = self.request.query_params
         # Filter by status query param so the bell can ask for ?status=pending.
-        st = self.request.query_params.get('status')
+        st = params.get('status')
         if st:
             qs = qs.filter(status=st)
+        # Edit modals + detail pages pass ?target_type=plot&target_id=42 to
+        # scope the query to one record. Without these, every per-record
+        # query returned the entire pending list and any record's banner
+        # would fire on any pending CR (bug surfaced when an unrelated
+        # plot edit caused a patta detail page to show 'Edit pending').
+        tt = params.get('target_type')
+        if tt:
+            qs = qs.filter(target_type=tt)
+        tid = params.get('target_id')
+        if tid:
+            try:
+                qs = qs.filter(target_id=int(tid))
+            except (TypeError, ValueError):
+                qs = qs.none()
         # Staff users only see their own requests; resolvers see everything.
         if not _is_resolver(self.request.user):
             qs = qs.filter(requested_by=self.request.user)
