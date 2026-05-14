@@ -12,15 +12,23 @@
  * editing user on every save.
  */
 
-import { useState, useEffect, useRef } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, AlertCircle, Upload, FileText, X, Download } from 'lucide-react'
 
-import { colonies as coloniesApi, plots as plotsApi } from '@/api/endpoints'
+import {
+  colonies as coloniesApi,
+  plots as plotsApi,
+  approvals as approvalsApi,
+  auditLogs as auditApi,
+} from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
+import { PendingFieldChip } from '@/components/approvals/PendingFieldChip'
+import { buildRecentApprovalMap } from '@/components/approvals/recentApprovalMap'
+import { EditHistory } from '@/components/history/EditHistory'
 
 // ── Choice constants — labels must match the user-facing flag spec ────────────
 
@@ -147,6 +155,40 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
     }
   }, [open, colony])
 
+  // Pending CR + recent audit log — feed the per-field chips. Same
+  // pattern as Patta/Plot edit modals; cheap queries scoped to this
+  // colony only.
+  const pendingQ = useQuery({
+    queryKey: ['approvals', 'pending', 'colony', colony?.id],
+    queryFn:  () => approvalsApi.list({
+      target_type: 'colony', target_id: colony?.id, status: 'pending', page_size: 1,
+    }),
+    enabled: open && !!colony?.id,
+    staleTime: 30_000,
+  })
+  const pendingCR = pendingQ.data?.results?.[0]
+
+  const recentAuditQ = useQuery({
+    queryKey: ['audit', 'colony', colony?.id, 'recent'],
+    queryFn:  () => auditApi.list({ entity_type: 'colony', entity_id: colony?.id, page_size: 20 }),
+    enabled:  open && !!colony?.id,
+    staleTime: 30_000,
+  })
+  const recentApprovals = useMemo(
+    () => buildRecentApprovalMap(recentAuditQ.data?.results ?? []),
+    [recentAuditQ.data],
+  )
+
+  const chip = (fieldKey) => (
+    <PendingFieldChip
+      fieldKey={fieldKey}
+      record={colony}
+      pendingCR={pendingCR}
+      formValue={form[fieldKey]}
+      recentApproval={recentApprovals[fieldKey]}
+    />
+  )
+
   // ── Plot template download ────────────────────────────────────────────────
   const downloadTemplate = async () => {
     const blob = await plotsApi.template()
@@ -214,6 +256,10 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
       queryClient.invalidateQueries({ queryKey: ['colony', colony.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['plots'] })
+      // Refresh bell + Edit History timeline immediately. Staff saves
+      // produce a new pending CR; admin saves produce a new AuditLog row.
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['audit']     })
       onSaved?.(data)
       // Keep the modal open if there's an import result the operator should see
       if (!plotsFile) onClose()
@@ -278,19 +324,23 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
             value={form.name}
             onChange={set('name')}
             error={errors.name?.[0]}
+            labelExtra={chip('name')}
             required
           />
-          <Select label="Colony Flag" value={form.colony_type} onChange={set('colony_type')}>
+          <Select label="Colony Flag" value={form.colony_type} onChange={set('colony_type')}
+            labelExtra={chip('colony_type')}>
             {COLONY_TYPE_CHOICES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </Select>
-          <Select label="Zone" value={form.zone} onChange={set('zone')}>
+          <Select label="Zone" value={form.zone} onChange={set('zone')}
+            labelExtra={chip('zone')}>
             {ZONE_CHOICES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </Select>
-          <Select label="Status" value={form.status} onChange={set('status')}>
+          <Select label="Status" value={form.status} onChange={set('status')}
+            labelExtra={chip('status')}>
             {STATUS_CHOICES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
@@ -334,21 +384,25 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
             placeholder="ग्राम का नाम"
             value={form.revenue_village ?? ''} onChange={set('revenue_village')}
             error={errors.revenue_village?.[0]}
+            labelExtra={chip('revenue_village')}
           />
           <Input
             label="Chak Number" type="number"
             value={form.chak_number ?? ''} onChange={set('chak_number')}
             error={errors.chak_number?.[0]}
+            labelExtra={chip('chak_number')}
           />
           <Input
             label="DLC File Number"
             value={form.dlc_file_number ?? ''} onChange={set('dlc_file_number')}
             error={errors.dlc_file_number?.[0]}
+            labelExtra={chip('dlc_file_number')}
           />
           <Input
             label="Notified Area (Bigha)" type="number" step="0.01"
             value={form.notified_area_bigha ?? ''} onChange={set('notified_area_bigha')}
             error={errors.notified_area_bigha?.[0]}
+            labelExtra={chip('notified_area_bigha')}
           />
         </Section>
 
@@ -357,10 +411,12 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
           <Input
             label="Conversion Date" type="date"
             value={form.conversion_date ?? ''} onChange={set('conversion_date')}
+            labelExtra={chip('conversion_date')}
           />
           <Input
             label="Layout Approval Date" type="date"
             value={form.layout_approval_date ?? ''} onChange={set('layout_approval_date')}
+            labelExtra={chip('layout_approval_date')}
           />
         </Section>
 
@@ -466,6 +522,7 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
               value={form.rejection_reason ?? ''}
               onChange={set('rejection_reason')}
               error={errors.rejection_reason?.[0]}
+              labelExtra={chip('rejection_reason')}
               required
               hint="Required for rejected layouts. Visible on the public dashboard."
             />
@@ -485,6 +542,12 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
           </div>
         )}
       </form>
+
+      {colony?.id && (
+        <div className="mt-6">
+          <EditHistory entityType="colony" entityId={colony.id} />
+        </div>
+      )}
     </Modal>
   )
 }
@@ -565,11 +628,12 @@ function FileSlot({ label, current, file, accept, onChange, error }) {
   )
 }
 
-function Textarea({ label, value, onChange, error, required, hint }) {
+function Textarea({ label, value, onChange, error, required, hint, labelExtra }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-slate-700">
-        {label}{required && <span className="text-red-500"> *</span>}
+      <label className="text-sm font-medium text-slate-700 flex items-center gap-2 flex-wrap">
+        <span>{label}{required && <span className="text-red-500"> *</span>}</span>
+        {labelExtra}
       </label>
       <textarea
         value={value}

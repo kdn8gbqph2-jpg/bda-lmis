@@ -6,16 +6,23 @@
  * Backend audit signals + geojson-cache busts run automatically.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, AlertCircle } from 'lucide-react'
 
-import { plots as plotsApi, khasras as khasrasApi, approvals as approvalsApi } from '@/api/endpoints'
+import {
+  plots as plotsApi,
+  khasras as khasrasApi,
+  approvals as approvalsApi,
+  auditLogs as auditApi,
+} from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { HindiTextarea } from '@/components/ui/HindiInput'
 import { PendingFieldChip } from '@/components/approvals/PendingFieldChip'
+import { buildRecentApprovalMap } from '@/components/approvals/recentApprovalMap'
+import { EditHistory } from '@/components/history/EditHistory'
 
 const TYPE_CHOICES = [
   { value: 'Residential', label: 'Residential' },
@@ -84,13 +91,42 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
     staleTime: 30_000,
   })
   const pendingCR = pendingQ.data?.results?.[0]
-  const chipProps = { record: plot, pendingCR }
+
+  // Recent audit-log entries — drives the transient green "Approved"
+  // chip on fields whose last change came through an approved CR within
+  // the past 24h. Same endpoint EditHistory uses below.
+  const recentAuditQ = useQuery({
+    queryKey: ['audit', 'plot', plot?.id, 'recent'],
+    queryFn:  () => auditApi.list({ entity_type: 'plot', entity_id: plot?.id, page_size: 20 }),
+    enabled:  open && !!plot?.id,
+    staleTime: 30_000,
+  })
+  const recentApprovals = useMemo(
+    () => buildRecentApprovalMap(recentAuditQ.data?.results ?? []),
+    [recentAuditQ.data],
+  )
+
+  const chip = (fieldKey) => (
+    <PendingFieldChip
+      fieldKey={fieldKey}
+      record={plot}
+      pendingCR={pendingCR}
+      formValue={form[fieldKey]}
+      recentApproval={recentApprovals[fieldKey]}
+    />
+  )
 
   const mutation = useMutation({
     mutationFn: () => plotsApi.update(plot.id, cleanPayload(plot, form)),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['plots'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      // Refresh the bell badge and Edit History timeline immediately —
+      // staff saves create a new pending CR; admin saves write a new
+      // AuditLog row. Either way the chip lifecycle on next open needs
+      // current data.
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['audit']     })
       onSaved?.(data)
       onClose()
     },
@@ -145,14 +181,14 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             value={form.plot_number}
             onChange={set('plot_number')}
             error={errors.plot_number?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="plot_number" {...chipProps} />}
+            labelExtra={chip('plot_number')}
             required
           />
           <Select
             label="Type"
             value={form.type}
             onChange={set('type')}
-            labelExtra={<PendingFieldChip fieldKey="type" {...chipProps} />}
+            labelExtra={chip('type')}
           >
             {TYPE_CHOICES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
@@ -166,7 +202,7 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             value={form.primary_khasra}
             onChange={set('primary_khasra')}
             disabled={khasrasQ.isPending || khasraOptions.length === 0}
-            labelExtra={<PendingFieldChip fieldKey="primary_khasra" {...chipProps} />}
+            labelExtra={chip('primary_khasra')}
           >
             <option value="">
               {khasrasQ.isPending ? 'Loading…'
@@ -181,7 +217,7 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             label="Area (Sq. Yards)" type="number" step="0.01"
             value={form.area_sqy ?? ''} onChange={set('area_sqy')}
             error={errors.area_sqy?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="area_sqy" {...chipProps} />}
+            labelExtra={chip('area_sqy')}
           />
         </div>
 
@@ -189,7 +225,7 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
           label="Status"
           value={form.status}
           onChange={set('status')}
-          labelExtra={<PendingFieldChip fieldKey="status" {...chipProps} />}
+          labelExtra={chip('status')}
         >
           {STATUS_CHOICES.map((c) => (
             <option key={c.value} value={c.value}>{c.label}</option>
@@ -211,6 +247,12 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
           </div>
         )}
       </form>
+
+      {plot?.id && (
+        <div className="mt-6">
+          <EditHistory entityType="plot" entityId={plot.id} />
+        </div>
+      )}
     </Modal>
   )
 }

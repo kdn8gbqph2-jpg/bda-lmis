@@ -1,52 +1,32 @@
 /**
- * PendingFieldChip — small inline badge that flags a single form
- * field as having a pending change in the approval queue.
+ * PendingFieldChip — small inline badge that flags a single form field's
+ * approval state. Three lifecycle states, only one rendered at a time:
  *
- *   · If `pendingCR.payload[fieldKey]` differs from `record[fieldKey]`,
- *     renders a red "Pending approval" chip.
- *   · Otherwise renders nothing (lets the layout stay clean for fields
- *     with no in-flight change).
+ *   1. PENDING (amber, Clock)
+ *      · Staff has typed a new value locally (form differs from record), OR
+ *      · A ChangeRequest is queued on the server for this field.
+ *      Both share one visual because in both cases an approval is in
+ *      flight (or about to be).
  *
- * Drop next to any field's label inside an edit modal:
+ *   2. APPROVED (green, BadgeCheck) — transient, 24h window
+ *      · The field's most recent audit-log change came through an
+ *        approved ChangeRequest. After 24h the chip disappears; the
+ *        change stays in the Edit History timeline.
+ *      · If a later non-approval edit (direct admin save) overrides
+ *        the approved value, the green chip is suppressed.
  *
- *   <label>Status <PendingFieldChip fieldKey="status"
- *                                     record={patta}
- *                                     pendingCR={pendingCR} /></label>
+ *   3. Nothing — field is in a settled state.
  *
- * Used in conjunction with the PendingBanner (record-level summary).
+ * Drop next to any field's label inside an edit modal via the
+ * `labelExtra` slot on Input / Select / HindiInput / HindiTextarea.
  */
 
-import { Clock } from 'lucide-react'
+import { Clock, BadgeCheck } from 'lucide-react'
+import { useAuthStore } from '@/stores/useAuthStore'
 
-export function PendingFieldChip({ fieldKey, record, pendingCR }) {
-  if (!pendingCR || !fieldKey) return null
-
-  const payload  = pendingCR.payload || {}
-  // If the queued payload doesn't even mention this key, nothing's
-  // changing here — skip silently.
-  if (!(fieldKey in payload)) return null
-
-  const proposed = payload[fieldKey]
-  const current  = record?.[fieldKey]
-  try {
-    if (JSON.stringify(proposed ?? null) === JSON.stringify(current ?? null)) {
-      return null    // value is the same — staff submitted but didn't
-                     // actually change this field
-    }
-  } catch { /* fall through and show the chip */ }
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
-                 text-[10px] font-semibold uppercase tracking-wider
-                 bg-amber-50 text-amber-800 border border-amber-200
-                 align-middle"
-      title={`Pending approval · proposed value: ${proposedLabel(proposed)}`}
-    >
-      <Clock className="w-2.5 h-2.5" strokeWidth={2.5} />
-      Pending approval
-    </span>
-  )
+function valuesEqual(a, b) {
+  try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null) }
+  catch { return false }
 }
 
 function proposedLabel(v) {
@@ -54,4 +34,59 @@ function proposedLabel(v) {
   if (Array.isArray(v))      return `[${v.length} items]`
   if (typeof v === 'object') return JSON.stringify(v).slice(0, 80)
   return String(v).slice(0, 80)
+}
+
+export function PendingFieldChip({ fieldKey, record, pendingCR, formValue, recentApproval }) {
+  const role = useAuthStore((s) => s.user?.role)
+
+  if (!fieldKey) return null
+  const current = record?.[fieldKey]
+
+  // ── Pending: server-side queued OR local staff edit ─────────────────
+  const serverProposed = pendingCR?.payload?.[fieldKey]
+  const hasServerPending =
+    pendingCR &&
+    pendingCR.payload && Object.prototype.hasOwnProperty.call(pendingCR.payload, fieldKey) &&
+    !valuesEqual(serverProposed, current)
+  // Local-diff chip is only meaningful for staff — admin/super writes
+  // save directly and don't queue, so showing "Pending approval" while
+  // they edit would be misleading.
+  const hasLocalDiff =
+    role === 'staff' && formValue !== undefined &&
+    !valuesEqual(formValue, current)
+
+  if (hasServerPending || hasLocalDiff) {
+    const proposed = hasServerPending ? serverProposed : formValue
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
+                   text-[10px] font-semibold uppercase tracking-wider
+                   bg-amber-50 text-amber-800 border border-amber-200 align-middle"
+        title={`Pending approval · proposed value: ${proposedLabel(proposed)}`}
+      >
+        <Clock className="w-2.5 h-2.5" strokeWidth={2.5} />
+        Pending approval
+      </span>
+    )
+  }
+
+  // ── Approved: recent audit log entry via approved CR ────────────────
+  if (recentApproval) {
+    const when = new Date(recentApproval.timestamp).toLocaleString('en-IN', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    })
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
+                   text-[10px] font-semibold uppercase tracking-wider
+                   bg-emerald-50 text-emerald-800 border border-emerald-200 align-middle"
+        title={`Approved by ${recentApproval.approverName} · ${when}`}
+      >
+        <BadgeCheck className="w-2.5 h-2.5" strokeWidth={2.5} />
+        Approved
+      </span>
+    )
+  }
+
+  return null
 }

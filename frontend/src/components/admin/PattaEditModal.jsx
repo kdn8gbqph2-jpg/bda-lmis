@@ -9,16 +9,22 @@
  * dedicated workflows. It edits patta metadata in place.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, AlertCircle } from 'lucide-react'
 
-import { pattas as pattasApi, approvals as approvalsApi } from '@/api/endpoints'
+import {
+  pattas as pattasApi,
+  approvals as approvalsApi,
+  auditLogs as auditApi,
+} from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { HindiInput, HindiTextarea } from '@/components/ui/HindiInput'
 import { PendingFieldChip } from '@/components/approvals/PendingFieldChip'
+import { buildRecentApprovalMap } from '@/components/approvals/recentApprovalMap'
+import { EditHistory } from '@/components/history/EditHistory'
 
 // ── Choice constants — must match backend models.py verbatim ─────────────────
 
@@ -110,7 +116,29 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
     staleTime: 30_000,
   })
   const pendingCR = pendingQ.data?.results?.[0]
-  const chipProps = { record: patta, pendingCR }
+
+  // Recent audit log — feeds the transient "Approved" green chip on
+  // fields touched by an approved CR within the past 24h.
+  const recentAuditQ = useQuery({
+    queryKey: ['audit', 'patta', patta?.id, 'recent'],
+    queryFn:  () => auditApi.list({ entity_type: 'patta', entity_id: patta?.id, page_size: 20 }),
+    enabled:  open && !!patta?.id,
+    staleTime: 30_000,
+  })
+  const recentApprovals = useMemo(
+    () => buildRecentApprovalMap(recentAuditQ.data?.results ?? []),
+    [recentAuditQ.data],
+  )
+
+  const chip = (fieldKey) => (
+    <PendingFieldChip
+      fieldKey={fieldKey}
+      record={patta}
+      pendingCR={pendingCR}
+      formValue={form[fieldKey]}
+      recentApproval={recentApprovals[fieldKey]}
+    />
+  )
 
   const mutation = useMutation({
     mutationFn: () => pattasApi.update(patta.id, cleanPayload(form)),
@@ -118,6 +146,10 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
       queryClient.invalidateQueries({ queryKey: ['pattas'] })
       queryClient.invalidateQueries({ queryKey: ['patta', patta.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      // Refresh bell + Edit History timeline immediately. Staff saves
+      // produce a new pending CR; admin saves produce a new AuditLog row.
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['audit']     })
       onSaved?.(data)
       onClose()
     },
@@ -164,14 +196,14 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             value={form.patta_number}
             onChange={set('patta_number')}
             error={errors.patta_number?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="patta_number" {...chipProps} />}
+            labelExtra={chip('patta_number')}
             required
           />
           <Select
             label="Status"
             value={form.status}
             onChange={set('status')}
-            labelExtra={<PendingFieldChip fieldKey="status" {...chipProps} />}
+            labelExtra={chip('status')}
           >
             {PATTA_STATUS_CHOICES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
@@ -189,7 +221,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             value={form.allottee_name}
             onChange={set('allottee_name')}
             error={errors.allottee_name?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="allottee_name" {...chipProps} />}
+            labelExtra={chip('allottee_name')}
             required
           />
           <HindiTextarea
@@ -197,7 +229,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             value={form.allottee_address ?? ''}
             onChange={set('allottee_address')}
             error={errors.allottee_address?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="allottee_address" {...chipProps} />}
+            labelExtra={chip('allottee_address')}
           />
         </Section>
 
@@ -208,7 +240,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             value={form.issue_date ?? ''}
             onChange={set('issue_date')}
             error={errors.issue_date?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="issue_date" {...chipProps} />}
+            labelExtra={chip('issue_date')}
             required
           />
           <Input
@@ -216,7 +248,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             type="date"
             value={form.amendment_date ?? ''}
             onChange={set('amendment_date')}
-            labelExtra={<PendingFieldChip fieldKey="amendment_date" {...chipProps} />}
+            labelExtra={chip('amendment_date')}
           />
         </Section>
 
@@ -225,14 +257,14 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             label="Challan Number"
             value={form.challan_number ?? ''}
             onChange={set('challan_number')}
-            labelExtra={<PendingFieldChip fieldKey="challan_number" {...chipProps} />}
+            labelExtra={chip('challan_number')}
           />
           <Input
             label="Challan Date"
             type="date"
             value={form.challan_date ?? ''}
             onChange={set('challan_date')}
-            labelExtra={<PendingFieldChip fieldKey="challan_date" {...chipProps} />}
+            labelExtra={chip('challan_date')}
           />
           <Input
             label="Lease Amount (₹)"
@@ -240,14 +272,14 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
             step="0.01"
             value={form.lease_amount ?? ''}
             onChange={set('lease_amount')}
-            labelExtra={<PendingFieldChip fieldKey="lease_amount" {...chipProps} />}
+            labelExtra={chip('lease_amount')}
           />
           <Input
             label="Lease Duration"
             placeholder="e.g. 99 वर्ष"
             value={form.lease_duration ?? ''}
             onChange={set('lease_duration')}
-            labelExtra={<PendingFieldChip fieldKey="lease_duration" {...chipProps} />}
+            labelExtra={chip('lease_duration')}
           />
         </Section>
 
@@ -258,7 +290,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
                   : form.regulation_file_present === false ? 'false'
                   : ''}
             onChange={set('regulation_file_present')}
-            labelExtra={<PendingFieldChip fieldKey="regulation_file_present" {...chipProps} />}
+            labelExtra={chip('regulation_file_present')}
           >
             {REG_FILE_CHOICES.map((c) => (
               <option key={String(c.value)} value={String(c.value)}>{c.label}</option>
@@ -272,7 +304,7 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
               target: { value: e.target.value.toUpperCase() }
             })}
             error={errors.dms_file_number?.[0]}
-            labelExtra={<PendingFieldChip fieldKey="dms_file_number" {...chipProps} />}
+            labelExtra={chip('dms_file_number')}
           />
         </Section>
 
@@ -290,6 +322,12 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
           </div>
         )}
       </form>
+
+      {patta?.id && (
+        <div className="mt-6">
+          <EditHistory entityType="patta" entityId={patta.id} />
+        </div>
+      )}
     </Modal>
   )
 }
