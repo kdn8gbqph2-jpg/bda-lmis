@@ -2,12 +2,15 @@ import { clsx } from 'clsx'
 import { forwardRef } from 'react'
 
 export const Input = forwardRef(function Input({
-  label, error, className, prefix, suffix, ...props
+  label, error, className, prefix, suffix, labelExtra, ...props
 }, ref) {
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label className="text-sm font-medium text-slate-700">{label}</label>
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-2 flex-wrap">
+          <span>{label}</span>
+          {labelExtra}
+        </label>
       )}
       <div className="relative flex items-center">
         {prefix && (
@@ -41,11 +44,14 @@ export const Input = forwardRef(function Input({
   )
 })
 
-export function Select({ label, error, className, children, ...props }) {
+export function Select({ label, error, className, children, labelExtra, ...props }) {
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label className="text-sm font-medium text-slate-700">{label}</label>
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-2 flex-wrap">
+          <span>{label}</span>
+          {labelExtra}
+        </label>
       )}
       <select
         className={clsx(

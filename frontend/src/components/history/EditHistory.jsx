@@ -19,13 +19,15 @@
  *   <EditHistory entityType="patta" entityId={123} />
  */
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Clock, Plus, Pencil, Trash2, BadgeCheck,
+  Clock, Plus, Pencil, Trash2, BadgeCheck, ChevronDown,
 } from 'lucide-react'
 
 import { auditLogs as auditApi } from '@/api/endpoints'
 import { FieldDiff, diffEntries } from '@/components/history/FieldDiff'
+import { fieldLabel } from '@/lib/fieldLabels'
 
 const ACTION_META = {
   create: { Icon: Plus,   label: 'created', tint: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -99,6 +101,7 @@ function Entry({ entry }) {
   const changes = entry.action === 'delete'
     ? []                                  // delete shows no diff (only old_values)
     : diffEntries(entry.old_values, entry.new_values)
+  const [expanded, setExpanded] = useState(false)
 
   const ts = new Date(entry.timestamp)
   const tsDisplay = ts.toLocaleString('en-IN', {
@@ -110,54 +113,75 @@ function Entry({ entry }) {
   const resolver  = entry.user_name
   const wasApproval = !!(entry.change_request_id && submitter)
 
+  // Build a compact one-line summary of changed fields by label. Used
+  // as the default subtle preview so a long history doesn't scream
+  // diff blocks until the reader opts in.
+  const summary = (() => {
+    if (entry.action === 'create')  return 'Record created.'
+    if (entry.action === 'delete')  return 'Record deleted.'
+    if (changes.length === 0)       return 'No tracked field changes.'
+    const labels = changes.slice(0, 3).map(([k]) => fieldLabel(k))
+    const more   = changes.length - labels.length
+    return `Updated ${labels.join(', ')}${more > 0 ? ` +${more} more` : ''}.`
+  })()
+  const canExpand = changes.length > 0
+
   return (
-    <div className="px-5 py-4">
-      {/* Top line — action chip + who + when */}
-      <div className="flex items-baseline gap-2 flex-wrap mb-2">
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                          text-[10px] font-semibold uppercase tracking-wider
-                          border ${meta.tint}`}>
-          <Icon className="w-3 h-3" strokeWidth={2.5} />
-          {meta.label}
-        </span>
-
-        {wasApproval ? (
-          <span className="text-xs text-slate-600">
-            by <span className="font-medium text-slate-800">{submitter}</span>
+    <div className="px-5 py-3">
+      <button
+        type="button"
+        onClick={() => canExpand && setExpanded((v) => !v)}
+        className={`w-full text-left ${canExpand ? 'cursor-pointer' : 'cursor-default'}`}
+      >
+        {/* Top line — action chip + who + when */}
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                            text-[10px] font-semibold uppercase tracking-wider
+                            border ${meta.tint}`}>
+            <Icon className="w-3 h-3" strokeWidth={2.5} />
+            {meta.label}
           </span>
-        ) : (
-          <span className="text-xs text-slate-600">
-            by <span className="font-medium text-slate-800">{resolver || 'System'}</span>
+
+          {wasApproval ? (
+            <span className="text-xs text-slate-600">
+              by <span className="font-medium text-slate-800">{submitter}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-slate-600">
+              by <span className="font-medium text-slate-800">{resolver || 'System'}</span>
+            </span>
+          )}
+
+          {wasApproval && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                             text-[10px] font-semibold
+                             bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <BadgeCheck className="w-3 h-3" strokeWidth={2.5} />
+              Approved by {resolver}
+            </span>
+          )}
+
+          <span className="text-[11px] text-slate-400 ml-auto flex items-center gap-1"
+                title={tsDisplay}>
+            {timeAgo(entry.timestamp)}
+            {canExpand && (
+              <ChevronDown className={`w-3 h-3 transition-transform
+                                       ${expanded ? 'rotate-180' : ''}`} />
+            )}
           </span>
-        )}
+        </div>
 
-        {wasApproval && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                           text-[10px] font-semibold
-                           bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <BadgeCheck className="w-3 h-3" strokeWidth={2.5} />
-            Approved by {resolver}
-          </span>
-        )}
+        {/* Subtle one-line summary — replaces the always-expanded diff. */}
+        <div className="text-[11px] text-slate-500 mt-1 leading-snug">
+          {summary}
+        </div>
+      </button>
 
-        <span className="text-[11px] text-slate-400 ml-auto" title={tsDisplay}>
-          {timeAgo(entry.timestamp)} · <span className="tabular-nums">{tsDisplay}</span>
-        </span>
-      </div>
-
-      {/* Field-by-field diff — single shared renderer. */}
-      {changes.length > 0 ? (
-        <FieldDiff rows={changes} />
-      ) : (
-        entry.action === 'create' ? (
-          <div className="text-[11px] text-slate-500 italic">Record created.</div>
-        ) : entry.action === 'delete' ? (
-          <div className="text-[11px] text-slate-500 italic">Record deleted.</div>
-        ) : (
-          <div className="text-[11px] text-slate-500 italic">
-            No tracked field changes (system-only update).
-          </div>
-        )
+      {/* Full diff appears only when the entry is expanded. */}
+      {expanded && changes.length > 0 && (
+        <div className="mt-2">
+          <FieldDiff rows={changes} />
+        </div>
       )}
     </div>
   )

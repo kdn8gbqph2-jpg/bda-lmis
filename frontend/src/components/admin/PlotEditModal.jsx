@@ -10,11 +10,12 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, AlertCircle } from 'lucide-react'
 
-import { plots as plotsApi, khasras as khasrasApi } from '@/api/endpoints'
+import { plots as plotsApi, khasras as khasrasApi, approvals as approvalsApi } from '@/api/endpoints'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { HindiTextarea } from '@/components/ui/HindiInput'
+import { PendingFieldChip } from '@/components/approvals/PendingFieldChip'
 
 const TYPE_CHOICES = [
   { value: 'Residential', label: 'Residential' },
@@ -71,6 +72,19 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
     enabled: !!plot?.colony && open,
   })
   const khasraOptions = khasrasQ.data?.results ?? khasrasQ.data ?? []
+
+  // Pending ChangeRequest for this plot — drives the per-field
+  // "Pending approval" badges on the form labels below.
+  const pendingQ = useQuery({
+    queryKey: ['approvals', 'pending', 'plot', plot?.id],
+    queryFn:  () => approvalsApi.list({
+      target_type: 'plot', target_id: plot?.id, status: 'pending', page_size: 1,
+    }),
+    enabled: open && !!plot?.id,
+    staleTime: 30_000,
+  })
+  const pendingCR = pendingQ.data?.results?.[0]
+  const chipProps = { record: plot, pendingCR }
 
   const mutation = useMutation({
     mutationFn: () => plotsApi.update(plot.id, cleanPayload(plot, form)),
@@ -131,9 +145,15 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             value={form.plot_number}
             onChange={set('plot_number')}
             error={errors.plot_number?.[0]}
+            labelExtra={<PendingFieldChip fieldKey="plot_number" {...chipProps} />}
             required
           />
-          <Select label="Type" value={form.type} onChange={set('type')}>
+          <Select
+            label="Type"
+            value={form.type}
+            onChange={set('type')}
+            labelExtra={<PendingFieldChip fieldKey="type" {...chipProps} />}
+          >
             {TYPE_CHOICES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
@@ -146,6 +166,7 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             value={form.primary_khasra}
             onChange={set('primary_khasra')}
             disabled={khasrasQ.isPending || khasraOptions.length === 0}
+            labelExtra={<PendingFieldChip fieldKey="primary_khasra" {...chipProps} />}
           >
             <option value="">
               {khasrasQ.isPending ? 'Loading…'
@@ -160,10 +181,16 @@ export function PlotEditModal({ plot, open, onClose, onSaved }) {
             label="Area (Sq. Yards)" type="number" step="0.01"
             value={form.area_sqy ?? ''} onChange={set('area_sqy')}
             error={errors.area_sqy?.[0]}
+            labelExtra={<PendingFieldChip fieldKey="area_sqy" {...chipProps} />}
           />
         </div>
 
-        <Select label="Status" value={form.status} onChange={set('status')}>
+        <Select
+          label="Status"
+          value={form.status}
+          onChange={set('status')}
+          labelExtra={<PendingFieldChip fieldKey="status" {...chipProps} />}
+        >
           {STATUS_CHOICES.map((c) => (
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}

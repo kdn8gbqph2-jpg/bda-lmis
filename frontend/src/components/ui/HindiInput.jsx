@@ -293,7 +293,7 @@ function SuggestionPopover({ suggestions, highlight, onPick, anchorRef }) {
 // ── <HindiInput> ─────────────────────────────────────────────────────────────
 
 export function HindiInput({
-  label, error, className, value, onChange, ...props
+  label, error, className, value, onChange, labelExtra, ...props
 }) {
   const fieldRef = useRef(null)
   const [enabled, setEnabled] = useState(loadEnabled)
@@ -304,7 +304,12 @@ export function HindiInput({
 
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-sm font-medium text-slate-700">{label}</label>}
+      {label && (
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-2 flex-wrap">
+          <span>{label}</span>
+          {labelExtra}
+        </label>
+      )}
       <div className="relative">
         <input
           ref={fieldRef}
@@ -343,7 +348,7 @@ export function HindiInput({
 // ── <HindiTextarea> ──────────────────────────────────────────────────────────
 
 export function HindiTextarea({
-  label, error, className, value, onChange, rows = 3, ...props
+  label, error, className, value, onChange, rows = 3, labelExtra, ...props
 }) {
   const fieldRef = useRef(null)
   const [enabled, setEnabled] = useState(loadEnabled)
@@ -354,7 +359,12 @@ export function HindiTextarea({
 
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-sm font-medium text-slate-700">{label}</label>}
+      {label && (
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-2 flex-wrap">
+          <span>{label}</span>
+          {labelExtra}
+        </label>
+      )}
       <div className="relative">
         <textarea
           ref={fieldRef}
