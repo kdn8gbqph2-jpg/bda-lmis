@@ -8,10 +8,16 @@ class ChangeRequestListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = ChangeRequest
+        # `payload` is included here (not just on the detail serializer)
+        # because the per-record pending-CR lookups used by PendingBanner
+        # and PendingFieldChip query the list endpoint and need the diff
+        # data. Payloads are small JSON form snapshots — a few hundred
+        # bytes per row — so the bell's paged list response stays light.
         fields = (
             'id',
             'target_type', 'target_id', 'target_label',
             'operation', 'status',
+            'payload',
             'requested_by', 'requested_by_name', 'requested_at',
             'resolved_by',  'resolved_by_name',  'resolved_at',
             'resolution_notes',
@@ -20,16 +26,16 @@ class ChangeRequestListSerializer(serializers.ModelSerializer):
 
 class ChangeRequestDetailSerializer(ChangeRequestListSerializer):
     """
-    Same as the list payload + the full proposed payload and a snapshot
-    of the target's current state so the reviewer can see exactly what
-    is changing. `current` is null for create operations (nothing to
-    diff against).
+    Same as the list payload + the request_notes and a snapshot of the
+    target's current state so the reviewer can see exactly what is
+    changing. `current` is null for create operations (nothing to diff
+    against).
     """
     current = serializers.SerializerMethodField()
 
     class Meta(ChangeRequestListSerializer.Meta):
         fields = ChangeRequestListSerializer.Meta.fields + (
-            'payload', 'request_notes', 'current',
+            'request_notes', 'current',
         )
 
     # Read-only fields we never want to show in the diff (they're either
