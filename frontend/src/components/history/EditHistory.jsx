@@ -21,96 +21,16 @@
 
 import { useQuery } from '@tanstack/react-query'
 import {
-  Clock, Plus, Pencil, Trash2, BadgeCheck, User, ChevronRight,
+  Clock, Plus, Pencil, Trash2, BadgeCheck,
 } from 'lucide-react'
 
 import { auditLogs as auditApi } from '@/api/endpoints'
-
-// Field-name lookup table — keeps the UI from leaking raw column
-// names like "lease_amount" when prettier labels are available.
-const FIELD_LABELS = {
-  // Patta
-  patta_number:           'Patta Number',
-  allottee_name:          'Allottee Name',
-  allottee_address:       'Allottee Address',
-  allottee_father_husband:'Allottee Father/Husband',
-  issue_date:             'Issue Date',
-  amendment_date:         'Amendment Date',
-  challan_number:         'Challan Number',
-  challan_date:           'Challan Date',
-  lease_amount:           'Lease Amount',
-  lease_duration:         'Lease Duration',
-  regulation_file_present:'Regulation File Present',
-  status:                 'Status',
-  remarks:                'Remarks',
-  rejection_reason:       'Rejection Reason',
-  dms_file_number:        'DMS File Number',
-  document_id:            'DMS Document',
-  colony_id:              'Colony',
-  superseded_by_id:       'Superseded By',
-  updated_by_id:          'Updated By',
-  // Colony
-  name:                   'Name',
-  colony_type:            'Type',
-  zone:                   'Zone',
-  revenue_village:        'Revenue Village',
-  chak_number:            'Chak Number',
-  dlc_file_number:        'DLC File Number',
-  notified_area_bigha:    'Notified Area (Bigha)',
-  conversion_date:        'Conversion Date',
-  layout_approval_date:   'Layout Approval Date',
-  total_plots_per_layout: 'Total Plots (Layout)',
-  // Plot
-  plot_number:            'Plot Number',
-  type:                   'Type',
-  area_sqy:               'Area (Sq.Yd)',
-  primary_khasra_id:      'Primary Khasra',
-}
+import { FieldDiff, diffEntries } from '@/components/history/FieldDiff'
 
 const ACTION_META = {
   create: { Icon: Plus,   label: 'created', tint: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   update: { Icon: Pencil, label: 'updated', tint: 'bg-blue-50    text-blue-700    border-blue-200'    },
   delete: { Icon: Trash2, label: 'deleted', tint: 'bg-red-50     text-red-700     border-red-200'    },
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function fmt(v) {
-  if (v === null || v === undefined || v === '') return '—'
-  if (Array.isArray(v))      return v.length === 0 ? '—' : `[${v.length} items]`
-  if (typeof v === 'object') return JSON.stringify(v)
-  if (v === true)            return 'Yes'
-  if (v === false)           return 'No'
-  // Truncate very long values so a single overgrown remark doesn't
-  // blow out the row layout.
-  const s = String(v)
-  return s.length > 200 ? s.slice(0, 200) + '…' : s
-}
-
-// Compute the list of (key, oldV, newV) tuples that actually changed
-// between old_values and new_values. Hides system / FK noise.
-const _IGNORED = new Set([
-  'id', 'created_at', 'updated_at', 'pk',
-])
-
-function diff(oldVals, newVals) {
-  const all = new Set([
-    ...Object.keys(oldVals || {}),
-    ...Object.keys(newVals || {}),
-  ])
-  const out = []
-  for (const k of all) {
-    if (_IGNORED.has(k)) continue
-    const a = (oldVals ?? {})[k]
-    const b = (newVals ?? {})[k]
-    try {
-      if (JSON.stringify(a ?? null) === JSON.stringify(b ?? null)) continue
-    } catch {
-      /* fall through and show */
-    }
-    out.push([k, a, b])
-  }
-  return out
 }
 
 function timeAgo(ts) {
@@ -178,7 +98,7 @@ function Entry({ entry }) {
   const Icon = meta.Icon
   const changes = entry.action === 'delete'
     ? []                                  // delete shows no diff (only old_values)
-    : diff(entry.old_values, entry.new_values)
+    : diffEntries(entry.old_values, entry.new_values)
 
   const ts = new Date(entry.timestamp)
   const tsDisplay = ts.toLocaleString('en-IN', {
@@ -225,28 +145,9 @@ function Entry({ entry }) {
         </span>
       </div>
 
-      {/* Field-by-field diff */}
+      {/* Field-by-field diff — single shared renderer. */}
       {changes.length > 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden mt-2">
-          <div className="divide-y divide-slate-100">
-            {changes.map(([key, a, b]) => (
-              <div key={key} className="px-3 py-1.5 text-[11px] grid grid-cols-[120px,1fr] gap-2 items-baseline">
-                <div className="text-slate-500 font-medium truncate" title={key}>
-                  {FIELD_LABELS[key] || key}
-                </div>
-                <div className="min-w-0 flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-slate-400 line-through break-words max-w-[40%] truncate">
-                    {fmt(a)}
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-slate-300" />
-                  <span className="text-slate-900 font-medium break-words">
-                    {fmt(b)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <FieldDiff rows={changes} />
       ) : (
         entry.action === 'create' ? (
           <div className="text-[11px] text-slate-500 italic">Record created.</div>

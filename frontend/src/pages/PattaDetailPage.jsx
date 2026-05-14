@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, FileText, Pencil, ExternalLink, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, FileText, Pencil, ExternalLink } from 'lucide-react'
 import { pattas as pattasApi, dms as dmsApi, approvals as approvalsApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
 import { PattaEditModal } from '@/components/admin/PattaEditModal'
 import { EditHistory } from '@/components/history/EditHistory'
+import { PendingBanner } from '@/components/approvals/PendingBanner'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 /**
@@ -159,7 +160,7 @@ export default function PattaDetailPage() {
           is waiting on this patta. Lists the fields the queued payload
           intends to change so a viewer (especially the staff submitter)
           can see what's in flight without opening the bell. */}
-      {pendingCR && <PendingBanner cr={pendingCR} patta={patta} />}
+      {pendingCR && <PendingBanner cr={pendingCR} record={patta} />}
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -250,58 +251,3 @@ export default function PattaDetailPage() {
   )
 }
 
-// ── Pending approval banner ────────────────────────────────────────────────
-
-function PendingBanner({ cr, patta }) {
-  // Build a list of fields that the queued payload intends to change,
-  // by comparing it against the live patta record we already have on
-  // hand. Falls back to the bare CR detail when fields can't be diffed.
-  const payload = cr.payload || {}
-  const changed = []
-  for (const k of Object.keys(payload)) {
-    if (k.startsWith('_')) continue
-    const cur = patta?.[k]
-    try {
-      if (JSON.stringify(cur ?? null) !== JSON.stringify(payload[k] ?? null)) {
-        changed.push(prettyFieldLabel(k))
-      }
-    } catch {
-      changed.push(prettyFieldLabel(k))
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3
-                    flex items-start gap-3">
-      <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-amber-900">
-          Edit pending approval
-        </div>
-        <div className="text-xs text-amber-800/90 mt-0.5">
-          Submitted by{' '}
-          <span className="font-medium">{cr.requested_by_name || 'Staff user'}</span>
-          {' · awaiting review by Admin or Superintendent.'}
-        </div>
-        {changed.length > 0 && (
-          <div className="text-[11px] text-amber-700 mt-1">
-            <span className="font-semibold uppercase tracking-wider">Pending changes: </span>
-            {changed.slice(0, 6).join(', ')}
-            {changed.length > 6 && ` +${changed.length - 6} more`}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const _PRETTY = {
-  patta_number: 'Patta Number', allottee_name: 'Allottee Name',
-  allottee_address: 'Allottee Address', issue_date: 'Issue Date',
-  amendment_date: 'Amendment Date', challan_number: 'Challan Number',
-  challan_date: 'Challan Date', lease_amount: 'Lease Amount',
-  lease_duration: 'Lease Duration', status: 'Status',
-  regulation_file_present: 'Regulation File', remarks: 'Remarks',
-  dms_file_number: 'DMS File Number', colony: 'Colony',
-}
-function prettyFieldLabel(k) { return _PRETTY[k] || k }

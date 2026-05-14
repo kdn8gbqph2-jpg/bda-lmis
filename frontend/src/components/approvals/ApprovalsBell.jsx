@@ -28,6 +28,7 @@ import {
 
 import { approvals as approvalsApi } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { FieldDiff } from '@/components/history/FieldDiff'
 
 const TARGET_META = {
   patta:  { label: 'Patta',  icon: FileText,  listUrl: () => '/patta-ledger', detailUrl: (id) => `/patta-ledger/${id}` },
@@ -339,51 +340,6 @@ function Row({ row, canResolve, expanded, onToggle, onApprove, onReject, onClose
 
 // ── Diff block ──────────────────────────────────────────────────────────────
 
-const FIELD_LABELS = {
-  // Patta
-  patta_number:           'Patta Number',
-  allottee_name:          'Allottee Name',
-  allottee_address:       'Allottee Address',
-  issue_date:             'Issue Date',
-  amendment_date:         'Amendment Date',
-  challan_number:         'Challan Number',
-  challan_date:           'Challan Date',
-  lease_amount:           'Lease Amount',
-  lease_duration:         'Lease Duration',
-  regulation_file_present:'Regulation File Present',
-  status:                 'Status',
-  remarks:                'Remarks',
-  dms_file_number:        'DMS File Number',
-  colony:                 'Colony',
-  // Colony
-  name:                   'Name',
-  colony_type:            'Type',
-  zone:                   'Zone',
-  revenue_village:        'Revenue Village',
-  chak_number:            'Chak Number',
-  dlc_file_number:        'DLC File Number',
-  notified_area_bigha:    'Notified Area (Bigha)',
-  conversion_date:        'Conversion Date',
-  layout_approval_date:   'Layout Approval Date',
-  rejection_reason:       'Rejection Reason',
-  khasras_input:          'Khasras',
-  // Plot
-  plot_number:            'Plot Number',
-  type:                   'Type',
-  area_sqy:               'Area (Sq.Yd)',
-  primary_khasra:         'Primary Khasra',
-}
-
-/** Pretty-print a single value for the diff cells. */
-function fmt(v) {
-  if (v === null || v === undefined || v === '') return '—'
-  if (Array.isArray(v))        return v.length === 0 ? '—' : `[${v.length} items]`
-  if (typeof v === 'object')   return JSON.stringify(v)
-  if (v === true)              return 'Yes'
-  if (v === false)             return 'No'
-  return String(v)
-}
-
 function DiffBlock({ loading, detail }) {
   if (loading) {
     return (
@@ -398,20 +354,18 @@ function DiffBlock({ loading, detail }) {
   const current  = detail.current  || {}
   const isCreate = detail.operation === 'create'
 
-  // Walk the proposed payload and build a list of (field, old, new) rows.
-  // For creates, "old" is always empty. For updates, we only include
-  // fields where old != new (so unchanged data doesn't crowd the view).
+  // For creates everything in the payload is "new"; for updates we
+  // include only fields whose value actually differs from the live
+  // record so the reviewer isn't scrolling through unchanged data.
   const rows = []
   for (const key of Object.keys(proposed)) {
     if (key.startsWith('_')) continue
     const newV = proposed[key]
     const oldV = current[key]
     if (!isCreate) {
-      // Coarse "did this change" check. JSON.stringify catches arrays
-      // and dicts; primitives compare cleanly.
       try {
         if (JSON.stringify(oldV ?? null) === JSON.stringify(newV ?? null)) continue
-      } catch { /* if it doesn't stringify cleanly, include it */ }
+      } catch { /* fall through and include */ }
     }
     rows.push([key, oldV, newV])
   }
@@ -425,39 +379,10 @@ function DiffBlock({ loading, detail }) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
-      <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200
-                      text-[10px] font-semibold uppercase tracking-widest text-slate-500
-                      flex items-center justify-between">
-        <span>{isCreate ? 'Proposed values' : 'Changes'}</span>
-        <span className="text-slate-400 normal-case font-normal text-[11px]">
-          {rows.length} {rows.length === 1 ? 'field' : 'fields'}
-        </span>
-      </div>
-      <div className="divide-y divide-slate-100">
-        {rows.map(([key, oldV, newV]) => (
-          <div key={key} className="px-3 py-1.5 text-[11px] grid grid-cols-[110px,1fr] gap-2 items-baseline">
-            <div className="text-slate-500 font-medium truncate" title={key}>
-              {FIELD_LABELS[key] || key}
-            </div>
-            <div className="min-w-0">
-              {isCreate ? (
-                <span className="text-slate-800 break-words">{fmt(newV)}</span>
-              ) : (
-                <div className="flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-slate-400 line-through break-words max-w-[180px] truncate">
-                    {fmt(oldV)}
-                  </span>
-                  <span className="text-slate-300">→</span>
-                  <span className="text-slate-900 font-medium break-words">
-                    {fmt(newV)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <FieldDiff
+      rows={rows}
+      mode={isCreate ? 'create' : 'diff'}
+      keyColumnW={110}
+    />
   )
 }

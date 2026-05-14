@@ -53,7 +53,6 @@ export const plots = {
 export const pattas = {
   list:         (params) => client.get('/pattas/', { params }),
   detail:       (id)     => client.get(`/pattas/${id}/`),
-  versions:     (id)     => client.get(`/pattas/${id}/versions/`),
   plotsCovered: (id)     => client.get(`/pattas/${id}/plots/`),
   linkDocument: (id, data) => client.post(`/pattas/${id}/link-document/`, data),
   create:       (data)   => client.post('/pattas/', data),

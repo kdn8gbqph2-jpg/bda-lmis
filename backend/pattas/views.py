@@ -9,12 +9,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .filters import PattaFilter
-from .models import Patta, PlotPattaMapping, PattaVersion
+from .models import Patta, PlotPattaMapping
 from .serializers import (
     PattaListSerializer,
     PattaDetailSerializer,
     PattaWriteSerializer,
-    PattaVersionSerializer,
 )
 from users.permissions import IsAdmin, IsStaffOrAbove
 from approvals.mixins import StaffApprovalMixin
@@ -79,20 +78,7 @@ class PattaViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save(updated_by=self.request.user)
-        self._snapshot(instance, self.request.user)
         cache.delete(f'colony:{instance.colony_id}:stats')
-
-    @staticmethod
-    def _snapshot(patta, user):
-        """Store a PattaVersion snapshot after every mutation."""
-        import json
-        from rest_framework.renderers import JSONRenderer
-        snapshot = PattaDetailSerializer(patta).data
-        try:
-            raw = json.loads(JSONRenderer().render(snapshot))
-        except Exception:
-            raw = {}
-        PattaVersion.objects.create(patta=patta, snapshot=raw, changed_by=user)
 
     # ── /api/pattas/export/ ───────────────────────────────────────────────────
 
@@ -171,14 +157,6 @@ class PattaViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
         )
         resp['Content-Disposition'] = 'attachment; filename="patta_ledger.xlsx"'
         return resp
-
-    # ── /api/pattas/{id}/versions/ ────────────────────────────────────────────
-
-    @action(detail=True, methods=['get'])
-    def versions(self, request, pk=None):
-        patta    = self.get_object()
-        versions = patta.versions.select_related('changed_by').order_by('-changed_at')[:20]
-        return Response(PattaVersionSerializer(versions, many=True).data)
 
     # ── /api/pattas/{id}/link-document/ ──────────────────────────────────────
 
