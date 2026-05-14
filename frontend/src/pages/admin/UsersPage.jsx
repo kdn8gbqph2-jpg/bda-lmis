@@ -244,10 +244,18 @@ export default function UsersPage() {
       key: 'name',
       label: 'Name',
       render: (r) => {
-        const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim()
-        // Avatar initials prefer the personal name; fall back to email
-        // letter so rows without a name still have a colour-stable chip.
-        const initial = (r.first_name?.[0] || r.last_name?.[0] || r.email?.[0] || 'U').toUpperCase()
+        // Prefer raw first/last when the list payload carries them
+        // (current UserListSerializer). Fall back to the computed
+        // `full_name` for older clients / cached responses, and finally
+        // to empty so the "Name not set" placeholder kicks in.
+        const fullName = (
+          `${r.first_name || ''} ${r.last_name || ''}`.trim()
+          || (r.full_name && r.full_name.trim())
+          || ''
+        )
+        const initial = (
+          r.first_name?.[0] || r.last_name?.[0] || r.full_name?.[0] || r.email?.[0] || 'U'
+        ).toUpperCase()
         return (
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center

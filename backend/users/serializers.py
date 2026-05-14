@@ -12,14 +12,20 @@ class ColonyAssignmentSerializer(serializers.ModelSerializer):
 
 
 class UserListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for list views."""
+    """Lightweight serializer for list views.
+
+    Carries the raw first_name + last_name + mobile fields so the admin
+    Users page can render the name column and pre-fill the Edit modal
+    without a second per-row fetch.
+    """
     full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = (
             'id', 'emp_id', 'username', 'email',
-            'full_name', 'role', 'department', 'is_active',
+            'first_name', 'last_name', 'full_name',
+            'mobile', 'role', 'department', 'is_active',
         )
 
     def get_full_name(self, obj):
