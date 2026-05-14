@@ -316,7 +316,7 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
         {/* Top-of-modal banner — surfaces a pending CR on revisit so staff
             (and resolvers) see what's awaiting approval without scanning
             every field's label chip. */}
-        {pendingCR && <PendingBanner cr={pendingCR} record={colony} />}
+        {pendingCR && <PendingBanner cr={pendingCR} record={colony} onResolved={onClose} />}
 
         <div className="flex items-start gap-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
           <ShieldCheck className="w-4 h-4 flex-shrink-0 mt-0.5" />

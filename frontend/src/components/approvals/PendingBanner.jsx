@@ -37,7 +37,7 @@ import { FieldDiff } from '@/components/history/FieldDiff'
 
 const MAX_FIELDS_SHOWN_COMPACT = 6
 
-export function PendingBanner({ cr, record }) {
+export function PendingBanner({ cr, record, onResolved }) {
   const { user } = useAuthStore()
   const role     = user?.role
   const canResolve = role === 'admin' || role === 'superintendent'
@@ -47,14 +47,18 @@ export function PendingBanner({ cr, record }) {
   const [expanded, setExpanded] = useState(canResolve)
 
   // ── Resolution mutations ─────────────────────────────────────────────────
+  // After both approve and reject we invalidate the shared query keys
+  // and fire optional `onResolved` so callers (edit modals) can close —
+  // approve made the form's record snapshot stale, reject removed the
+  // pending state; in both cases the modal has nothing useful left.
   const approve = useMutation({
     mutationFn: () => approvalsApi.approve(cr.id),
-    onSuccess:  () => invalidateAll(qc),
+    onSuccess:  () => { invalidateAll(qc); onResolved?.() },
     onError:    (err) => alert(err?.response?.data?.detail || 'Could not approve change.'),
   })
   const reject = useMutation({
     mutationFn: () => approvalsApi.reject(cr.id),
-    onSuccess:  () => invalidateAll(qc),
+    onSuccess:  () => { invalidateAll(qc); onResolved?.() },
   })
   const busy = approve.isPending || reject.isPending
 
