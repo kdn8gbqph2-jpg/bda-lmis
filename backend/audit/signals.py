@@ -13,8 +13,10 @@ Geometry and file fields are excluded from JSON snapshots to keep
 audit entries readable and storage-efficient.
 """
 
+import json
 import logging
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 
@@ -50,6 +52,13 @@ def _serialize(instance) -> dict:
     Produce a plain dict of an instance's non-spatial, non-file field
     values, with audit-untracked fields stripped. FK fields are stored
     as `field_id` integers.
+
+    The dict is round-tripped through DjangoJSONEncoder so Decimal,
+    datetime, date, UUID, etc. become JSON-safe scalars. Without this,
+    a Decimal column (Plot.area_sqy / area_sqm, Patta.lease_amount,
+    Colony.notified_area_bigha) would crash the AuditLog insert in
+    psycopg2 with 'Object of type Decimal is not JSON serializable'
+    — the postgres adapter doesn't apply Django's encoder.
     """
     data = {}
     for field in instance._meta.concrete_fields:
@@ -58,12 +67,8 @@ def _serialize(instance) -> dict:
             continue
         if field.attname in _UNTRACKED_FIELDS:
             continue
-        value = field.value_from_object(instance)
-        # Make datetimes and dates JSON-safe
-        if hasattr(value, 'isoformat'):
-            value = value.isoformat()
-        data[field.attname] = value
-    return data
+        data[field.attname] = field.value_from_object(instance)
+    return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
 
 def _fetch_old(instance) -> dict | None:
