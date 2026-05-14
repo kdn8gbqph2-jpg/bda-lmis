@@ -31,6 +31,7 @@ client.interceptors.response.use(
       } catch { /* toast is best-effort */ }
     }
     return res.data   // unwrap so callers get the JSON body directly
+  },
   async (error) => {
     const original = error.config
 
