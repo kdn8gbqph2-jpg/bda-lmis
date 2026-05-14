@@ -15,6 +15,20 @@ def get_current_request_meta():
     )
 
 
+# ── ChangeRequest context ─────────────────────────────────────────────────────
+# Set when an Admin/Super clicks Approve so the audit signal that fires
+# from the resulting save can stamp `submitted_by` + `change_request`
+# on the AuditLog row. Cleared (try/finally style) when the approve
+# action exits.
+
+def set_current_change_request(cr):
+    _thread_local.change_request = cr
+
+
+def get_current_change_request():
+    return getattr(_thread_local, 'change_request', None)
+
+
 class AuditMiddleware:
     """
     Stores the authenticated user + request metadata in thread-local

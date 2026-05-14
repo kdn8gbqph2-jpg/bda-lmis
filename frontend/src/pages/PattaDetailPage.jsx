@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, FileText, CheckCircle, Clock, Pencil, ExternalLink } from 'lucide-react'
-import { pattas as pattasApi, dms as dmsApi } from '@/api/endpoints'
+import { ArrowLeft, FileText, Pencil, ExternalLink, AlertTriangle } from 'lucide-react'
+import { pattas as pattasApi, dms as dmsApi, approvals as approvalsApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
 import { PattaEditModal } from '@/components/admin/PattaEditModal'
+import { EditHistory } from '@/components/history/EditHistory'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 /**
@@ -114,16 +115,24 @@ export default function PattaDetailPage() {
     queryFn: () => pattasApi.detail(id),
   })
 
-  const versions = useQuery({
-    queryKey: ['patta', id, 'versions'],
-    queryFn: () => pattasApi.versions(id),
+  // Pending approval request for this record, if any. We surface this
+  // as a yellow banner above the body so staff submitters know their
+  // change is queued and reviewers can spot in-flight edits at a glance.
+  const pending = useQuery({
+    queryKey: ['approvals', 'pending', 'patta', id],
+    queryFn: () => approvalsApi.list({
+      target_type: 'patta',
+      target_id:   id,
+      status:      'pending',
+      page_size:   1,
+    }),
     enabled: !!id,
+    staleTime: 30_000,
   })
+  const pendingCR = pending.data?.results?.[0]
 
   if (isPending) return <p className="text-center py-16 text-slate-400">Loading patta record…</p>
   if (isError)   return <p className="text-center py-16 text-red-500">Failed to load patta record.</p>
-
-  const vList = versions.data?.results ?? versions.data ?? []
 
   return (
     <div className="max-w-4xl space-y-5">
@@ -145,6 +154,12 @@ export default function PattaDetailPage() {
           </Button>
         )}
       </div>
+
+      {/* Pending approval banner — only renders when a ChangeRequest
+          is waiting on this patta. Lists the fields the queued payload
+          intends to change so a viewer (especially the staff submitter)
+          can see what's in flight without opening the bell. */}
+      {pendingCR && <PendingBanner cr={pendingCR} patta={patta} />}
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -226,39 +241,67 @@ export default function PattaDetailPage() {
         </Card>
       )}
 
-      {/* Version history */}
-      <Card>
-        <h2 className="text-sm font-semibold text-slate-700 mb-3">
-          Version History ({vList.length})
-        </h2>
-        {versions.isPending && <p className="text-sm text-slate-400">Loading…</p>}
-        <div className="space-y-2">
-          {vList.map((v) => (
-            <div key={v.id} className="flex items-start gap-3 text-sm">
-              <div className="mt-0.5 text-slate-400">
-                {v.version_number === 1 ? (
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Clock className="w-4 h-4" />
-                )}
-              </div>
-              <div>
-                <span className="font-medium text-slate-700">v{v.version_number}</span>
-                <span className="text-slate-400 ml-2 text-xs">
-                  {v.changed_by_name && `by ${v.changed_by_name} · `}
-                  {new Date(v.created_at).toLocaleString('en-IN')}
-                </span>
-                {v.change_summary && (
-                  <p className="text-xs text-slate-500 mt-0.5">{v.change_summary}</p>
-                )}
-              </div>
-            </div>
-          ))}
-          {!versions.isPending && vList.length === 0 && (
-            <p className="text-sm text-slate-400">No version history.</p>
-          )}
-        </div>
-      </Card>
+      {/* Edit history — replaces the older PattaVersion list with the
+          unified AuditLog timeline. Captures every field change plus
+          approver attribution for changes that came in through the
+          approval queue. */}
+      <EditHistory entityType="patta" entityId={patta.id} />
     </div>
   )
 }
+
+// ── Pending approval banner ────────────────────────────────────────────────
+
+function PendingBanner({ cr, patta }) {
+  // Build a list of fields that the queued payload intends to change,
+  // by comparing it against the live patta record we already have on
+  // hand. Falls back to the bare CR detail when fields can't be diffed.
+  const payload = cr.payload || {}
+  const changed = []
+  for (const k of Object.keys(payload)) {
+    if (k.startsWith('_')) continue
+    const cur = patta?.[k]
+    try {
+      if (JSON.stringify(cur ?? null) !== JSON.stringify(payload[k] ?? null)) {
+        changed.push(prettyFieldLabel(k))
+      }
+    } catch {
+      changed.push(prettyFieldLabel(k))
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3
+                    flex items-start gap-3">
+      <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold text-amber-900">
+          Edit pending approval
+        </div>
+        <div className="text-xs text-amber-800/90 mt-0.5">
+          Submitted by{' '}
+          <span className="font-medium">{cr.requested_by_name || 'Staff user'}</span>
+          {' · awaiting review by Admin or Superintendent.'}
+        </div>
+        {changed.length > 0 && (
+          <div className="text-[11px] text-amber-700 mt-1">
+            <span className="font-semibold uppercase tracking-wider">Pending changes: </span>
+            {changed.slice(0, 6).join(', ')}
+            {changed.length > 6 && ` +${changed.length - 6} more`}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const _PRETTY = {
+  patta_number: 'Patta Number', allottee_name: 'Allottee Name',
+  allottee_address: 'Allottee Address', issue_date: 'Issue Date',
+  amendment_date: 'Amendment Date', challan_number: 'Challan Number',
+  challan_date: 'Challan Date', lease_amount: 'Lease Amount',
+  lease_duration: 'Lease Duration', status: 'Status',
+  regulation_file_present: 'Regulation File', remarks: 'Remarks',
+  dms_file_number: 'DMS File Number', colony: 'Colony',
+}
+function prettyFieldLabel(k) { return _PRETTY[k] || k }

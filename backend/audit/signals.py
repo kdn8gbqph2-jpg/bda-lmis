@@ -16,7 +16,9 @@ audit entries readable and storage-efficient.
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 
-from .middleware import get_current_user, get_current_request_meta
+from .middleware import (
+    get_current_user, get_current_request_meta, get_current_change_request,
+)
 from .models import AuditLog
 
 
@@ -64,14 +66,22 @@ def _write_log(entity_type: str, entity_id, action: str,
 
     Uses its own savepoint so that a DB error inside here does NOT corrupt
     the caller's transaction (e.g. management commands, bulk imports).
+
+    When an approval flow is in progress (ChangeRequest context set via
+    audit.middleware.set_current_change_request), the resulting AuditLog
+    captures both the resolver (current request user) AND the original
+    staff submitter, plus a FK back to the ChangeRequest itself.
     """
     from django.db import transaction as _tx
     try:
         with _tx.atomic():          # savepoint — rolls back only THIS write on failure
             user = get_current_user()
             ip, ua = get_current_request_meta()
+            cr = get_current_change_request()
             AuditLog.objects.create(
                 user=user,
+                submitted_by=(cr.requested_by if cr else None),
+                change_request=cr,
                 entity_type=entity_type,
                 entity_id=entity_id,
                 action=action,

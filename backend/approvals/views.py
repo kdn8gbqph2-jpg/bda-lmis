@@ -137,6 +137,14 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
         # Run the original write serializer so all validation /
         # cascade-effects (PlotPattaMapping, khasras_input, etc.)
         # behave identically to a direct admin save.
+        #
+        # Tell the audit signal which ChangeRequest this save is part of
+        # — the audit_post_save handler reads this thread-local and
+        # stamps both `submitted_by` (cr.requested_by) and the FK back to
+        # the CR on the AuditLog row, so the Edit History UI can show
+        # "Submitted by X · Approved by Y" without a second join.
+        from audit.middleware import set_current_change_request
+        set_current_change_request(cr)
         try:
             if cr.operation == 'create':
                 ser = WriteSerializer(data=payload, context={'request': request})
@@ -162,6 +170,10 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
                 {'detail': f'Could not apply change: {type(exc).__name__}: {exc}'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        finally:
+            # Clear the context so the next save on this thread (e.g. the
+            # cr.save() below) doesn't accidentally inherit the CR FK.
+            set_current_change_request(None)
 
         cr.status           = 'approved'
         cr.resolved_by      = request.user

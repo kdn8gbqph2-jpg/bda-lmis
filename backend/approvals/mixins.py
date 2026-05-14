@@ -35,6 +35,13 @@ logger = logging.getLogger(__name__)
 
 STAFF_ROLE = 'staff'
 
+# Free-form annotation fields that are exempt from the approval flow —
+# the spec wants Staff to be able to add a remark / rejection note
+# without waiting for a resolver. Detection happens at the diff level
+# (see _is_remarks_only_change); a payload that touches ONLY these
+# fields applies directly.
+REMARKS_FIELDS = {'remarks', 'rejection_reason'}
+
 
 class StaffApprovalMixin:
     """
@@ -76,7 +83,47 @@ class StaffApprovalMixin:
         if 'multipart' in ct:
             # File uploads bypass the queue — see module docstring.
             return False
+        # Free-form remark / rejection-reason corrections apply directly.
+        if self._is_remarks_only_change(request):
+            return False
         return True
+
+    def _is_remarks_only_change(self, request) -> bool:
+        """
+        Update-only heuristic. Pulls the current record, walks the
+        submitted payload, and returns True iff every field that
+        differs from the live state is a REMARKS_FIELDS entry. Falls
+        back to False on any error so we err on the side of going
+        through approval.
+        """
+        pk = (self.kwargs or {}).get('pk') if hasattr(self, 'kwargs') else None
+        if not pk:
+            return False    # create operation; nothing to diff against
+        try:
+            instance = self.get_queryset().get(pk=pk)
+        except Exception:
+            return False
+
+        try:
+            ReadSer = self.get_serializer_class()
+            current = ReadSer(instance, context={'request': request}).data
+        except Exception:
+            return False
+
+        payload = self._payload_to_json(request.data)
+        has_remarks_change = False
+        for k, v in payload.items():
+            cur = current.get(k)
+            # Cheap string compare handles primitives + dates + numbers
+            # — good enough for the "did anything outside remarks
+            # actually change" question.
+            if str(cur if cur is not None else '') == str(v if v is not None else ''):
+                continue
+            if k in REMARKS_FIELDS:
+                has_remarks_change = True
+            else:
+                return False     # something non-remarks differs → queue
+        return has_remarks_change
 
     def _enqueue(self, request, *, operation, target_id=None):
         from approvals.models import ChangeRequest
