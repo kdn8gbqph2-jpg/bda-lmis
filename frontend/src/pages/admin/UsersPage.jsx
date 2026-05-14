@@ -243,19 +243,30 @@ export default function UsersPage() {
     {
       key: 'name',
       label: 'Name',
-      render: (r) => (
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-semibold shrink-0">
-            {r.first_name?.[0] || r.email?.[0]?.toUpperCase() || 'U'}
+      render: (r) => {
+        const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim()
+        // Avatar initials prefer the personal name; fall back to email
+        // letter so rows without a name still have a colour-stable chip.
+        const initial = (r.first_name?.[0] || r.last_name?.[0] || r.email?.[0] || 'U').toUpperCase()
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center
+                            text-blue-700 text-xs font-semibold shrink-0">
+              {initial}
+            </div>
+            <div className="min-w-0">
+              <p className={`text-sm font-medium truncate ${
+                fullName ? 'text-slate-800' : 'text-slate-400 italic'
+              }`}>
+                {fullName || 'Name not set'}
+              </p>
+              {r.emp_id && (
+                <p className="text-xs text-slate-400 truncate">{r.emp_id}</p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-800 truncate">
-              {r.first_name ? `${r.first_name} ${r.last_name || ''}`.trim() : r.email}
-            </p>
-            <p className="text-xs text-slate-400 truncate">{r.emp_id}</p>
-          </div>
-        </div>
-      ),
+        )
+      },
     },
     { key: 'email', label: 'Email', cellClass: 'text-slate-500 text-xs' },
     {
