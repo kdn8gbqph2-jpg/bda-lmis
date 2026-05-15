@@ -20,6 +20,12 @@ export const colonies = {
   create:  (data, config) => client.post('/colonies/', data, config),
   update:  (id, data, config) => client.put(`/colonies/${id}/`, data, config),
   destroy: (id)     => client.delete(`/colonies/${id}/`),
+  // Wraps the import_patta_ledger management command. Sends one .xlsx,
+  // server picks the sheet matching the colony name and bulk-imports
+  // plots + pattas + DMS document links.
+  importLedger: (id, form) => client.post(`/colonies/${id}/import-ledger/`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 }
 
 // ── Khasras ───────────────────────────────────────────────────────────────────

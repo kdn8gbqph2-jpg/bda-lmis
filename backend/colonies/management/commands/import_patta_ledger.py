@@ -169,32 +169,62 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        totals = self.run_import(
+            file_path=options['file'],
+            only_col=options.get('colony'),
+            dry_run=options['dry_run'],
+        )
+        self.stdout.write('\n' + '─' * 60)
+        self.stdout.write(self.style.SUCCESS(
+            f'Done.  colonies={totals["colonies"]}  khasras={totals["khasras"]}  '
+            f'plots={totals["plots"]}  pattas={totals["pattas"]}  '
+            f'mappings={totals["mappings"]}  documents={totals["documents"]}  '
+            f'sheet_errors={totals["errors"]}'
+        ))
+        if options['dry_run']:
+            self.stdout.write(self.style.WARNING('(dry-run — no data committed)'))
+
+    # ── Callable entry point ─────────────────────────────────────────────────
+    # Reusable from non-CLI contexts (e.g. the colony import-ledger API
+    # endpoint). Accepts either a file path or an in-memory workbook
+    # (xlsx_bytes) so callers don't have to land the upload on disk.
+    # Strips/normalises the colony filter against sheet names so a
+    # trailing space in the Excel sheet name doesn't quietly silently
+    # cause a "no match" skip (the bug that bifurcated OMG City earlier).
+
+    def run_import(self, *, file_path=None, xlsx_bytes=None,
+                   only_col=None, dry_run=False):
         import openpyxl
+        from io import BytesIO
 
-        file_path = options['file']
-        dry_run   = options['dry_run']
-        only_col  = options.get('colony')
+        if not file_path and not xlsx_bytes:
+            raise CommandError('run_import requires file_path or xlsx_bytes')
 
-        self.stdout.write(f'Opening: {file_path}')
         try:
-            wb = openpyxl.load_workbook(file_path, data_only=True)
+            wb = (openpyxl.load_workbook(BytesIO(xlsx_bytes), data_only=True)
+                  if xlsx_bytes
+                  else openpyxl.load_workbook(file_path, data_only=True))
         except FileNotFoundError:
             raise CommandError(f'File not found: {file_path}')
         except Exception as e:
             raise CommandError(f'Cannot open workbook: {e}')
 
+        if file_path:
+            self.stdout.write(f'Opening: {file_path}')
+
         totals = {'colonies': 0, 'khasras': 0, 'plots': 0,
                   'pattas': 0, 'mappings': 0, 'documents': 0,
                   'errors': 0}
 
+        # Normalise the filter so "ओ.एम.जी. सिटी" matches "ओ.एम.जी. सिटी ".
+        only_col_norm = only_col.strip() if only_col else None
+
         for sheet_name in wb.sheetnames:
-            if only_col and sheet_name != only_col:
+            if only_col_norm and sheet_name.strip() != only_col_norm:
                 continue
-            # Skip Excel's default "Sheet1" / "Sheet2" placeholder tabs.
             if re.match(r'^Sheet\d+$', sheet_name, flags=re.IGNORECASE):
                 self.stdout.write(f'  Skipping placeholder sheet: {sheet_name}')
                 continue
-            # Skip sheets with fewer than 9 rows (no data rows possible)
             ws_check = wb[sheet_name]
             if ws_check.max_row < 9:
                 self.stdout.write(f'  Skipping blank sheet: {sheet_name}')
@@ -216,15 +246,7 @@ class Command(BaseCommand):
                 self.stderr.write(f'  ERROR on sheet "{sheet_name}": {exc}')
                 totals['errors'] += 1
 
-        self.stdout.write('\n' + '─' * 60)
-        self.stdout.write(self.style.SUCCESS(
-            f'Done.  colonies={totals["colonies"]}  khasras={totals["khasras"]}  '
-            f'plots={totals["plots"]}  pattas={totals["pattas"]}  '
-            f'mappings={totals["mappings"]}  documents={totals["documents"]}  '
-            f'sheet_errors={totals["errors"]}'
-        ))
-        if dry_run:
-            self.stdout.write(self.style.WARNING('(dry-run — no data committed)'))
+        return totals
 
     # ── per-sheet import ──────────────────────────────────────────────────────
 
@@ -251,7 +273,10 @@ class Command(BaseCommand):
         # ── Parse header rows ──────────────────────────────────────────
         # Colony name: try col B first, fall back to sheet name.
         # Chak/date/khasras: the actual values are in col D (index 3).
-        colony_name            = _str(rows[0][1]) or sheet_name   # row 1, col B or sheet name
+        # Strip the sheet-name fallback so a stray trailing space in the
+        # Excel doesn't bifurcate a colony into "ओ.एम.जी. सिटी" vs
+        # "ओ.एम.जी. सिटी " (the bug that produced a second colony row).
+        colony_name            = _str(rows[0][1]) or sheet_name.strip()
         # Row 2, col D: "ग्राम का नाम" (revenue village)
         revenue_village        = _str(rows[1][3])
         chak_number            = _int(rows[2][3])                 # row 3, col D

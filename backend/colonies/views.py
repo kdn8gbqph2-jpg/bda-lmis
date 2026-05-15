@@ -2,9 +2,11 @@ import logging
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.cache import cache
+from django.core.management.base import CommandError
 from django.http import FileResponse, Http404
 
 from .models import Colony, Khasra, MAP_UPLOAD_EXTENSIONS
@@ -166,6 +168,90 @@ class ColonyViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
         data = ColonyGeoJSONSerializer.collection(qs)
         cache.set('colonies:all:geojson', data, 60 * 60)  # 1 hr TTL
         return Response(data)
+
+    # ── /api/colonies/{id}/import-ledger/ ─────────────────────────────────────
+    # Upload a Patta Ledger Format .xlsx to populate plots + pattas +
+    # DMS document links for this colony in one shot. Wraps the same
+    # importer the CLI uses (colonies/management/commands/import_patta_ledger);
+    # filters the workbook to the sheet matching this colony's name so a
+    # multi-colony file doesn't accidentally write into siblings.
+
+    @action(
+        detail=True, methods=['post'],
+        url_path='import-ledger',
+        parser_classes=[MultiPartParser, FormParser],
+        permission_classes=[IsAuthenticated, IsAdmin],
+    )
+    def import_ledger(self, request, pk=None):
+        colony = self.get_object()
+        xlsx_file = request.FILES.get('file')
+        if not xlsx_file:
+            return Response(
+                {'detail': 'Send multipart field "file" with the .xlsx ledger.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Sanity-check the file looks like an xlsx — openpyxl is happier
+        # with a clear error than psycopg later.
+        import openpyxl
+        from io import BytesIO
+        try:
+            xlsx_bytes = xlsx_file.read()
+            wb_probe = openpyxl.load_workbook(BytesIO(xlsx_bytes), data_only=True, read_only=True)
+            sheets = wb_probe.sheetnames
+            wb_probe.close()
+        except Exception as exc:
+            return Response(
+                {'detail': f'Could not open workbook: {exc}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Match this colony to its sheet by stripped, lowercased name.
+        target = (colony.name or '').strip().lower()
+        sheet_match = next(
+            (s for s in sheets if s.strip().lower() == target),
+            None,
+        )
+        if not sheet_match:
+            return Response({
+                'detail': (
+                    f'No sheet in the workbook matches colony name '
+                    f'"{colony.name}". Found sheets: '
+                    f'{[s for s in sheets if not s.lower().startswith("sheet")]}'
+                ),
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Run the importer. It writes diagnostics to stdout; we capture
+        # them but return only the totals dict.
+        from colonies.management.commands.import_patta_ledger import Command
+        from io import StringIO
+        from django.core.management.base import OutputWrapper
+
+        cmd = Command()
+        cmd.stdout = OutputWrapper(StringIO())
+        cmd.stderr = OutputWrapper(StringIO())
+        try:
+            totals = cmd.run_import(
+                xlsx_bytes=xlsx_bytes,
+                only_col=sheet_match,
+                dry_run=False,
+            )
+        except CommandError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.error('import-ledger failed for colony %s: %s', colony.pk, exc,
+                         exc_info=True)
+            return Response(
+                {'detail': f'Import failed: {type(exc).__name__}: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        logger.info('Colony %s ledger import: %s', colony.pk, totals)
+        return Response({
+            'detail': 'Imported successfully.',
+            'sheet':   sheet_match,
+            'totals':  totals,
+        })
 
 
 # ── Khasra ────────────────────────────────────────────────────────────────────

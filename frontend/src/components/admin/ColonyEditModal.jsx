@@ -14,11 +14,10 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck, AlertCircle, Upload, FileText, X, Download } from 'lucide-react'
+import { ShieldCheck, AlertCircle, Upload, FileText, X } from 'lucide-react'
 
 import {
   colonies as coloniesApi,
-  plots as plotsApi,
   approvals as approvalsApi,
   auditLogs as auditApi,
 } from '@/api/endpoints'
@@ -141,16 +140,18 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
   const [files, setFiles] = useState({
     map_layout: null, boundary_file: null,
   })
-  // Plot bulk-import (separate flow — POSTs to /plots/bulk-import-xlsx/
-  // after the colony PUT succeeds).
-  const [plotsFile, setPlotsFile] = useState(null)
+  // Patta-Ledger import (POSTs to /colonies/{id}/import-ledger/ after the
+  // colony PUT succeeds). The server wraps the same logic as the
+  // `import_patta_ledger` management command — pulls plots + pattas +
+  // DMS document links out of the BDA ledger sheet for this colony.
+  const [ledgerFile, setLedgerFile] = useState(null)
   const [importResult, setImportResult] = useState(null)
 
   useEffect(() => {
     if (open) {
       setForm(fromColony(colony))
       setFiles({ map_layout: null, boundary_file: null })
-      setPlotsFile(null)
+      setLedgerFile(null)
       setImportResult(null)
       setErrors({})
     }
@@ -190,17 +191,6 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
     />
   )
 
-  // ── Plot template download ────────────────────────────────────────────────
-  const downloadTemplate = async () => {
-    const blob = await plotsApi.template()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'plots_template.xlsx'
-    document.body.appendChild(a); a.click(); a.remove()
-    URL.revokeObjectURL(url)
-  }
-
   const mutation = useMutation({
     mutationFn: () => {
       const hasFiles = Object.values(files).some(Boolean)
@@ -239,17 +229,17 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
       return coloniesApi.update(colony.id, payload)
     },
     onSuccess: async (data) => {
-      // If a plots .xlsx was picked, run the bulk import against THIS colony.
-      if (plotsFile) {
+      // If a ledger .xlsx was picked, run the colony-scoped import
+      // against THIS colony (matches the sheet by name server-side).
+      if (ledgerFile) {
         try {
           const fd = new FormData()
-          fd.append('file', plotsFile)
-          fd.append('colony', colony.id)
-          const result = await plotsApi.bulkImportXlsx(fd)
+          fd.append('file', ledgerFile)
+          const result = await coloniesApi.importLedger(colony.id, fd)
           setImportResult(result)
         } catch (e) {
           setImportResult({
-            _error: e.response?.data?.detail || 'Plot import failed; colony was saved.',
+            _error: e.response?.data?.detail || 'Ledger import failed; colony was saved.',
           })
         }
       }
@@ -257,13 +247,14 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
       queryClient.invalidateQueries({ queryKey: ['colony', colony.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['plots'] })
+      queryClient.invalidateQueries({ queryKey: ['pattas'] })
       // Refresh bell + Edit History timeline immediately. Staff saves
       // produce a new pending CR; admin saves produce a new AuditLog row.
       queryClient.invalidateQueries({ queryKey: ['approvals'] })
       queryClient.invalidateQueries({ queryKey: ['audit']     })
       onSaved?.(data)
       // Keep the modal open if there's an import result the operator should see
-      if (!plotsFile) onClose()
+      if (!ledgerFile) onClose()
     },
     onError: (err) => {
       setErrors(err.response?.data ?? { _detail: 'Failed to save changes.' })
@@ -305,7 +296,7 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
               Cancel
             </Button>
             <Button onClick={handleSubmit} loading={mutation.isPending}>
-              {plotsFile ? 'Save Changes & Import Plots' : 'Save Changes'}
+              {ledgerFile ? 'Save Changes & Import Ledger' : 'Save Changes'}
             </Button>
           </>
         )
@@ -468,39 +459,30 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
           />
         </div>
 
-        {/* ── Plot data import (optional, runs after the colony PUT) ── */}
+        {/* ── Patta Ledger import (optional, runs after the colony PUT) ── */}
         <div className="rounded-lg border border-slate-200 p-4 bg-slate-50/60">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-            Plot Data Import <span className="text-slate-400 normal-case font-normal">· optional</span>
+            Patta Ledger Import <span className="text-slate-400 normal-case font-normal">· optional</span>
           </h3>
           <p className="text-xs text-slate-500 mb-3">
-            Download the Excel template, fill in your plots, and re-upload below.
-            Plots will be added to this colony after Save Changes.
+            Upload the BDA Patta Ledger Format <code className="text-[11px] bg-slate-100 px-1 py-0.5 rounded">.xlsx</code>.
+            The sheet matching <strong className="font-mono text-slate-700">{colony?.name}</strong> is
+            imported — plots, pattas, and DMS file links are created in
+            one shot. Other sheets in the workbook are ignored.
           </p>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <button
-              type="button"
-              onClick={downloadTemplate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                         border border-slate-300 bg-white text-slate-700 rounded-lg hover:bg-slate-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download Template (.xlsx)
-            </button>
-          </div>
           <FileSlot
-            label="Filled Plot Template"
-            file={plotsFile}
+            label="Patta Ledger (.xlsx)"
+            file={ledgerFile}
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null
               if (f && f.size > MAX_FILE_BYTES) {
-                setErrors((p) => ({ ...p, plots_file: ['File exceeds 20 MB limit.'] }))
+                setErrors((p) => ({ ...p, ledger_file: ['File exceeds 20 MB limit.'] }))
                 return
               }
-              setPlotsFile(f)
+              setLedgerFile(f)
             }}
-            error={errors.plots_file?.[0]}
+            error={errors.ledger_file?.[0]}
           />
           {importResult && (
             <div className={`mt-3 text-xs rounded-lg px-3 py-2 ${
@@ -508,14 +490,18 @@ export function ColonyEditModal({ colony, open, onClose, onSaved }) {
                 ? 'bg-red-50 border border-red-200 text-red-700'
                 : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
             }`}>
-              {importResult._error
-                ? importResult._error
-                : <>Plot import: <strong>{importResult.created}</strong> created,
-                    {' '}<strong>{importResult.updated}</strong> updated
-                    {importResult.errors?.length
-                      ? <>, <strong>{importResult.errors.length}</strong> errors</>
-                      : null}</>
-              }
+              {importResult._error ? (
+                importResult._error
+              ) : (
+                <>
+                  Imported sheet <strong className="font-mono">{importResult.sheet}</strong>:
+                  {' '}<strong>{importResult.totals?.plots ?? 0}</strong> plots,
+                  {' '}<strong>{importResult.totals?.pattas ?? 0}</strong> pattas,
+                  {' '}<strong>{importResult.totals?.khasras ?? 0}</strong> khasras,
+                  {' '}<strong>{importResult.totals?.documents ?? 0}</strong> DMS docs
+                  {importResult.totals?.errors ? <>, <strong>{importResult.totals.errors}</strong> sheet errors</> : null}.
+                </>
+              )}
             </div>
           )}
         </div>
