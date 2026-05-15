@@ -26,6 +26,7 @@ import { PendingFieldChip } from '@/components/approvals/PendingFieldChip'
 import { PendingBanner } from '@/components/approvals/PendingBanner'
 import { buildRecentApprovalMap } from '@/components/approvals/recentApprovalMap'
 import { EditHistory } from '@/components/history/EditHistory'
+import { useToastStore } from '@/stores/useToastStore'
 
 // ── Choice constants — must match backend models.py verbatim ─────────────────
 
@@ -92,6 +93,7 @@ function cleanPayload(form) {
 
 export function PattaEditModal({ patta, open, onClose, onSaved }) {
   const queryClient = useQueryClient()
+  const pushToast   = useToastStore((s) => s.push)
   const [form,   setForm]   = useState(() => fromPatta(patta))
   const [errors, setErrors] = useState({})
 
@@ -151,11 +153,26 @@ export function PattaEditModal({ patta, open, onClose, onSaved }) {
       // produce a new pending CR; admin saves produce a new AuditLog row.
       queryClient.invalidateQueries({ queryKey: ['approvals'] })
       queryClient.invalidateQueries({ queryKey: ['audit']     })
+      // Direct admin save (no CR queued) — push our own success toast so
+      // the user gets confirmation. Staff submissions get the toast
+      // pushed automatically by the axios interceptor on 202 response.
+      if (!data?.change_request_id) {
+        pushToast('Patta saved.', { kind: 'success' })
+      }
       onSaved?.(data)
       onClose()
     },
     onError: (err) => {
-      setErrors(err.response?.data ?? { _detail: 'Failed to save changes.' })
+      const data = err.response?.data
+      setErrors(data ?? { _detail: 'Failed to save changes.' })
+      // Surface a top-level toast so feedback isn't just an inline
+      // field error that the user might scroll past.
+      const msg = data?.detail
+        || data?._detail
+        || (typeof data === 'object' && data
+              ? `Validation failed: ${Object.keys(data).join(', ')}`
+              : 'Failed to save changes.')
+      pushToast(msg, { kind: 'error', duration: 6000 })
     },
   })
 

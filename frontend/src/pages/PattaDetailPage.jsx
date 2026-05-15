@@ -57,26 +57,26 @@ function PattaDmsCard({ number, path, hasNs, hasCs }) {
           <button
             type="button"
             onClick={() => open('ns')}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md
-                       border border-blue-200 bg-blue-50 text-blue-700 text-xs
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md
+                       border border-blue-200 bg-blue-50 text-blue-700 text-sm
                        font-medium hover:bg-blue-100"
             title="Notesheet Side — open the noting scan in a new tab"
           >
-            <FileText className="w-3.5 h-3.5" />
-            NS · Notesheet Side <ExternalLink className="w-3 h-3 opacity-70" />
+            <FileText className="w-5 h-5" />
+            NS · Notesheet Side <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </button>
         )}
         {hasCs && (
           <button
             type="button"
             onClick={() => open('cs')}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md
-                       border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md
+                       border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm
                        font-medium hover:bg-emerald-100"
             title="Correspondence Side — open the correspondence scan in a new tab"
           >
-            <FileText className="w-3.5 h-3.5" />
-            CS · Correspondence Side <ExternalLink className="w-3 h-3 opacity-70" />
+            <FileText className="w-5 h-5" />
+            CS · Correspondence Side <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </button>
         )}
         {!hasNs && !hasCs && number && (
