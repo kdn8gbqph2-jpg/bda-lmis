@@ -135,9 +135,10 @@ export default function PublicDashboardPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
           {/* Top band — heading + CTAs on the left, GIS-themed
-              illustration on the right (lg+ only). Sized to fill the
-              dead space alongside the hero text. */}
-          <div className="grid lg:grid-cols-[1fr,420px] gap-4 lg:gap-10 items-center mb-6">
+              illustration on the right (lg+ only). items-start so the
+              illustration's top edge sits next to the heading rather
+              than centering against the (much shorter) hero text. */}
+          <div className="grid lg:grid-cols-[1fr,360px] gap-4 lg:gap-8 items-start mb-6">
             <motion.div {...fadeUp} className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full
                               bg-blue-700/5 border border-blue-700/15 text-blue-700
@@ -351,7 +352,7 @@ function CategoryCard({ cat, count }) {
   return (
     <Link
       to={`/public/colonies?colony_type=${cat.value}`}
-      className={`relative block bg-white rounded-xl border ${cat.border}
+      className={`relative flex flex-col h-full bg-white rounded-xl border ${cat.border}
                   p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]
                   transition-all duration-200
                   hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.10)]
@@ -363,7 +364,16 @@ function CategoryCard({ cat, count }) {
         <div className={`w-10 h-10 rounded-lg ${cat.tint} flex items-center justify-center flex-shrink-0`}>
           <Icon className={`w-5 h-5 ${cat.text}`} strokeWidth={2} />
         </div>
-        {!isEmpty && (
+        {isEmpty ? (
+          // Slim badge sits in the same slot the count occupies for
+          // populated categories — keeps each card the same height as
+          // the row, so a 0-count card doesn't stick out below the rest.
+          <span className="text-[10px] font-semibold uppercase tracking-wider
+                           text-slate-500 bg-slate-50 border border-slate-200
+                           rounded-full px-2 py-0.5">
+            Compiling
+          </span>
+        ) : (
           <span className="text-3xl font-bold text-[#0F172A] tabular-nums leading-none">
             {isLoading ? '—' : animCount}
           </span>
@@ -376,9 +386,10 @@ function CategoryCard({ cat, count }) {
       </p>
 
       {isEmpty && (
-        <p className="text-[11px] font-medium text-slate-500 italic mt-2.5
-                      bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5 leading-snug">
-          Information is being compiled
+        // Pinned to the bottom of the card via mt-auto so every card in
+        // the row aligns even though only this one has a footer note.
+        <p className="text-[11px] font-medium text-slate-500 italic mt-auto pt-3 leading-snug">
+          Information is being compiled.
         </p>
       )}
     </Link>
@@ -413,7 +424,7 @@ function Panel({ title, icon: Icon, children, footer }) {
  */
 function HeroIllustration({ total, loading }) {
   return (
-    <div className="relative aspect-[5/4] w-full max-w-[420px] ml-auto">
+    <div className="relative aspect-[5/4] w-full max-w-[360px] ml-auto">
       <svg viewBox="0 0 520 416" className="absolute inset-0 w-full h-full">
         <defs>
           <linearGradient id="parcel-a" x1="0" y1="0" x2="1" y2="1">
