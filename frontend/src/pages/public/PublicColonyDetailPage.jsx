@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  MapPin, Calendar, FileText, Download, Maximize2,
+  MapPin, Calendar, Download, Maximize2,
   ChevronLeft, AlertTriangle, Info, Image as ImageIcon, FileText as PdfIcon,
 } from 'lucide-react'
 import { publicApi } from '@/api/endpoints'
@@ -120,8 +120,8 @@ export default function PublicColonyDetailPage() {
           </div>
         </div>
 
-        {/* ── Timeline grid ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+        {/* ── Summary grid ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
           <div>
             <div className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
               <Calendar className="w-3 h-3" /> Approval Date
@@ -132,18 +132,18 @@ export default function PublicColonyDetailPage() {
           </div>
           <div>
             <div className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
-              <FileText className="w-3 h-3" /> Residential Plots
+              <MapPin className="w-3 h-3" /> Revenue Village
             </div>
             <div className="text-sm font-medium text-slate-700">
-              {colony.total_residential_plots}
+              {colony.revenue_village || '—'}
             </div>
           </div>
           <div>
             <div className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
-              <FileText className="w-3 h-3" /> Commercial Plots
+              <MapPin className="w-3 h-3" /> Zone
             </div>
             <div className="text-sm font-medium text-slate-700">
-              {colony.total_commercial_plots}
+              {colony.zone ? `${colony.zone} Zone` : '—'}
             </div>
           </div>
         </div>

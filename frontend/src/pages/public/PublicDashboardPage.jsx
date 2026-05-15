@@ -23,7 +23,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowRight, MapPinned, ShieldCheck, BadgeCheck, Eye, Activity,
-  Layers, Bell, Search, Clock, ChevronRight, MapPin,
+  Bell, Search, Clock, ChevronRight, MapPin,
 } from 'lucide-react'
 
 import { publicApi } from '@/api/endpoints'
@@ -46,13 +46,6 @@ const POPULAR_SEARCHES = [
   { label: 'Rejected Layouts',          q: { colony_type: 'rejected_layout'  } },
   { label: 'Layouts under Review',      q: { colony_type: 'pending_layout'   } },
   { label: 'Regularized Colonies',      q: { colony_type: 'suo_moto'         } },
-]
-
-const GIS_LAYERS = [
-  { label: 'Colony Boundaries',  hint: 'Plot outlines + approved layouts'  },
-  { label: 'Khasra Numbers',     hint: 'Survey-level land record mapping'  },
-  { label: 'Plot Allotment',     hint: 'Patta-issued, available, reserved' },
-  { label: 'Zone Overlays',      hint: 'East / West administrative split'  },
 ]
 
 // Notification feed is a static placeholder until we wire a real source.
@@ -224,8 +217,10 @@ export default function PublicDashboardPage() {
       </section>
 
       {/* ─────────────────────────── CATEGORY CARDS ─────────────────────────── */}
+      {/* Lifted to a smaller top gap so the cards sit just under the hero
+          instead of half-a-screen down. */}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6">
         <div className="flex items-end justify-between mb-5">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold text-[#0F172A] tracking-tight">
@@ -333,40 +328,12 @@ export default function PublicDashboardPage() {
         </div>
       </section>
 
-      {/* ─────────────────────────── GIS CAPABILITIES ─────────────────────────── */}
+      {/* GIS Capabilities section removed per portal copy refresh — the
+          layers list duplicated info that was already conveyed by the
+          map availability indicator on each colony row and added noise
+          to the dashboard. */}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-12 sm:pb-16">
-        <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
-          <div className="grid md:grid-cols-[260px,1fr]">
-            <div className="bg-gradient-to-br from-blue-700 to-blue-900 p-6 sm:p-7 text-white">
-              <Layers className="w-5 h-5 mb-3 opacity-90" strokeWidth={2.25} />
-              <h3 className="text-base font-semibold leading-snug mb-1">
-                GIS Layers Available
-              </h3>
-              <p className="text-xs text-blue-100/85 leading-relaxed">
-                Open-data spatial layers powering this portal.
-              </p>
-            </div>
-
-            <div className="p-6 sm:p-7">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {GIS_LAYERS.map((l) => (
-                  <div key={l.label} className="flex items-start gap-3">
-                    <span className="w-7 h-7 rounded-md bg-blue-50 text-blue-700
-                                     inline-flex items-center justify-center flex-shrink-0">
-                      <MapPinned className="w-3.5 h-3.5" strokeWidth={2.25} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-slate-800">{l.label}</div>
-                      <div className="text-xs text-slate-500 leading-snug">{l.hint}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="pb-12 sm:pb-16" />
 
     </div>
   )

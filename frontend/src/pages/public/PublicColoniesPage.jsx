@@ -226,8 +226,22 @@ export default function PublicColoniesPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-12
                           text-center text-slate-500">
             <Search className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-            <p className="font-medium text-slate-700">No colonies found</p>
-            <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+            {/* Pending-Layout gets a friendlier placeholder — the data is
+                being assembled by BDA and isn't ready to publish yet. */}
+            {colonyTypes.length === 1 && colonyTypes[0] === 'pending_layout' ? (
+              <>
+                <p className="font-medium text-slate-700">Information is being compiled</p>
+                <p className="text-sm mt-1">
+                  Layout details for pending colonies are still being verified.
+                  Please check back later.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-slate-700">No colonies found</p>
+                <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+              </>
+            )}
           </div>
         ) : (
           <motion.div
@@ -393,6 +407,8 @@ function MultiSelect({ value, onChange, label, options }) {
 
 function ColonyRow({ colony }) {
   const style = TYPE_STYLE[colony.colony_type] ?? { badge: 'bg-slate-50 text-slate-700 border-slate-200', rail: 'bg-slate-400' }
+  const khasras   = colony.khasra_numbers ?? []
+  const KHASRA_PREVIEW = 6
   return (
     <Link
       to={`/public/colonies/${colony.id}`}
@@ -422,18 +438,43 @@ function ColonyRow({ colony }) {
                 <MapPin className="w-3.5 h-3.5 text-slate-400" /> {colony.zone} Zone
               </span>
             )}
+            {colony.revenue_village && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-600">{colony.revenue_village}</span>
+              </span>
+            )}
             {colony.layout_approval_date && (
               <span className="inline-flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 Approved: {colony.layout_approval_date}
               </span>
             )}
-            {colony.total_plots > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5 text-slate-400" /> {colony.total_plots} plots
-              </span>
-            )}
           </div>
+
+          {khasras.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mr-0.5">
+                Khasras
+              </span>
+              {khasras.slice(0, KHASRA_PREVIEW).map((k) => {
+                const c = pillColor(k)
+                return (
+                  <span
+                    key={k}
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${c.bg} ${c.text} ${c.border}`}
+                  >
+                    {k}
+                  </span>
+                )
+              })}
+              {khasras.length > KHASRA_PREVIEW && (
+                <span className="text-[11px] text-slate-400">
+                  +{khasras.length - KHASRA_PREVIEW} more
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {colony.has_map && (
@@ -447,4 +488,22 @@ function ColonyRow({ colony }) {
       </div>
     </Link>
   )
+}
+
+// Deterministic pill color from a khasra number — matches the public
+// detail page so the same khasra is the same colour wherever it shows.
+const KHASRA_PILL_PALETTE = [
+  { bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200'    },
+  { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200'   },
+  { bg: 'bg-purple-50',  text: 'text-purple-700',  border: 'border-purple-200'  },
+  { bg: 'bg-rose-50',    text: 'text-rose-700',    border: 'border-rose-200'    },
+  { bg: 'bg-sky-50',     text: 'text-sky-700',     border: 'border-sky-200'     },
+  { bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200'  },
+  { bg: 'bg-teal-50',    text: 'text-teal-700',    border: 'border-teal-200'    },
+]
+function pillColor(token) {
+  let h = 0
+  for (const c of String(token)) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return KHASRA_PILL_PALETTE[h % KHASRA_PILL_PALETTE.length]
 }

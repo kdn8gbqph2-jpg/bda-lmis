@@ -50,11 +50,19 @@ class PublicColonyListView(generics.ListAPIView):
     ordering           = ['name']
 
     def get_queryset(self):
-        return Colony.objects.filter(status='active').only(
-            'id', 'name', 'colony_type', 'zone',
-            'layout_approval_date',
-            'total_residential_plots', 'total_commercial_plots',
-            'map_pdf', 'map_jpeg', 'map_png', 'map_svg',
+        # prefetch_related('khasras') so the list-row khasra summary
+        # doesn't N+1 — one extra query for all khasras across the
+        # page instead of one per row.
+        return (
+            Colony.objects.filter(status='active')
+            .only(
+                'id', 'name', 'colony_type', 'zone',
+                'revenue_village',
+                'layout_approval_date',
+                'total_residential_plots', 'total_commercial_plots',
+                'map_pdf', 'map_jpeg', 'map_png', 'map_svg',
+            )
+            .prefetch_related('khasras')
         )
 
 

@@ -189,17 +189,28 @@ class PublicColonyListSerializer(serializers.ModelSerializer):
     """
     Minimal read-only colony data for the public dashboard list view.
     Excludes internal fields (chak_number, dlc_file_number, updated_by, etc.).
+    Includes revenue village + a compact list of khasra numbers so the
+    list row can surface that info inline without a second round-trip.
     """
     colony_type_label = serializers.CharField(source='get_colony_type_display', read_only=True)
     total_plots       = serializers.IntegerField(read_only=True)
     has_map           = serializers.BooleanField(read_only=True)
+    khasra_numbers    = serializers.SerializerMethodField()
+
+    def get_khasra_numbers(self, obj):
+        # Cheap projection of the reverse FK — keeps the row response
+        # small and lets the frontend show a few pills + an overflow
+        # count instead of going back for the detail call.
+        return list(obj.khasras.values_list('number', flat=True))
 
     class Meta:
         model  = Colony
         fields = (
             'id', 'name', 'colony_type', 'colony_type_label', 'zone',
+            'revenue_village',
             'layout_approval_date',
             'total_plots', 'has_map',
+            'khasra_numbers',
         )
 
 
@@ -219,6 +230,7 @@ class PublicColonyDetailSerializer(serializers.ModelSerializer):
         model  = Colony
         fields = (
             'id', 'name', 'colony_type', 'colony_type_label', 'zone',
+            'revenue_village',
             'layout_approval_date',
             'rejection_reason', 'remarks',
             'total_residential_plots', 'total_commercial_plots', 'total_plots',
