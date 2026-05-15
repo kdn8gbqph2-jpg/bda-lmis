@@ -287,7 +287,10 @@ function SuggestionPopover({ suggestions, highlight, onPick, anchorRef }) {
         <button
           type="button"
           key={`${s}-${i}`}
-          onMouseDown={(e) => { e.preventDefault(); onPick(i) }}
+          // stopPropagation is needed so hosts (e.g. Combobox) whose
+          // "outside-click closes" listener lives on `document` don't
+          // see the popover click as "outside" and undo the selection.
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onPick(i) }}
           className={clsx(
             'flex items-center gap-2 w-full px-2.5 py-1.5 text-left text-sm',
             i === highlight ? 'bg-blue-50 text-blue-900' : 'text-slate-800 hover:bg-slate-50',
