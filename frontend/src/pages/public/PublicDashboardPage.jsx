@@ -134,8 +134,9 @@ export default function PublicDashboardPage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-          {/* Top band — heading + CTAs */}
-          <div className="grid lg:grid-cols-[1fr,auto] gap-4 items-end mb-5">
+          {/* Top band — heading + CTAs on the left, compact GIS-themed
+              illustration on the right (lg+ only, decorative). */}
+          <div className="grid lg:grid-cols-[1fr,260px] gap-4 lg:gap-8 items-center mb-5">
             <motion.div {...fadeUp} className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full
                               bg-blue-700/5 border border-blue-700/15 text-blue-700
@@ -150,35 +151,41 @@ export default function PublicDashboardPage() {
                 <span className="text-blue-700"> Information Portal</span>
               </h1>
 
-              <p className="text-sm text-slate-500 leading-relaxed">
+              <p className="text-sm text-slate-500 leading-relaxed mb-3">
                 Public access for approved layouts, khasra and plot information.
                 <span className="block text-xs text-slate-400 mt-0.5">
                   भू-अभिलेख और कॉलोनी सूचना के लिए आधिकारिक सरकारी पोर्टल।
                 </span>
               </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/public/colonies"
+                  className="group relative inline-flex items-center gap-2 px-4 py-2.5
+                             bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
+                             rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-12px_rgba(29,78,216,0.55)]
+                             transition-all duration-200"
+                >
+                  Explore Colonies
+                  <ArrowRight className="w-4 h-4 transition group-hover:translate-x-0.5" />
+                </Link>
+                <Link
+                  to="/public/colonies?has_map=true"
+                  className="inline-flex items-center gap-2 px-4 py-2.5
+                             bg-white text-slate-700 hover:text-blue-800
+                             text-sm font-semibold rounded-lg border border-slate-300
+                             hover:border-blue-300 hover:bg-blue-50/40 transition"
+                >
+                  <MapPinned className="w-4 h-4 text-slate-500" />
+                  GIS Maps
+                </Link>
+              </div>
             </motion.div>
 
-            <motion.div {...fadeUp} className="flex flex-wrap items-center gap-2">
-              <Link
-                to="/public/colonies"
-                className="group relative inline-flex items-center gap-2 px-4 py-2.5
-                           bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
-                           rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-12px_rgba(29,78,216,0.55)]
-                           transition-all duration-200"
-              >
-                Explore Colonies
-                <ArrowRight className="w-4 h-4 transition group-hover:translate-x-0.5" />
-              </Link>
-              <Link
-                to="/public/colonies?has_map=true"
-                className="inline-flex items-center gap-2 px-4 py-2.5
-                           bg-white text-slate-700 hover:text-blue-800
-                           text-sm font-semibold rounded-lg border border-slate-300
-                           hover:border-blue-300 hover:bg-blue-50/40 transition"
-              >
-                <MapPinned className="w-4 h-4 text-slate-500" />
-                GIS Maps
-              </Link>
+            {/* Compact decorative illustration — hidden on small screens
+                so it doesn't push the cards below the fold. */}
+            <motion.div {...fadeUp} className="hidden lg:block">
+              <HeroIllustration total={animTotal} loading={isLoading} />
             </motion.div>
           </div>
 
@@ -385,6 +392,86 @@ function Panel({ title, icon: Icon, children, footer }) {
   )
 }
 
-// HeroIllustration removed — the dashboard now puts category cards in
-// the hero band itself, so the decorative SVG/compass column no longer
-// has a place to live.
+/**
+ * HeroIllustration — abstract GIS-themed SVG for the hero column.
+ * Coordinate-grid base + four hand-drawn parcel polygons + a compass-
+ * style ring centred over the live colony total. Pure inline SVG, no
+ * images. Sized to fit the 260px hero grid column.
+ */
+function HeroIllustration({ total, loading }) {
+  return (
+    <div className="relative aspect-[5/4] w-full max-w-[260px] ml-auto">
+      <svg viewBox="0 0 520 416" className="absolute inset-0 w-full h-full">
+        <defs>
+          <linearGradient id="parcel-a" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%"  stopColor="#1D4ED8" stopOpacity="0.10" />
+            <stop offset="100%" stopColor="#1D4ED8" stopOpacity="0.04" />
+          </linearGradient>
+          <linearGradient id="parcel-b" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%"  stopColor="#0EA5E9" stopOpacity="0.10" />
+            <stop offset="100%" stopColor="#0EA5E9" stopOpacity="0.04" />
+          </linearGradient>
+          <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"  stopColor="#1D4ED8" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#1D4ED8" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+
+        {/* Coordinate grid */}
+        <g stroke="#1D4ED8" strokeOpacity="0.08" strokeWidth="1">
+          {Array.from({ length: 13 }).map((_, i) => (
+            <line key={`v${i}`} x1={i * 40} y1="0" x2={i * 40} y2="416" />
+          ))}
+          {Array.from({ length: 11 }).map((_, i) => (
+            <line key={`h${i}`} x1="0" y1={i * 40} x2="520" y2={i * 40} />
+          ))}
+        </g>
+
+        {/* Abstract parcels (land polygons) */}
+        <g>
+          <polygon
+            points="60,80 220,60 250,180 80,200"
+            fill="url(#parcel-a)" stroke="#1D4ED8" strokeOpacity="0.35" strokeWidth="1.25"
+          />
+          <polygon
+            points="280,40 440,90 420,210 270,180"
+            fill="url(#parcel-b)" stroke="#0EA5E9" strokeOpacity="0.35" strokeWidth="1.25"
+          />
+          <polygon
+            points="80,250 260,235 290,360 110,380"
+            fill="url(#parcel-a)" stroke="#1D4ED8" strokeOpacity="0.35" strokeWidth="1.25"
+          />
+          <polygon
+            points="320,240 470,250 460,370 310,360"
+            fill="url(#parcel-b)" stroke="#0EA5E9" strokeOpacity="0.35" strokeWidth="1.25"
+          />
+        </g>
+
+        {/* Center compass ring */}
+        <g transform="translate(260 208)">
+          <circle r="74" fill="white" stroke="url(#ring)" strokeWidth="1.5" />
+          <circle r="60" fill="white" stroke="#1D4ED8" strokeOpacity="0.18" strokeDasharray="2 4" />
+          <circle r="3"  fill="#1D4ED8" />
+          {[0, 90, 180, 270].map((deg) => (
+            <line
+              key={deg} x1="0" y1="-74" x2="0" y2="-68"
+              stroke="#1D4ED8" strokeOpacity="0.5" strokeWidth="2"
+              transform={`rotate(${deg})`}
+            />
+          ))}
+        </g>
+      </svg>
+
+      {/* Total count text — HTML on top of the SVG so the font stays crisp */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+        <div className="text-[9px] uppercase tracking-[0.18em] text-blue-700/70 font-semibold">
+          Total
+        </div>
+        <div className="text-2xl font-bold text-[#0F172A] tabular-nums leading-tight mt-0.5">
+          {loading ? '—' : total}
+        </div>
+        <div className="text-[9px] text-slate-500 mt-0.5">colonies</div>
+      </div>
+    </div>
+  )
+}
