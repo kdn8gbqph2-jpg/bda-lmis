@@ -39,6 +39,48 @@ import {
   saveHindiEnabled,
 } from './HindiInput'
 
+// ── Matcher ────────────────────────────────────────────────────────────────
+//
+// Strips punctuation and lowercases so "ओ.एम.जी." matches "ओएमजी" and
+// "OMG City" matches "omg-city". Tokenises the query by whitespace and
+// requires every token to appear somewhere in the normalised label
+// (AND semantics) so "एम जी" finds entries containing both. Ranks by
+// the sum of each token's earliest position — labels whose first
+// matched token starts close to the left come first.
+const PUNCT_RX = /[.,\-_/()[\]{}'"!?:;|]/g
+
+function normalize(s) {
+  return (s || '')
+    .toLowerCase()
+    .replace(PUNCT_RX, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function score(label, query) {
+  const nLabel  = normalize(label)
+  const nQuery  = normalize(query)
+  if (!nQuery) return 0
+  const tokens  = nQuery.split(' ').filter(Boolean)
+  let total = 0
+  for (const t of tokens) {
+    const idx = nLabel.indexOf(t)
+    if (idx === -1) return -1
+    total += idx
+  }
+  return total
+}
+
+function filterAndRank(options, query) {
+  const scored = []
+  for (const o of options) {
+    const s = score(o.label, query)
+    if (s >= 0) scored.push({ o, s })
+  }
+  scored.sort((a, b) => a.s - b.s)
+  return scored.map((x) => x.o)
+}
+
 export function Combobox({
   value, onChange, options,
   placeholder = 'Select…',
@@ -55,9 +97,7 @@ export function Combobox({
 
   const selected = options.find((o) => String(o.value) === String(value)) || null
 
-  const filtered = query
-    ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
-    : options
+  const filtered = query ? filterAndRank(options, query) : options
 
   // Transliteration: feeds suggestions for the trailing Latin token in
   // the search text. The hook is wired with a synthetic onChange so we
