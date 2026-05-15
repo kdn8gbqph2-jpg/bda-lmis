@@ -1,19 +1,16 @@
 /**
  * TopNavbar — sticky top bar for the public portal.
  *
- * Houses the global colony search, notification bell placeholder,
- * and a Officer Login chip on the right (desktop only — sidebar shows
- * a button on mobile).
- *
- * Props:
- *   onMenuClick   () => void — opens the mobile sidebar drawer
+ * Logo + brand on the left (took over the role the removed sidebar
+ * used to play), global colony search in the centre, notifications
+ * bell + Officer Login on the right.
  */
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Bell, LogIn, Menu, ChevronRight } from 'lucide-react'
+import { Search, Bell, LogIn } from 'lucide-react'
 
-export function TopNavbar({ onMenuClick }) {
+export function TopNavbar() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
 
@@ -28,21 +25,24 @@ export function TopNavbar({ onMenuClick }) {
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200">
       <div className="flex items-center gap-3 h-14 px-4 sm:px-6">
 
-        {/* Mobile menu trigger */}
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Breadcrumb / title — desktop only */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
-          <Link to="/public" className="hover:text-slate-700 transition">Public Portal</Link>
-          <ChevronRight className="w-3 h-3 text-slate-300" />
-          <span className="text-slate-700 font-medium">Dashboard</span>
-        </div>
+        {/* Brand — links back to the dashboard */}
+        <Link to="/public" className="flex items-center gap-2.5 group flex-shrink-0">
+          <img
+            src="/bda-logo.png"
+            alt="BDA"
+            className="w-9 h-9 object-contain drop-shadow-sm
+                       group-hover:scale-105 transition-transform duration-200"
+          />
+          <div className="hidden sm:block min-w-0 leading-tight">
+            <div className="text-sm font-bold text-[#0F172A] truncate
+                            group-hover:text-blue-700 transition-colors">
+              BDA LMIS
+            </div>
+            <div className="text-[10px] text-blue-700 font-semibold uppercase tracking-wider mt-0.5">
+              Public Portal
+            </div>
+          </div>
+        </Link>
 
         {/* Search — center, grows to fill. Slightly elevated input with
             a muted icon chip on the left for better visual weight. */}

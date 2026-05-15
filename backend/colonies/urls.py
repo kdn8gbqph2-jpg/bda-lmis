@@ -8,6 +8,7 @@ from .views_public import (
     PublicColonyMapDownloadView,
     PublicColonyGeoJSONView,
     ColonyTypeListView,
+    PublicRevenueVillageListView,
 )
 
 router = DefaultRouter()
@@ -32,6 +33,7 @@ khasra_urlpatterns = [
 # Public URLs:  /api/public/...  (mounted in config/urls.py)
 public_urlpatterns = [
     path('colony-types/',                            ColonyTypeListView.as_view(),           name='public-colony-types'),
+    path('revenue-villages/',                        PublicRevenueVillageListView.as_view(), name='public-revenue-villages'),
     path('colonies/',                                PublicColonyListView.as_view(),          name='public-colony-list'),
     path('colonies/geojson/',                        PublicColonyGeoJSONView.as_view(),       name='public-colony-geojson'),
     path('colonies/<int:pk>/',                       PublicColonyDetailView.as_view(),        name='public-colony-detail'),

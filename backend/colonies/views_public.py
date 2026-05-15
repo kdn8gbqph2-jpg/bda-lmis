@@ -169,3 +169,26 @@ class ColonyTypeListView(APIView):
     def get(self, request):
         data = [{'value': v, 'label': l} for v, l in COLONY_TYPE_CHOICES]
         return Response(data)
+
+
+class PublicRevenueVillageListView(APIView):
+    """
+    GET /api/public/revenue-villages/
+
+    Returns the distinct, non-empty revenue_village strings across all
+    active colonies, alphabetised. Drives the village dropdown on the
+    public colonies page so users can narrow to a village without
+    typing the exact spelling.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        villages = (
+            Colony.objects.filter(status='active')
+            .exclude(revenue_village='')
+            .exclude(revenue_village__isnull=True)
+            .values_list('revenue_village', flat=True)
+            .distinct()
+            .order_by('revenue_village')
+        )
+        return Response(list(villages))

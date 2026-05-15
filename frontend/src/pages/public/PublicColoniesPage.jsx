@@ -69,28 +69,38 @@ export default function PublicColoniesPage() {
       .split(',').map((s) => s.trim()).filter(Boolean),
   )
   const [zone,        setZone]        = useState(searchParams.get('zone') ?? '')
+  const [village,     setVillage]     = useState(searchParams.get('revenue_village') ?? '')
   const [page,        setPage]        = useState(1)
 
   const colonyTypeParam = colonyTypes.join(',')
 
+  // Fetch the distinct revenue villages for the dropdown.
+  const { data: villages = [] } = useQuery({
+    queryKey: ['public-revenue-villages'],
+    queryFn:  () => publicApi.revenueVillages(),
+    staleTime: 10 * 60 * 1000,
+  })
+
   // Keep URL in sync with filters
   useEffect(() => {
     const p = {}
-    if (search)          p.search      = search
-    if (colonyTypeParam) p.colony_type = colonyTypeParam
-    if (zone)            p.zone        = zone
+    if (search)          p.search          = search
+    if (colonyTypeParam) p.colony_type     = colonyTypeParam
+    if (zone)            p.zone            = zone
+    if (village)         p.revenue_village = village
     setSearchParams(p, { replace: true })
     setPage(1)
-  }, [search, colonyTypeParam, zone])   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, colonyTypeParam, zone, village])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['public-colonies', search, colonyTypeParam, zone, page],
+    queryKey: ['public-colonies', search, colonyTypeParam, zone, village, page],
     queryFn:  () => publicApi.colonyList({
-      search:      search          || undefined,
-      colony_type: colonyTypeParam || undefined,
-      zone:        zone            || undefined,
+      search:          search          || undefined,
+      colony_type:     colonyTypeParam || undefined,
+      zone:            zone            || undefined,
+      revenue_village: village         || undefined,
       page,
-      page_size:   PAGE_SIZE,
+      page_size:       PAGE_SIZE,
     }),
     keepPreviousData: true,
     staleTime: 2 * 60 * 1000,
@@ -110,7 +120,7 @@ export default function PublicColoniesPage() {
 
   const subLabel = colonyTypes.length === 1 ? TYPE_STYLE[colonyTypes[0]]?.sub : null
 
-  const hasFilters = !!(search || colonyTypes.length || zone)
+  const hasFilters = !!(search || colonyTypes.length || zone || village)
 
   return (
     <div className="bg-slate-50">
@@ -192,16 +202,20 @@ export default function PublicColoniesPage() {
           </div>
 
           <MultiSelect value={colonyTypes} onChange={setColonyTypes}
-                       label="All Types"
+                       label="All Schemes"
                        options={Object.entries(COLONY_TYPE_LABELS)} />
 
           <FilterSelect value={zone} onChange={setZone}
                         label="All Zones"
                         options={ZONES.map(z => [z, z])} />
 
+          <FilterSelect value={village} onChange={setVillage}
+                        label="All Villages"
+                        options={villages.map((v) => [v, v])} />
+
           {hasFilters && (
             <button
-              onClick={() => { setSearch(''); setColonyTypes([]); setZone('') }}
+              onClick={() => { setSearch(''); setColonyTypes([]); setZone(''); setVillage('') }}
               className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium
                          text-slate-500 hover:text-blue-700 border border-slate-200
                          hover:border-blue-200 rounded-xl hover:bg-blue-50/40 transition"

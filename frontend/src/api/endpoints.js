@@ -167,10 +167,11 @@ export const dms = {
 // ── Public (no auth required) ─────────────────────────────────────────────────
 // Uses the same Axios instance but the server permits AllowAny for these URLs.
 export const publicApi = {
-  colonyTypes:  ()         => client.get('/public/colony-types/'),
-  colonyList:   (params)   => client.get('/public/colonies/', { params }),
-  colonyDetail: (id)       => client.get(`/public/colonies/${id}/`),
-  colonyGeojson:(params)   => client.get('/public/colonies/geojson/', { params }),
+  colonyTypes:     ()       => client.get('/public/colony-types/'),
+  revenueVillages: ()       => client.get('/public/revenue-villages/'),
+  colonyList:      (params) => client.get('/public/colonies/', { params }),
+  colonyDetail:    (id)     => client.get(`/public/colonies/${id}/`),
+  colonyGeojson:   (params) => client.get('/public/colonies/geojson/', { params }),
   /** Returns a direct URL string to use for <a href> / window.open map downloads */
   mapDownloadUrl: (id, fmt) => `/api/public/colonies/${id}/map/${fmt}/`,
   /** Same file, served with Content-Disposition: inline — use as src for
