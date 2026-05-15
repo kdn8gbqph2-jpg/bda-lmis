@@ -66,10 +66,22 @@ function fromPatta(patta) {
   return out
 }
 
+// Model columns with null=True. Empty inputs on these become JSON null;
+// everything else (CharField / TextField with blank=True only) stays as
+// an empty string, because the server rejects null on those with
+// "This field may not be null." (which is what produced the bug where
+// clearing Remarks made every Save fail).
+const NULLABLE_FIELDS = new Set([
+  'issue_date', 'amendment_date', 'challan_date',
+  'lease_amount', 'regulation_file_present',
+])
+
 function cleanPayload(form) {
   const out = { ...form }
   for (const k of Object.keys(out)) {
-    if (out[k] === '') out[k] = null
+    if (out[k] === '') {
+      out[k] = NULLABLE_FIELDS.has(k) ? null : ''
+    }
   }
   if (out.lease_amount !== null && out.lease_amount !== undefined) {
     out.lease_amount = Number(out.lease_amount)
@@ -77,14 +89,11 @@ function cleanPayload(form) {
   // regulation_file_present: must be true | false | null
   if (out.regulation_file_present === 'true')  out.regulation_file_present = true
   if (out.regulation_file_present === 'false') out.regulation_file_present = false
-  // DMS file number — send as cleaned UPPERCASE string (or null to clear).
-  // Note: backend treats null as "don't touch" but empty string ("") as
-  // "clear link". The cleanPayload above already mapped '' → null which
-  // would lose the clear semantics, so send back an empty string if the
-  // form's value was an empty string after trim.
+  // DMS file number — send as cleaned UPPERCASE string (or empty
+  // string to clear link). Always re-derives from the trimmed form
+  // value so the loop above can't swallow the "clear" semantics.
   if (typeof form.dms_file_number === 'string') {
-    const trimmed = form.dms_file_number.trim().toUpperCase()
-    out.dms_file_number = trimmed === '' ? '' : trimmed
+    out.dms_file_number = form.dms_file_number.trim().toUpperCase()
   }
   return out
 }
