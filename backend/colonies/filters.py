@@ -2,10 +2,17 @@ import django_filters
 from .models import Colony, Khasra
 
 
+# Comma-separated multi-value filter for CharField columns — used so the
+# public colonies page can submit ?colony_type=bda_scheme,private_approved
+# from a multi-select UI without falling back to repeated query params.
+class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
+    pass
+
+
 class ColonyFilter(django_filters.FilterSet):
     zone            = django_filters.CharFilter(lookup_expr='iexact')
     status          = django_filters.CharFilter(lookup_expr='iexact')
-    colony_type     = django_filters.CharFilter(lookup_expr='iexact')
+    colony_type     = CharInFilter(field_name='colony_type', lookup_expr='in')
     revenue_village = django_filters.CharFilter(lookup_expr='icontains')
     khasra          = django_filters.CharFilter(method='filter_khasra', label='Khasra number')
     search          = django_filters.CharFilter(method='filter_search', label='Search')

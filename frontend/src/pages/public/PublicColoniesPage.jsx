@@ -11,13 +11,13 @@
  * pre-filtered (e.g. /public/colonies?colony_type=rejected_layout).
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
   Search, ChevronLeft, ChevronRight,
-  MapPin, Calendar, FileText, Download, X,
+  MapPin, Calendar, FileText, Download, X, Check,
 } from 'lucide-react'
 import { publicApi } from '@/api/endpoints'
 import { useCountUp } from '@/hooks/useCountUp'
@@ -61,27 +61,34 @@ const staggerParent = {
 export default function PublicColoniesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [search,     setSearch]     = useState(searchParams.get('search') ?? '')
-  const [colonyType, setColonyType] = useState(searchParams.get('colony_type') ?? '')
-  const [zone,       setZone]       = useState(searchParams.get('zone') ?? '')
-  const [page,       setPage]       = useState(1)
+  const [search,      setSearch]      = useState(searchParams.get('search') ?? '')
+  // Multi-select: stored as an array; serialised to the URL + the API
+  // as a comma-separated list (the public API now accepts __in via that).
+  const [colonyTypes, setColonyTypes] = useState(() =>
+    (searchParams.get('colony_type') ?? '')
+      .split(',').map((s) => s.trim()).filter(Boolean),
+  )
+  const [zone,        setZone]        = useState(searchParams.get('zone') ?? '')
+  const [page,        setPage]        = useState(1)
+
+  const colonyTypeParam = colonyTypes.join(',')
 
   // Keep URL in sync with filters
   useEffect(() => {
     const p = {}
-    if (search)     p.search      = search
-    if (colonyType) p.colony_type = colonyType
-    if (zone)       p.zone        = zone
+    if (search)          p.search      = search
+    if (colonyTypeParam) p.colony_type = colonyTypeParam
+    if (zone)            p.zone        = zone
     setSearchParams(p, { replace: true })
     setPage(1)
-  }, [search, colonyType, zone])   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, colonyTypeParam, zone])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['public-colonies', search, colonyType, zone, page],
+    queryKey: ['public-colonies', search, colonyTypeParam, zone, page],
     queryFn:  () => publicApi.colonyList({
-      search:      search || undefined,
-      colony_type: colonyType || undefined,
-      zone:        zone || undefined,
+      search:      search          || undefined,
+      colony_type: colonyTypeParam || undefined,
+      zone:        zone            || undefined,
       page,
       page_size:   PAGE_SIZE,
     }),
@@ -94,13 +101,16 @@ export default function PublicColoniesPage() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const animCount  = useCountUp(totalCount)
 
-  const pageTitle = colonyType
-    ? COLONY_TYPE_LABELS[colonyType] ?? 'Colonies'
+  // Title: single selection → that type's label; multiple → "Filtered
+  // Colonies"; none → "All Colonies".
+  const pageTitle =
+    colonyTypes.length === 1 ? (COLONY_TYPE_LABELS[colonyTypes[0]] ?? 'Colonies')
+    : colonyTypes.length > 1  ? 'Filtered Colonies'
     : 'All Colonies'
 
-  const subLabel = colonyType ? TYPE_STYLE[colonyType]?.sub : null
+  const subLabel = colonyTypes.length === 1 ? TYPE_STYLE[colonyTypes[0]]?.sub : null
 
-  const hasFilters = !!(search || colonyType || zone)
+  const hasFilters = !!(search || colonyTypes.length || zone)
 
   return (
     <div className="bg-slate-50">
@@ -181,9 +191,9 @@ export default function PublicColoniesPage() {
             />
           </div>
 
-          <FilterSelect value={colonyType} onChange={setColonyType}
-                        label="All Types"
-                        options={Object.entries(COLONY_TYPE_LABELS)} />
+          <MultiSelect value={colonyTypes} onChange={setColonyTypes}
+                       label="All Types"
+                       options={Object.entries(COLONY_TYPE_LABELS)} />
 
           <FilterSelect value={zone} onChange={setZone}
                         label="All Zones"
@@ -191,7 +201,7 @@ export default function PublicColoniesPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(''); setColonyType(''); setZone('') }}
+              onClick={() => { setSearch(''); setColonyTypes([]); setZone('') }}
               className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium
                          text-slate-500 hover:text-blue-700 border border-slate-200
                          hover:border-blue-200 rounded-xl hover:bg-blue-50/40 transition"
@@ -289,6 +299,94 @@ function FilterSelect({ value, onChange, label, options }) {
       </select>
       <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4
                                 rotate-90 text-slate-400 pointer-events-none" />
+    </div>
+  )
+}
+
+// MultiSelect — same trigger styling as FilterSelect, but the panel
+// shows checkboxes so the user can pick any combination of types.
+// Closes on outside click; selection updates the parent immediately
+// so there's no "Apply" button to forget.
+function MultiSelect({ value, onChange, label, options }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const toggle = (v) => {
+    onChange(value.includes(v)
+      ? value.filter((x) => x !== v)
+      : [...value, v])
+  }
+
+  // Trigger label: empty → "All Types"; 1 → that label; >1 → "<n> selected".
+  const triggerText =
+    value.length === 0 ? label
+    : value.length === 1 ? (options.find(([v]) => v === value[0])?.[1] ?? label)
+    : `${value.length} selected`
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`appearance-none pl-3 pr-9 py-2.5 text-sm font-medium text-slate-700
+                    bg-white border rounded-xl hover:border-slate-300 cursor-pointer
+                    focus:outline-none focus:ring-4 focus:ring-blue-500/10
+                    transition-all duration-200
+                    ${value.length ? 'border-blue-400 text-blue-700' : 'border-slate-200'}`}
+      >
+        {triggerText}
+      </button>
+      <ChevronRight
+        className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4
+                    rotate-90 text-slate-400 pointer-events-none transition-transform
+                    ${open ? '-rotate-90' : ''}`}
+      />
+
+      {open && (
+        <div
+          className="absolute z-50 mt-1 right-0 min-w-[14rem] bg-white rounded-xl
+                     border border-slate-200 shadow-lg overflow-hidden
+                     animate-[fadeIn_120ms_ease-out]"
+        >
+          {options.map(([v, l]) => {
+            const checked = value.includes(v)
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => toggle(v)}
+                className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-left
+                            ${checked ? 'bg-blue-50/60 text-blue-800' : 'text-slate-700 hover:bg-slate-50'}`}
+              >
+                <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0
+                                  ${checked ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                  {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                </span>
+                <span className="flex-1">{l}</span>
+              </button>
+            )
+          })}
+          {value.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="w-full text-left px-3 py-2 text-xs font-medium text-slate-500
+                         hover:text-blue-700 hover:bg-slate-50 border-t border-slate-100"
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

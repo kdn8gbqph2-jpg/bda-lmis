@@ -134,10 +134,15 @@ class PublicColonyGeoJSONView(APIView):
     def get(self, request):
         qs = Colony.objects.filter(status='active')
 
+        # colony_type may be a comma-separated list to match the multi-
+        # select filter on the public colonies page. Single-value calls
+        # still work because a one-element __in is equivalent to iexact.
         colony_type = request.query_params.get('colony_type')
         zone        = request.query_params.get('zone')
         if colony_type:
-            qs = qs.filter(colony_type__iexact=colony_type)
+            wanted = [t.strip() for t in colony_type.split(',') if t.strip()]
+            if wanted:
+                qs = qs.filter(colony_type__in=wanted)
         if zone:
             qs = qs.filter(zone__iexact=zone)
 
