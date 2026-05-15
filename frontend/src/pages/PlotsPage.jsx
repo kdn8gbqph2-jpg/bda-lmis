@@ -5,6 +5,7 @@ import { plots as plotsApi, colonies as coloniesApi } from '@/api/endpoints'
 import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
 import { Table, Pagination } from '@/components/ui/Table'
+import { Combobox } from '@/components/ui/Combobox'
 import { Button } from '@/components/ui/Button'
 import { PlotStatusBadge } from '@/components/ui/Badge'
 import { AddPlotModal } from '@/components/admin/AddPlotModal'
@@ -109,16 +110,14 @@ export default function PlotsPage() {
           />
         </div>
 
-        <div className="w-52">
-          <Select
+        <div className="w-64">
+          <Combobox
             value={colonyId}
-            onChange={(e) => { setColonyId(e.target.value); reset() }}
-          >
-            <option value="">All Colonies</option>
-            {colonyOptions.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+            onChange={(v) => { setColonyId(v); reset() }}
+            options={colonyOptions.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="All Colonies"
+            clearLabel="All Colonies"
+          />
         </div>
 
         <div className="w-52">

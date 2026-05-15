@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Input, Select } from '@/components/ui/Input'
 import { Table, Pagination } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
+import { Combobox } from '@/components/ui/Combobox'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 const PAGE_SIZE = 25
@@ -110,13 +111,14 @@ export default function DocumentsPage() {
             ))}
           </Select>
         </div>
-        <div className="w-52">
-          <Select value={colonyId} onChange={(e) => { setColonyId(e.target.value); reset() }}>
-            <option value="">All Colonies</option>
-            {colonyOptions.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+        <div className="w-64">
+          <Combobox
+            value={colonyId}
+            onChange={(v) => { setColonyId(v); reset() }}
+            options={colonyOptions.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="All Colonies"
+            clearLabel="All Colonies"
+          />
         </div>
         <span className="text-sm text-slate-500 ml-auto">
           {docs.data?.count ?? '…'} documents

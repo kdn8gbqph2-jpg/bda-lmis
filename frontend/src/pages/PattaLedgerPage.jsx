@@ -5,6 +5,7 @@ import { Search, Download, Plus, CheckCircle, XCircle, FileText, ExternalLink } 
 import { pattas as pattasApi, colonies as coloniesApi, dms as dmsApi } from '@/api/endpoints'
 import { PattaStatusBadge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Table'
+import { Combobox } from '@/components/ui/Combobox'
 import { AddPattaModal } from '@/components/admin/AddPattaModal'
 import { useAuthStore } from '@/stores/useAuthStore'
 
@@ -116,18 +117,16 @@ export default function PattaLedgerPage() {
           />
         </div>
 
-        {/* Colony */}
-        <select
-          value={colonyId}
-          onChange={(e) => { setColonyId(e.target.value); reset() }}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Colonies</option>
-          {colonyOptions.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        {/* Colony — searchable since BDA has 200+ entries */}
+        <div className="w-64">
+          <Combobox
+            value={colonyId}
+            onChange={(v) => { setColonyId(v); reset() }}
+            options={colonyOptions.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="All Colonies"
+            clearLabel="All Colonies"
+          />
+        </div>
 
         {/* Regulation file */}
         <select
