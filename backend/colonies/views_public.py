@@ -106,9 +106,19 @@ class PublicColonyMapDownloadView(APIView):
 
         logger.info('Public map %s (%s) for colony %s.', fmt, disp, pk)
         response = FileResponse(file_field.open('rb'), content_type=self._CONTENT_TYPES[fmt])
-        response['Content-Disposition'] = (
-            f'{disp}; filename="{colony.name}_{fmt}.{fmt}"'
-        )
+        # ASCII-only filename. Putting Hindi (or any non-ASCII) text in
+        # the `filename` parameter makes wsgiref MIME-encode the whole
+        # Content-Disposition value (=?utf-8?b?...?=), which buries the
+        # `inline` directive inside a base64 blob and breaks browser
+        # preview. Stick to pk-based names; the human-readable colony
+        # name is on the page itself.
+        ascii_name = f'colony-{colony.pk}-{fmt}.{fmt}'
+        response['Content-Disposition'] = f'{disp}; filename="{ascii_name}"'
+        if disp == 'inline':
+            # Django's SecurityMiddleware sets X-Frame-Options: DENY by
+            # default, which would block our same-origin LayoutPreview
+            # iframe. Override to SAMEORIGIN only for the preview path.
+            response['X-Frame-Options'] = 'SAMEORIGIN'
         return response
 
 

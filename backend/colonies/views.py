@@ -149,9 +149,13 @@ class ColonyViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
         disp = 'inline' if request.GET.get('disposition') == 'inline' else 'attachment'
         logger.info('Serving map_%s (%s) for colony %s to user %s.', fmt, disp, colony.pk, request.user)
         response = FileResponse(file_field.open('rb'), content_type=content_types[fmt])
-        response['Content-Disposition'] = (
-            f'{disp}; filename="{colony.name}_{fmt}.{fmt}"'
-        )
+        # Stay ASCII in the filename — see views_public for why a Hindi
+        # name in this header gets MIME-encoded and breaks the inline
+        # directive.
+        ascii_name = f'colony-{colony.pk}-{fmt}.{fmt}'
+        response['Content-Disposition'] = f'{disp}; filename="{ascii_name}"'
+        if disp == 'inline':
+            response['X-Frame-Options'] = 'SAMEORIGIN'
         return response
 
     # ── /api/colonies/{id}/geojson/ ───────────────────────────────────────────
