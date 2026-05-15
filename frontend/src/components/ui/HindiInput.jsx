@@ -60,8 +60,10 @@ function tokenAtCaret(text, caret) {
   return { token: match[0], start: caret - match[0].length, end: caret }
 }
 
-/** Shared logic for both the <input> and <textarea> variants. */
-function useTransliterate({ value, onChange, enabled, fieldRef }) {
+/** Shared logic for the <input> / <textarea> variants AND the Combobox
+ *  search field — exported so any controlled text input can opt in to
+ *  English→Hindi transliteration without duplicating this state machine. */
+export function useTransliterate({ value, onChange, enabled, fieldRef }) {
   const [suggestions, setSuggestions] = useState([])
   const [highlight,   setHighlight]   = useState(0)
   const [activeRange, setActiveRange] = useState(null)
@@ -209,18 +211,25 @@ function useTransliterate({ value, onChange, enabled, fieldRef }) {
 
 // ── UI sub-components ────────────────────────────────────────────────────────
 
-function ToggleButton({ enabled, onToggle }) {
+/**
+ * Small हि/EN toggle pill. Exported so other inputs (e.g. the colony
+ * Combobox search field) can show the same control instead of inventing
+ * one. `className` overrides the default absolute-positioned styling for
+ * non-rectangular hosts that need a static-flow placement.
+ */
+export function HindiToggleButton({ enabled, onToggle, className }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       title={enabled ? 'Hindi typing on — click for English' : 'English mode — click for Hindi'}
       className={clsx(
-        'absolute right-2 top-2 text-[10px] font-semibold px-1.5 py-0.5 rounded',
+        'text-[10px] font-semibold px-1.5 py-0.5 rounded',
         'border transition select-none',
         enabled
           ? 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
           : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100',
+        className ?? 'absolute right-2 top-2',
       )}
     >
       {enabled ? 'हि' : 'EN'}
@@ -228,11 +237,17 @@ function ToggleButton({ enabled, onToggle }) {
   )
 }
 
+const ToggleButton = HindiToggleButton
+
+export { loadEnabled as loadHindiEnabled, saveEnabled as saveHindiEnabled }
+
 /**
  * Suggestion popover. Pinned to document.body via a portal and positioned
  * with `fixed` coords so it can escape any `overflow:auto`/`overflow:hidden`
  * ancestor (modal bodies, scrolling forms).
  */
+export function HindiSuggestionPopover(props) { return SuggestionPopover(props) }
+
 function SuggestionPopover({ suggestions, highlight, onPick, anchorRef }) {
   const [pos, setPos] = useState(null)
   const popoverRef = useRef(null)

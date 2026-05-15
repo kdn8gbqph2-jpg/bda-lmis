@@ -3,6 +3,12 @@
  * `{ value, label }` options. Replaces a native <select> when the list
  * is long enough that scrolling is annoying (≳ 30 entries).
  *
+ * The search field supports English → Hindi transliteration (same
+ * Google-Input-Tools-style flow as the edit modals' HindiInput) so
+ * users can type "OMG" or "अजय" interchangeably to find a colony.
+ * The हि/EN preference is shared with HindiInput via the same
+ * localStorage key, so toggling it here also toggles it in the modals.
+ *
  *   <Combobox
  *     value={colonyId}
  *     onChange={(id) => setColonyId(id)}
@@ -12,16 +18,26 @@
  *
  * Behaviour:
  *   - Click input → opens, lists everything.
- *   - Type → filters by case-insensitive substring on label.
+ *   - Type → filters by case-insensitive substring on label. When the
+ *     हि toggle is on, the active Latin token shows Hindi candidates
+ *     in a popover; Space / Enter / 1-5 accepts.
  *   - Click option → selects, closes, clears search text.
  *   - Empty / clear button → resets value to '' (the "all" sentinel).
  *   - Click outside → closes without changing value.
- *   - Keyboard: ↑ / ↓ to navigate, Enter to pick, Esc to close.
+ *   - Keyboard: ↑ / ↓ to navigate options (when no Hindi suggestion is
+ *     active), Enter to pick, Esc to close.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { clsx } from 'clsx'
 import { ChevronDown, X, Search } from 'lucide-react'
+import {
+  useTransliterate,
+  HindiToggleButton,
+  HindiSuggestionPopover,
+  loadHindiEnabled,
+  saveHindiEnabled,
+} from './HindiInput'
 
 export function Combobox({
   value, onChange, options,
@@ -32,8 +48,10 @@ export function Combobox({
   const [open, setOpen]               = useState(false)
   const [query, setQuery]             = useState('')
   const [activeIdx, setActiveIdx]     = useState(0)
-  const ref     = useRef(null)
-  const listRef = useRef(null)
+  const [hindiOn, setHindiOn]         = useState(loadHindiEnabled)
+  const containerRef                  = useRef(null)
+  const inputRef                      = useRef(null)
+  const listRef                       = useRef(null)
 
   const selected = options.find((o) => String(o.value) === String(value)) || null
 
@@ -41,22 +59,33 @@ export function Combobox({
     ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
     : options
 
+  // Transliteration: feeds suggestions for the trailing Latin token in
+  // the search text. The hook is wired with a synthetic onChange so we
+  // can keep `query` as our state of record.
+  const {
+    suggestions, highlight, handleKeyDown: handleHindiKey,
+    applyReplacement, refresh: refreshHindi, dismiss: dismissHindi,
+  } = useTransliterate({
+    value: query,
+    onChange: (e) => setQuery(e.target.value),
+    enabled: hindiOn,
+    fieldRef: inputRef,
+  })
+
   // Close on outside click
   useEffect(() => {
     if (!open) return
     const onDoc = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false); setQuery('')
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false); setQuery(''); dismissHindi()
       }
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
+  }, [open, dismissHindi])
 
-  // Reset active index when filter changes
   useEffect(() => { setActiveIdx(0) }, [query, open])
 
-  // Keep highlighted row in view
   useEffect(() => {
     if (!open || !listRef.current) return
     const el = listRef.current.children[activeIdx]
@@ -65,10 +94,19 @@ export function Combobox({
 
   const pick = (opt) => {
     onChange(opt ? opt.value : '')
-    setOpen(false); setQuery('')
+    setOpen(false); setQuery(''); dismissHindi()
   }
 
   const onKey = (e) => {
+    // If Hindi suggestions are showing, let the transliteration hook
+    // own the navigation keys (↑/↓/Enter/Esc/Space/1-5). It calls
+    // preventDefault when it consumes a key, so the option-list keys
+    // below stay quiet in that case.
+    const hadSuggestions = suggestions.length > 0
+    handleHindiKey(e)
+    if (e.defaultPrevented) return
+    if (hadSuggestions) return
+
     if (e.key === 'ArrowDown') {
       e.preventDefault(); setOpen(true)
       setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
@@ -83,8 +121,10 @@ export function Combobox({
     }
   }
 
+  const toggleHindi = () => setHindiOn((v) => { saveHindiEnabled(!v); return !v })
+
   return (
-    <div ref={ref} className={clsx('relative', className)}>
+    <div ref={containerRef} className={clsx('relative', className)}>
       {/* Trigger — looks like Input/Select, behaves like a searchbox once open */}
       <div
         className={clsx(
@@ -92,18 +132,27 @@ export function Combobox({
           'pl-3 pr-2 py-2 shadow-xs cursor-text',
           'focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500',
         )}
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); inputRef.current?.focus() }}
       >
         <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
         <input
+          ref={inputRef}
           type="text"
           value={open ? query : (selected?.label || '')}
           placeholder={selected ? selected.label : placeholder}
           onChange={(e) => { setOpen(true); setQuery(e.target.value) }}
           onFocus={() => setOpen(true)}
+          onKeyUp={() => refreshHindi()}
+          onClick={() => refreshHindi()}
           onKeyDown={onKey}
+          onBlur={() => setTimeout(dismissHindi, 120)}
           className="flex-1 min-w-0 bg-transparent text-sm text-slate-900
                      placeholder:text-slate-500 focus:outline-none"
+        />
+        <HindiToggleButton
+          enabled={hindiOn}
+          onToggle={toggleHindi}
+          className="flex-shrink-0"
         />
         {selected && !open && (
           <button
@@ -119,11 +168,20 @@ export function Combobox({
                                      open && 'rotate-180')} />
       </div>
 
-      {/* Dropdown */}
+      {/* Hindi suggestion popover — portal-mounted, positioned to the input */}
+      {hindiOn && (
+        <HindiSuggestionPopover
+          suggestions={suggestions}
+          highlight={highlight}
+          anchorRef={inputRef}
+          onPick={(i) => applyReplacement(suggestions[i])}
+        />
+      )}
+
+      {/* Option dropdown */}
       {open && (
         <div className="absolute z-50 mt-1 w-full bg-white rounded-lg border border-slate-200
                         shadow-lg max-h-72 overflow-y-auto animate-[fadeIn_120ms_ease-out]">
-          {/* Always-available "clear" option at the top */}
           <button
             type="button"
             onClick={() => pick(null)}
