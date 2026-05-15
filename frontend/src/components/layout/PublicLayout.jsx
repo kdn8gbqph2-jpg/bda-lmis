@@ -105,11 +105,10 @@ function SidebarContent({ onClose }) {
 
       {/* ── Footer chip in the sidebar — institutional note ── */}
       <div className="px-3 py-3 border-t border-slate-200/80">
-        <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mb-1">
-          Government of Rajasthan
-        </div>
         <div className="text-[11px] text-slate-500 leading-snug">
-          Bharatpur Development Authority · GIS-Enabled
+          Designed, Hosted &amp; Maintained by
+          <br />
+          <span className="font-medium text-slate-700">IT Cell, Bharatpur Development Authority</span>
         </div>
       </div>
 
