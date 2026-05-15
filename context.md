@@ -180,11 +180,12 @@ Sign-in accepts email **or** SSO ID / username (case-insensitive) — `CustomTok
 
 ## 8. Public Portal
 
-Layout: single full-width column under a sticky `TopNavbar` — the left sidebar was removed because it duplicated the dashboard's category cards and the colonies-list filter bar.
+Layout: single full-width column under a sticky `TopNavbar` — the left sidebar was removed because it duplicated the dashboard's category cards and the colonies-list filter bar. `TopNavbar` carries the BDA brand block (logo + portal title) that used to live in the sidebar header.
 
-**Dashboard** (`PublicDashboardPage`) is one above-the-fold band:
-- Hero block with compact heading + 2 CTAs on the left, a 260px-wide GIS-themed SVG illustration (coordinate grid + parcels + compass ring with live total) on the right.
-- "Browse by category" row directly below — five `CategoryCard` chips, each linking to `/public/colonies?colony_type=…`.
+**Dashboard** (`PublicDashboardPage`) is a single above-the-fold band:
+- Hero row: heading + Hindi subline + 2 CTAs on the left; a 280px-wide GIS-themed SVG (`HeroIllustration`: coordinate grid + parcel polygons + compass ring with the live colony total) sits at the top-right on lg+. Grid uses `items-start` so the SVG aligns with the heading, not with the row's vertical centre — otherwise the row stretches taller than the text and leaves dead space above the cards.
+- "Browse by category" row directly below — five `CategoryCard`s, each linking to `/public/colonies?colony_type=…`. Cards use `flex flex-col h-full` so CSS-grid row-stretch propagates: all five sit at the same height regardless of body length.
+- **Empty-category UX**: when the backend explicitly returned `count === 0` for a category, the bare numeral is suppressed and the card shows a small uppercase "Compiling" pill in the top-right slot + an italic "Information is being compiled." footer pinned to the bottom via `mt-auto`. Loading state (`count == null`) still shows `—` so it's distinguishable from a real zero.
 - Trust-indicator strip as a hairline-divided footer inside the band.
 
 **Colony list** (`PublicColoniesPage`) filter bar:
@@ -200,6 +201,8 @@ Layout: single full-width column under a sticky `TopNavbar` — the left sidebar
 - `<LayoutPreview>` renders the map inline: PDF in an `<iframe>` (X-Frame-Options=SAMEORIGIN, ASCII filename), images via `<img>`. Format pills switch between uploaded formats; Open / Download buttons preserve the original save-to-disk semantics.
 
 Map endpoints support `?disposition=inline` so the preview iframe gets `Content-Disposition: inline` + `X-Frame-Options: SAMEORIGIN`; default behaviour stays `attachment` for plain link clicks.
+
+**Public footer** (`PublicFooter`): three columns (Authority + portal identity / Portal links / Help & Contact) over a thin legal band. Bottom legal band carries the copyright line *and* a credit line — `Designed, Hosted & Maintained by IT Cell, Bharatpur Development Authority` — stacked on the left; socials + version on the right. The "About this Portal" links were removed (no `/public/about` route is wired up); the "Help" column shifted to a real contact panel (email + authoritative-source note + last-synced date).
 
 ---
 
@@ -319,4 +322,4 @@ These live in `~/.claude/projects/.../memory/MEMORY.md` and apply to every sessi
 
 ---
 
-*Doc rev: 2026-05-15 — current as of the public-portal redesign + approval lifecycle (per-field chip + green Approved state, AuditLog per-field trim, CR hard-delete on resolve, sidebar removal, Patta-Ledger import on Colony modal).*
+*Doc rev: 2026-05-15 — current as of the public-portal redesign + approval lifecycle (per-field chip + green Approved state, AuditLog per-field trim, CR hard-delete on resolve, sidebar removal, Patta-Ledger import on Colony modal, dashboard hero layout polish + IT-Cell footer credit).*
