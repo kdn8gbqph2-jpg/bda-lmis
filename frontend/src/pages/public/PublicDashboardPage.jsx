@@ -122,135 +122,120 @@ export default function PublicDashboardPage() {
   return (
     <div className="bg-slate-50">
 
-      {/* ────────────────────────────── HERO ────────────────────────────── */}
+      {/* ───────────── HERO + CATEGORY CARDS (single above-the-fold band) ─────────────
+          The category cards used to live in their own section below the
+          hero, which pushed them off-screen on a 768-tall viewport. Merge
+          the two: compact hero copy on top, cards on the same backdrop
+          band immediately below so the five categories are visible
+          without scrolling.                                                          */}
 
       <section className="relative overflow-hidden border-b border-slate-200">
         <Backdrop />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-          <div className="grid lg:grid-cols-[1fr,520px] gap-8 lg:gap-12 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-            {/* ── Text column ── */}
-            <motion.div {...fadeUp}>
+          {/* Top band — heading + CTAs */}
+          <div className="grid lg:grid-cols-[1fr,auto] gap-4 items-end mb-5">
+            <motion.div {...fadeUp} className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full
                               bg-blue-700/5 border border-blue-700/15 text-blue-700
-                              text-[11px] font-semibold uppercase tracking-[0.16em] mb-5">
+                              text-[11px] font-semibold uppercase tracking-[0.16em] mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-700" />
                 Bharatpur Development Authority
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight
-                             text-[#0F172A] leading-[1.1] mb-4">
-                Land &amp; Scheme<br className="hidden sm:block" />
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight
+                             text-[#0F172A] leading-[1.15] mb-1.5">
+                Land &amp; Scheme
                 <span className="text-blue-700"> Information Portal</span>
               </h1>
 
-              <p className="text-base sm:text-[17px] text-slate-600 max-w-2xl
-                            leading-relaxed mb-6">
-                Public access portal for approved layouts, scheme maps,
-                khasra details and plot information under Bharatpur
-                Development Authority.
-                <span className="block mt-1 text-sm text-slate-500">
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Public access for approved layouts, khasra and plot information.
+                <span className="block text-xs text-slate-400 mt-0.5">
                   भू-अभिलेख और कॉलोनी सूचना के लिए आधिकारिक सरकारी पोर्टल।
                 </span>
               </p>
+            </motion.div>
 
-              {/* CTAs */}
-              <div className="flex flex-wrap items-center gap-3 mb-7">
-                <Link
-                  to="/public/colonies"
-                  className="group relative inline-flex items-center gap-2 px-5 py-3
-                             bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
-                             rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-12px_rgba(29,78,216,0.55)]
-                             hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_16px_36px_-12px_rgba(29,78,216,0.6)]
-                             transition-all duration-200 overflow-hidden"
-                >
-                  {/* Soft shine sweep */}
-                  <span
-                    aria-hidden
-                    className="absolute inset-y-0 -left-12 w-12 -skew-x-12 bg-white/20
-                               translate-x-0 group-hover:translate-x-[calc(100%+3rem)]
-                               transition-transform duration-700 ease-out"
-                  />
-                  Explore Colonies
-                  <ArrowRight className="w-4 h-4 transition group-hover:translate-x-0.5" />
-                </Link>
-
-                <Link
-                  to="/public/colonies?has_map=true"
-                  className="inline-flex items-center gap-2 px-5 py-3
-                             bg-white text-slate-700 hover:text-blue-800
-                             text-sm font-semibold rounded-lg border border-slate-300
-                             hover:border-blue-300 hover:bg-blue-50/40
-                             shadow-sm transition-all duration-200"
-                >
-                  <MapPinned className="w-4 h-4 text-slate-500" />
-                  View GIS Maps
-                </Link>
-              </div>
-
-              {/* Trust indicators */}
-              <motion.div
-                {...staggerParent}
-                initial="initial" animate="animate"
-                className="flex flex-wrap gap-x-5 gap-y-2"
+            <motion.div {...fadeUp} className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/public/colonies"
+                className="group relative inline-flex items-center gap-2 px-4 py-2.5
+                           bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
+                           rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-12px_rgba(29,78,216,0.55)]
+                           transition-all duration-200"
               >
-                {TRUST_INDICATORS.map(({ icon: Icon, label }) => (
-                  <motion.span
-                    key={label}
-                    variants={fadeUp}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600"
-                  >
-                    <Icon className="w-3.5 h-3.5 text-blue-700" strokeWidth={2.25} />
-                    {label}
-                  </motion.span>
-                ))}
-              </motion.div>
+                Explore Colonies
+                <ArrowRight className="w-4 h-4 transition group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                to="/public/colonies?has_map=true"
+                className="inline-flex items-center gap-2 px-4 py-2.5
+                           bg-white text-slate-700 hover:text-blue-800
+                           text-sm font-semibold rounded-lg border border-slate-300
+                           hover:border-blue-300 hover:bg-blue-50/40 transition"
+              >
+                <MapPinned className="w-4 h-4 text-slate-500" />
+                GIS Maps
+              </Link>
             </motion.div>
+          </div>
 
-            {/* ── Decorative GIS-themed SVG, desktop only ── */}
-            <div className="hidden lg:block">
-              <HeroIllustration total={animTotal} loading={isLoading} />
+          {/* Section heading for the cards */}
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <h2 className="text-sm sm:text-base font-semibold text-[#0F172A] tracking-tight">
+                Browse by category
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Filter colonies by their layout-approval status.
+                {total != null && (
+                  <span className="ml-1 text-slate-400">· {animTotal} total</span>
+                )}
+              </p>
             </div>
+            <Link
+              to="/public/colonies"
+              className="hidden sm:inline-flex items-center gap-1 text-xs font-medium
+                         text-blue-700 hover:text-blue-900 transition"
+            >
+              View all
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        </div>
-      </section>
 
-      {/* ─────────────────────────── CATEGORY CARDS ─────────────────────────── */}
-      {/* Lifted to a smaller top gap so the cards sit just under the hero
-          instead of half-a-screen down. */}
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6">
-        <div className="flex items-end justify-between mb-5">
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-[#0F172A] tracking-tight">
-              Browse by category
-            </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Filter colonies by their layout-approval status.
-            </p>
-          </div>
-          <Link
-            to="/public/colonies"
-            className="hidden sm:inline-flex items-center gap-1 text-sm font-medium
-                       text-blue-700 hover:text-blue-900 transition"
+          {/* Category cards — same five, just in the same band as the hero */}
+          <motion.div
+            {...staggerParent}
+            initial="initial" animate="animate"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
           >
-            View all
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
+            {CATEGORIES.map((cat) => (
+              <motion.div key={cat.value} variants={fadeUp}>
+                <CategoryCard cat={cat} count={counts?.[cat.value]} />
+              </motion.div>
+            ))}
+          </motion.div>
 
-        <motion.div
-          {...staggerParent}
-          initial="initial" animate="animate"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
-        >
-          {CATEGORIES.map((cat) => (
-            <motion.div key={cat.value} variants={fadeUp}>
-              <CategoryCard cat={cat} count={counts?.[cat.value]} />
-            </motion.div>
-          ))}
-        </motion.div>
+          {/* Trust indicators — kept as a slim footer row inside the band */}
+          <motion.div
+            {...staggerParent}
+            initial="initial" animate="animate"
+            className="flex flex-wrap gap-x-5 gap-y-1 mt-5 pt-4 border-t border-slate-200/70"
+          >
+            {TRUST_INDICATORS.map(({ icon: Icon, label }) => (
+              <motion.span
+                key={label}
+                variants={fadeUp}
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500"
+              >
+                <Icon className="w-3 h-3 text-blue-700" strokeWidth={2.25} />
+                {label}
+              </motion.span>
+            ))}
+          </motion.div>
+        </div>
       </section>
 
       {/* ─────────────────────────── INSIGHT STRIP ─────────────────────────── */}
@@ -354,30 +339,28 @@ function CategoryCard({ cat, count }) {
     <Link
       to={`/public/colonies?colony_type=${cat.value}`}
       className={`relative block bg-white rounded-xl border ${cat.border}
-                  p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]
+                  p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]
                   transition-all duration-200
                   hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.10)]
                   hover:-translate-y-0.5 overflow-hidden
-                  before:absolute before:left-0 before:top-3 before:bottom-3
+                  before:absolute before:left-0 before:top-2 before:bottom-2
                   before:w-[3px] before:rounded-r-full ${accent}`}
     >
-      <div className={`w-10 h-10 rounded-lg ${cat.tint} flex items-center justify-center mb-3`}>
-        <Icon className={`w-5 h-5 ${cat.text}`} strokeWidth={2} />
+      <div className="flex items-start justify-between gap-2">
+        <div className={`w-8 h-8 rounded-lg ${cat.tint} flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-4 h-4 ${cat.text}`} strokeWidth={2} />
+        </div>
+        <div className="flex items-baseline gap-1 ml-auto">
+          <span className="text-xl font-bold text-[#0F172A] tabular-nums leading-none">
+            {count == null ? '—' : animCount}
+          </span>
+        </div>
       </div>
 
-      <h3 className="font-semibold text-slate-900 text-sm leading-snug">{cat.label}</h3>
-      <p className="text-[11px] text-slate-500 leading-snug mt-0.5 mb-3 line-clamp-2">
+      <h3 className="font-semibold text-slate-900 text-sm leading-snug mt-2.5">{cat.label}</h3>
+      <p className="text-[11px] text-slate-500 leading-snug mt-0.5 line-clamp-2">
         {cat.description}
       </p>
-
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-3xl font-bold text-[#0F172A] tabular-nums leading-none">
-          {count == null ? '—' : animCount}
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-          records
-        </span>
-      </div>
     </Link>
   )
 }
@@ -402,88 +385,6 @@ function Panel({ title, icon: Icon, children, footer }) {
   )
 }
 
-/**
- * Abstract GIS-themed illustration for the hero column.
- * Pure SVG, no images, sized to fit 520px container.
- * Shows: coordinate-grid base, hand-drawn parcel polygons, a circular
- * compass-style ring with the live colony total in the middle.
- */
-function HeroIllustration({ total, loading }) {
-  return (
-    <div className="relative aspect-[5/4] w-full max-w-[520px] ml-auto">
-      <svg viewBox="0 0 520 416" className="absolute inset-0 w-full h-full">
-        <defs>
-          <linearGradient id="parcel-a" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%"  stopColor="#1D4ED8" stopOpacity="0.10" />
-            <stop offset="100%" stopColor="#1D4ED8" stopOpacity="0.04" />
-          </linearGradient>
-          <linearGradient id="parcel-b" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%"  stopColor="#0EA5E9" stopOpacity="0.10" />
-            <stop offset="100%" stopColor="#0EA5E9" stopOpacity="0.04" />
-          </linearGradient>
-          <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1D4ED8" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#1D4ED8" stopOpacity="0.2" />
-          </linearGradient>
-        </defs>
-
-        {/* Coordinate grid */}
-        <g stroke="#1D4ED8" strokeOpacity="0.08" strokeWidth="1">
-          {Array.from({ length: 13 }).map((_, i) => (
-            <line key={`v${i}`} x1={i * 40} y1="0" x2={i * 40} y2="416" />
-          ))}
-          {Array.from({ length: 11 }).map((_, i) => (
-            <line key={`h${i}`} x1="0" y1={i * 40} x2="520" y2={i * 40} />
-          ))}
-        </g>
-
-        {/* Abstract parcels (land polygons) */}
-        <g>
-          <polygon
-            points="60,80 220,60 250,180 80,200"
-            fill="url(#parcel-a)" stroke="#1D4ED8" strokeOpacity="0.35" strokeWidth="1.25"
-          />
-          <polygon
-            points="280,40 440,90 420,210 270,180"
-            fill="url(#parcel-b)" stroke="#0EA5E9" strokeOpacity="0.35" strokeWidth="1.25"
-          />
-          <polygon
-            points="80,250 260,235 290,360 110,380"
-            fill="url(#parcel-a)" stroke="#1D4ED8" strokeOpacity="0.35" strokeWidth="1.25"
-          />
-          <polygon
-            points="320,240 470,250 460,370 310,360"
-            fill="url(#parcel-b)" stroke="#0EA5E9" strokeOpacity="0.35" strokeWidth="1.25"
-          />
-        </g>
-
-        {/* Center compass ring + total */}
-        <g transform="translate(260 208)">
-          <circle r="74" fill="white" stroke="url(#ring)" strokeWidth="1.5" />
-          <circle r="60" fill="white" stroke="#1D4ED8" strokeOpacity="0.18" strokeDasharray="2 4" />
-          <circle r="3"  fill="#1D4ED8" />
-          {/* compass ticks */}
-          {[0, 90, 180, 270].map((deg) => (
-            <line
-              key={deg} x1="0" y1="-74" x2="0" y2="-68"
-              stroke="#1D4ED8" strokeOpacity="0.5" strokeWidth="2"
-              transform={`rotate(${deg})`}
-            />
-          ))}
-        </g>
-
-        {/* Total count text — rendered as HTML over the SVG for crisp font */}
-      </svg>
-
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-blue-700/70 font-semibold">
-          Total Records
-        </div>
-        <div className="text-4xl font-bold text-[#0F172A] tabular-nums leading-tight mt-1">
-          {loading ? '—' : total}
-        </div>
-        <div className="text-[10px] text-slate-500 mt-0.5">colonies on portal</div>
-      </div>
-    </div>
-  )
-}
+// HeroIllustration removed — the dashboard now puts category cards in
+// the hero band itself, so the decorative SVG/compass column no longer
+// has a place to live.
