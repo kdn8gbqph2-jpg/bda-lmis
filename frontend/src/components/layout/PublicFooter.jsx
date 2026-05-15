@@ -2,18 +2,17 @@
  * PublicFooter — institutional footer for the public portal.
  *
  * Layout (three columns on lg+, stacked on mobile):
- *   ┌──────────────────────┬────────────────┬──────────────┐
- *   │  Authority + portal   │  Portal links   │  Stay updated │
- *   │  name + GIS note      │                 │  (last sync)  │
- *   └──────────────────────┴────────────────┴──────────────┘
- *   └──────────  social bar + copyright + version  ──────────┘
- *
- * No glassmorphism, no fancy gradients — just clean institutional
- * structure. The lighter top band carries the substance; a thinner
- * darker band at the bottom holds the legal/version line.
+ *   ┌───────────────────────────┬───────────────┬───────────────┐
+ *   │  Authority + portal       │  Portal links  │  Help / Contact│
+ *   │  identity + tagline       │                │  + last sync   │
+ *   └───────────────────────────┴───────────────┴───────────────┘
+ *   ┌─────────────────────────────────────────────────────────────┐
+ *   │  © year — Designed, Hosted & Maintained by IT Cell, BDA     │
+ *   │                                          Follow us + version │
+ *   └─────────────────────────────────────────────────────────────┘
  */
 
-import { Info, MapPinned, ShieldCheck, Clock } from 'lucide-react'
+import { MapPinned, ShieldCheck, Mail, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import pkg from '../../../package.json'
 
@@ -57,9 +56,10 @@ const SOCIALS = [
 ]
 
 const APP_VERSION = `v${pkg.version}`
+const YEAR        = new Date().getFullYear()
 
-// Build date is baked at build time by Vite via define; falls back to "today"
-// when running in dev. Used to populate the "Last Updated" footer line.
+// Build date is set at module load — used for the "Last Synced" line so
+// viewers can tell how stale the cached bundle is.
 const BUILD_DATE = new Date().toLocaleDateString('en-IN', {
   day: '2-digit', month: 'short', year: 'numeric',
 })
@@ -76,20 +76,21 @@ export function PublicFooter() {
         <div>
           <div className="flex items-center gap-2.5">
             <img src="/bda-logo.png" alt="BDA" className="w-10 h-10 object-contain" />
-            <div>
+            <div className="min-w-0">
               <div className="text-sm font-bold text-[#0F172A] leading-tight">
                 Bharatpur Development Authority
               </div>
-              <div className="text-[11px] text-blue-700 font-semibold uppercase tracking-wider">
+              <div className="text-[11px] text-blue-700 font-semibold uppercase tracking-wider mt-0.5">
                 Land &amp; Scheme Information Portal
               </div>
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-500 leading-relaxed max-w-md">
-            Government of Rajasthan&apos;s official public-information portal
-            for BDA-administered land, layouts, and patta records.
+            Official public-information portal of the Bharatpur Development
+            Authority. Lookup colonies, layouts, khasras and patta records
+            issued under BDA's jurisdiction.
             <span className="block mt-1 text-slate-400">
-              बीडीए प्रशासित भूमि, लेआउट और पट्टा रिकॉर्ड का सार्वजनिक पोर्टल।
+              बीडीए के अंतर्गत कॉलोनी, लेआउट, खसरा और पट्टा रिकॉर्ड का सार्वजनिक पोर्टल।
             </span>
           </p>
           <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold
@@ -106,34 +107,54 @@ export function PublicFooter() {
             Portal
           </div>
           <ul className="space-y-1.5 text-sm text-slate-600">
-            <li><Link className="hover:text-blue-700 transition" to="/public">Dashboard</Link></li>
-            <li><Link className="hover:text-blue-700 transition" to="/public/colonies">Browse Colonies</Link></li>
-            <li><Link className="hover:text-blue-700 transition" to="/public/colonies?has_map=true">GIS Maps</Link></li>
-            <li><Link className="hover:text-blue-700 transition" to="/public/about">About this Portal</Link></li>
-            <li><Link className="hover:text-blue-700 transition" to="/login">Officer Login</Link></li>
+            <li>
+              <Link className="hover:text-blue-700 transition" to="/public">
+                Dashboard
+              </Link>
+            </li>
+            <li>
+              <Link className="hover:text-blue-700 transition" to="/public/colonies">
+                Browse Colonies
+              </Link>
+            </li>
+            <li>
+              <Link className="hover:text-blue-700 transition" to="/public/colonies?has_map=true">
+                GIS Maps
+              </Link>
+            </li>
+            <li>
+              <Link className="hover:text-blue-700 transition" to="/login">
+                Officer Login
+              </Link>
+            </li>
           </ul>
         </div>
 
-        {/* Help & status */}
+        {/* Help / contact */}
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-3">
-            Help &amp; Status
+            Help &amp; Contact
           </div>
-          <ul className="space-y-1.5 text-sm text-slate-600">
-            <li className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Privacy Policy</span>
-            </li>
-            <li>
+          <ul className="space-y-2 text-sm text-slate-600">
+            <li className="flex items-center gap-2 text-xs">
+              <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
               <a href="mailto:bdabharatpur@rajasthan.gov.in"
-                 className="hover:text-blue-700 transition">
+                 className="hover:text-blue-700 transition truncate">
                 bdabharatpur@rajasthan.gov.in
               </a>
             </li>
-            <li className="flex items-center gap-1.5 text-xs text-slate-500 pt-2">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <li className="flex items-start gap-2 text-xs leading-snug text-slate-500">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
               <span>
-                Last Updated: <span className="font-medium text-slate-700">{BUILD_DATE}</span>
+                All records are sourced from BDA's office systems; this is a
+                public-information mirror, not a transactional service.
+              </span>
+            </li>
+            <li className="flex items-center gap-2 text-xs text-slate-500">
+              <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <span>
+                Last synced:{' '}
+                <span className="font-medium text-slate-700">{BUILD_DATE}</span>
               </span>
             </li>
           </ul>
@@ -143,13 +164,21 @@ export function PublicFooter() {
       {/* ── Thin legal band ── */}
       <div className="border-t border-slate-100 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3
-                        flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
-            © {new Date().getFullYear()} Bharatpur Development Authority,
-            Government of Rajasthan. All rights reserved.
-          </p>
+                        flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="text-xs text-slate-500 leading-relaxed">
+            <div>
+              © {YEAR} Bharatpur Development Authority, Government of Rajasthan.
+              All rights reserved.
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              Designed, Hosted &amp; Maintained by{' '}
+              <span className="font-medium text-slate-600">
+                IT Cell, Bharatpur Development Authority
+              </span>
+            </div>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <span className="text-[11px] text-slate-500">Follow us</span>
             {SOCIALS.map(({ id, href, label, bg, Icon }) => (
               <a
@@ -166,13 +195,6 @@ export function PublicFooter() {
               </a>
             ))}
             <span className="text-slate-300">·</span>
-            <Link
-              to="/public/about"
-              className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800"
-            >
-              <Info className="w-3 h-3" />
-              About
-            </Link>
             <span className="text-[11px] text-slate-400 tabular-nums">{APP_VERSION}</span>
           </div>
         </div>
