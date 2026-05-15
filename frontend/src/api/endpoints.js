@@ -173,4 +173,7 @@ export const publicApi = {
   colonyGeojson:(params)   => client.get('/public/colonies/geojson/', { params }),
   /** Returns a direct URL string to use for <a href> / window.open map downloads */
   mapDownloadUrl: (id, fmt) => `/api/public/colonies/${id}/map/${fmt}/`,
+  /** Same file, served with Content-Disposition: inline — use as src for
+   *  <iframe> / <img> previews so browsers render it in-place. */
+  mapInlineUrl:   (id, fmt) => `/api/public/colonies/${id}/map/${fmt}/?disposition=inline`,
 }

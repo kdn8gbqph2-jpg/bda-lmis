@@ -5,11 +5,12 @@
  * No staff-only fields (DLC file number, updated_by, etc.) are shown.
  */
 
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  MapPin, Calendar, FileText, Download,
-  ChevronLeft, AlertTriangle, Info,
+  MapPin, Calendar, FileText, Download, Maximize2,
+  ChevronLeft, AlertTriangle, Info, Image as ImageIcon, FileText as PdfIcon,
 } from 'lucide-react'
 import { publicApi } from '@/api/endpoints'
 
@@ -44,9 +45,10 @@ function pillColor(token) {
 }
 
 const MAP_FORMAT_META = {
-  pdf: { label: 'PDF',  desc: 'Layout Plan (PDF)',    icon: '📄' },
-  svg: { label: 'SVG',  desc: 'Vector Map (SVG)',     icon: '🗺️' },
-  png: { label: 'PNG',  desc: 'Map Image (PNG)',      icon: '🖼️' },
+  pdf:  { label: 'PDF',  desc: 'Layout Plan (PDF)',    icon: '📄' },
+  jpeg: { label: 'JPEG', desc: 'Map Image (JPEG)',     icon: '🖼️' },
+  png:  { label: 'PNG',  desc: 'Map Image (PNG)',      icon: '🖼️' },
+  svg:  { label: 'SVG',  desc: 'Vector Map (SVG)',     icon: '🗺️' },
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -169,78 +171,35 @@ export default function PublicColonyDetailPage() {
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-5">
+      {/* ── Layout Preview (renders the actual map inline) ────────────── */}
+      <LayoutPreview colony={colony} />
 
-        {/* ── Map downloads ─────────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <h2 className="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-2">
-            <Download className="w-4 h-4" /> Layout Maps
-          </h2>
+      {/* ── Khasra list (colored pills) ─────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mt-5">
+        <h2 className="font-semibold text-slate-700 text-sm mb-3">
+          Khasra Numbers ({colony.khasras?.length ?? 0})
+        </h2>
 
-          {colony.available_map_formats?.length > 0 ? (
-            <div className="space-y-2">
-              {colony.available_map_formats.map((fmt) => {
-                const meta = MAP_FORMAT_META[fmt]
-                const url  = publicApi.mapDownloadUrl(colony.id, fmt)
-                return (
-                  <a
-                    key={fmt}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between px-4 py-3 rounded-lg
-                               border border-slate-200 hover:border-blue-300 hover:bg-blue-50
-                               transition group"
-                  >
-                    <div className="flex items-center gap-2 text-sm">
-                      <span>{meta.icon}</span>
-                      <span className="text-slate-700 group-hover:text-blue-700 transition">
-                        {meta.desc}
-                      </span>
-                    </div>
-                    <span className="text-xs font-semibold bg-slate-100 group-hover:bg-blue-100
-                                     text-slate-600 group-hover:text-blue-700 px-2 py-0.5 rounded
-                                     transition">
-                      {meta.label}
-                    </span>
-                  </a>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400 py-3 text-center">
-              No map files uploaded yet.
-            </p>
-          )}
-        </div>
-
-        {/* ── Khasra list (colored pills) ───────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <h2 className="font-semibold text-slate-700 text-sm mb-3">
-            Khasra Numbers ({colony.khasras?.length ?? 0})
-          </h2>
-
-          {colony.khasras?.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {colony.khasras.map((k, i) => {
-                const c = pillColor(k.number)
-                return (
-                  <span
-                    key={i}
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}
-                    title={k.total_bigha != null ? `${Number(k.total_bigha).toFixed(2)} Bigha` : 'Area not recorded'}
-                  >
-                    {k.number}
-                  </span>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400 py-3 text-center">
-              No khasra records linked.
-            </p>
-          )}
-        </div>
+        {colony.khasras?.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {colony.khasras.map((k, i) => {
+              const c = pillColor(k.number)
+              return (
+                <span
+                  key={i}
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}
+                  title={k.total_bigha != null ? `${Number(k.total_bigha).toFixed(2)} Bigha` : 'Area not recorded'}
+                >
+                  {k.number}
+                </span>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400 py-3 text-center">
+            No khasra records linked.
+          </p>
+        )}
       </div>
 
       {/* ── Back link ───────────────────────────────────────────────────── */}
@@ -252,6 +211,109 @@ export default function PublicColonyDetailPage() {
           <ChevronLeft className="w-4 h-4" />
           Back to {colony.colony_type_label}
         </Link>
+      </div>
+    </div>
+  )
+}
+
+// ── LayoutPreview ──────────────────────────────────────────────────────────
+//
+// Renders the colony's layout inline. Prefers image formats (jpeg / png /
+// svg) because the browser can show them at full quality without
+// downloading; falls back to a PDF iframe for colonies that only have a
+// PDF. The user picks any other available format via the format pills,
+// and "Download" preserves the original save-to-disk behaviour for every
+// available format.
+
+const FORMAT_PREFERENCE = ['jpeg', 'png', 'svg', 'pdf']
+
+function LayoutPreview({ colony }) {
+  const formats = (colony.available_map_formats || []).filter((f) =>
+    FORMAT_PREFERENCE.includes(f),
+  )
+  // Pick the best format to render by default
+  const initial  = FORMAT_PREFERENCE.find((f) => formats.includes(f)) || null
+  const [active, setActive] = useState(initial)
+
+  if (formats.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <h2 className="font-semibold text-slate-700 text-sm mb-2 flex items-center gap-2">
+          <Download className="w-4 h-4" /> Layout Maps
+        </h2>
+        <p className="text-sm text-slate-400 py-3 text-center">
+          No map files uploaded yet.
+        </p>
+      </div>
+    )
+  }
+
+  const inlineUrl   = publicApi.mapInlineUrl(colony.id, active)
+  const downloadUrl = publicApi.mapDownloadUrl(colony.id, active)
+  const isPdf       = active === 'pdf'
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-100">
+        <h2 className="font-semibold text-slate-700 text-sm flex items-center gap-2">
+          {isPdf ? <PdfIcon className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+          Layout Plan
+        </h2>
+        <div className="flex items-center gap-1.5">
+          {/* Format selector pills */}
+          {formats.length > 1 && formats.map((fmt) => {
+            const meta = MAP_FORMAT_META[fmt] || { label: fmt.toUpperCase() }
+            return (
+              <button
+                key={fmt}
+                type="button"
+                onClick={() => setActive(fmt)}
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded border transition
+                            ${active === fmt
+                              ? 'bg-blue-50 text-blue-700 border-blue-300'
+                              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+              >
+                {meta.label}
+              </button>
+            )
+          })}
+          <a
+            href={inlineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5
+                       rounded border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+            title="Open in new tab"
+          >
+            <Maximize2 className="w-3 h-3" /> Open
+          </a>
+          <a
+            href={downloadUrl}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5
+                       rounded border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+            title="Download original file"
+          >
+            <Download className="w-3 h-3" /> Download
+          </a>
+        </div>
+      </div>
+
+      <div className="bg-slate-50">
+        {isPdf ? (
+          <iframe
+            key={inlineUrl}
+            src={`${inlineUrl}#view=FitH`}
+            title={`${colony.name} — layout PDF`}
+            className="w-full h-[640px] border-0"
+          />
+        ) : (
+          <img
+            key={inlineUrl}
+            src={inlineUrl}
+            alt={`${colony.name} — layout ${active.toUpperCase()}`}
+            className="w-full h-auto max-h-[640px] object-contain bg-white"
+          />
+        )}
       </div>
     </div>
   )

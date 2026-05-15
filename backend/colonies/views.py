@@ -143,10 +143,14 @@ class ColonyViewSet(StaffApprovalMixin, viewsets.ModelViewSet):
             'png':  'image/png',
             'svg':  'image/svg+xml',
         }
-        logger.info('Serving map_%s for colony %s to user %s.', fmt, colony.pk, request.user)
+        # ?disposition=inline → render in browser tab (PDF viewer / image
+        # preview). Default attachment so the existing download links
+        # keep working as save-to-disk.
+        disp = 'inline' if request.GET.get('disposition') == 'inline' else 'attachment'
+        logger.info('Serving map_%s (%s) for colony %s to user %s.', fmt, disp, colony.pk, request.user)
         response = FileResponse(file_field.open('rb'), content_type=content_types[fmt])
         response['Content-Disposition'] = (
-            f'attachment; filename="{colony.name}_{fmt}.{fmt}"'
+            f'{disp}; filename="{colony.name}_{fmt}.{fmt}"'
         )
         return response
 

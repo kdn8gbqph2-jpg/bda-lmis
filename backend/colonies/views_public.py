@@ -99,10 +99,15 @@ class PublicColonyMapDownloadView(APIView):
             logger.debug('Public map download: colony %s has no map_%s.', pk, fmt)
             raise Http404(f'No {fmt.upper()} map available for this colony.')
 
-        logger.info('Public map download: map_%s for colony %s.', fmt, pk)
+        # ?disposition=inline lets the frontend render the file in an
+        # <iframe> / <img> for preview; default stays attachment so
+        # plain link clicks still trigger a save dialog as before.
+        disp = 'inline' if request.GET.get('disposition') == 'inline' else 'attachment'
+
+        logger.info('Public map %s (%s) for colony %s.', fmt, disp, pk)
         response = FileResponse(file_field.open('rb'), content_type=self._CONTENT_TYPES[fmt])
         response['Content-Disposition'] = (
-            f'attachment; filename="{colony.name}_{fmt}.{fmt}"'
+            f'{disp}; filename="{colony.name}_{fmt}.{fmt}"'
         )
         return response
 
