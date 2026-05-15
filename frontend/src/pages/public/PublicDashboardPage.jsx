@@ -135,10 +135,12 @@ export default function PublicDashboardPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
           {/* Top band — heading + CTAs on the left, GIS-themed
-              illustration on the right (lg+ only). items-start so the
-              illustration's top edge sits next to the heading rather
-              than centering against the (much shorter) hero text. */}
-          <div className="grid lg:grid-cols-[1fr,360px] gap-4 lg:gap-8 items-start mb-6">
+              illustration on the right (lg+ only). Column sized so
+              the SVG's height roughly matches the hero text height,
+              otherwise the row stretches taller than the text and
+              leaves visible dead space between the SVG and the cards
+              below. */}
+          <div className="grid lg:grid-cols-[1fr,280px] gap-4 lg:gap-8 items-start mb-4">
             <motion.div {...fadeUp} className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full
                               bg-blue-700/5 border border-blue-700/15 text-blue-700
@@ -424,7 +426,7 @@ function Panel({ title, icon: Icon, children, footer }) {
  */
 function HeroIllustration({ total, loading }) {
   return (
-    <div className="relative aspect-[5/4] w-full max-w-[360px] ml-auto">
+    <div className="relative aspect-[5/4] w-full max-w-[280px] ml-auto">
       <svg viewBox="0 0 520 416" className="absolute inset-0 w-full h-full">
         <defs>
           <linearGradient id="parcel-a" x1="0" y1="0" x2="1" y2="1">
@@ -488,13 +490,13 @@ function HeroIllustration({ total, loading }) {
 
       {/* Total count text — HTML on top of the SVG so the font stays crisp */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-blue-700/70 font-semibold">
-          Total Records
+        <div className="text-[9px] uppercase tracking-[0.18em] text-blue-700/70 font-semibold">
+          Total
         </div>
-        <div className="text-3xl font-bold text-[#0F172A] tabular-nums leading-tight mt-1">
+        <div className="text-2xl font-bold text-[#0F172A] tabular-nums leading-tight mt-0.5">
           {loading ? '—' : total}
         </div>
-        <div className="text-[10px] text-slate-500 mt-0.5">colonies on portal</div>
+        <div className="text-[9px] text-slate-500 mt-0.5">colonies</div>
       </div>
     </div>
   )
