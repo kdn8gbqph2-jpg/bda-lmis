@@ -134,9 +134,10 @@ export default function PublicDashboardPage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-          {/* Top band — heading + CTAs on the left, compact GIS-themed
-              illustration on the right (lg+ only, decorative). */}
-          <div className="grid lg:grid-cols-[1fr,260px] gap-4 lg:gap-8 items-center mb-5">
+          {/* Top band — heading + CTAs on the left, GIS-themed
+              illustration on the right (lg+ only). Sized to fill the
+              dead space alongside the hero text. */}
+          <div className="grid lg:grid-cols-[1fr,420px] gap-4 lg:gap-10 items-center mb-6">
             <motion.div {...fadeUp} className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full
                               bg-blue-700/5 border border-blue-700/15 text-blue-700
@@ -341,33 +342,45 @@ function CategoryCard({ cat, count }) {
   const animCount = useCountUp(count ?? 0)
   const Icon = cat.icon
   const accent = ACCENT[cat.color] ?? 'before:bg-slate-400'
+  // count === 0 means BDA hasn't published data for this category yet
+  // (e.g. Pending Layouts). Replace the count with a friendly note so
+  // the card communicates intent instead of a bare zero.
+  const isEmpty = count === 0
+  const isLoading = count == null
 
   return (
     <Link
       to={`/public/colonies?colony_type=${cat.value}`}
       className={`relative block bg-white rounded-xl border ${cat.border}
-                  p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]
+                  p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]
                   transition-all duration-200
                   hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.10)]
                   hover:-translate-y-0.5 overflow-hidden
-                  before:absolute before:left-0 before:top-2 before:bottom-2
+                  before:absolute before:left-0 before:top-3 before:bottom-3
                   before:w-[3px] before:rounded-r-full ${accent}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className={`w-8 h-8 rounded-lg ${cat.tint} flex items-center justify-center flex-shrink-0`}>
-          <Icon className={`w-4 h-4 ${cat.text}`} strokeWidth={2} />
+        <div className={`w-10 h-10 rounded-lg ${cat.tint} flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-5 h-5 ${cat.text}`} strokeWidth={2} />
         </div>
-        <div className="flex items-baseline gap-1 ml-auto">
-          <span className="text-xl font-bold text-[#0F172A] tabular-nums leading-none">
-            {count == null ? '—' : animCount}
+        {!isEmpty && (
+          <span className="text-3xl font-bold text-[#0F172A] tabular-nums leading-none">
+            {isLoading ? '—' : animCount}
           </span>
-        </div>
+        )}
       </div>
 
-      <h3 className="font-semibold text-slate-900 text-sm leading-snug mt-2.5">{cat.label}</h3>
-      <p className="text-[11px] text-slate-500 leading-snug mt-0.5 line-clamp-2">
+      <h3 className="font-semibold text-slate-900 text-[15px] leading-snug mt-3">{cat.label}</h3>
+      <p className="text-xs text-slate-500 leading-snug mt-1 line-clamp-2">
         {cat.description}
       </p>
+
+      {isEmpty && (
+        <p className="text-[11px] font-medium text-slate-500 italic mt-2.5
+                      bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5 leading-snug">
+          Information is being compiled
+        </p>
+      )}
     </Link>
   )
 }
@@ -400,7 +413,7 @@ function Panel({ title, icon: Icon, children, footer }) {
  */
 function HeroIllustration({ total, loading }) {
   return (
-    <div className="relative aspect-[5/4] w-full max-w-[260px] ml-auto">
+    <div className="relative aspect-[5/4] w-full max-w-[420px] ml-auto">
       <svg viewBox="0 0 520 416" className="absolute inset-0 w-full h-full">
         <defs>
           <linearGradient id="parcel-a" x1="0" y1="0" x2="1" y2="1">
@@ -464,13 +477,13 @@ function HeroIllustration({ total, loading }) {
 
       {/* Total count text — HTML on top of the SVG so the font stays crisp */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-        <div className="text-[9px] uppercase tracking-[0.18em] text-blue-700/70 font-semibold">
-          Total
+        <div className="text-[10px] uppercase tracking-[0.2em] text-blue-700/70 font-semibold">
+          Total Records
         </div>
-        <div className="text-2xl font-bold text-[#0F172A] tabular-nums leading-tight mt-0.5">
+        <div className="text-3xl font-bold text-[#0F172A] tabular-nums leading-tight mt-1">
           {loading ? '—' : total}
         </div>
-        <div className="text-[9px] text-slate-500 mt-0.5">colonies</div>
+        <div className="text-[10px] text-slate-500 mt-0.5">colonies on portal</div>
       </div>
     </div>
   )
