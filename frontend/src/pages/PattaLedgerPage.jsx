@@ -301,30 +301,32 @@ function DmsFileCell({ number, hasNs, hasCs }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2">
       <span className="font-mono font-semibold text-slate-700">{number}</span>
       {hasNs && (
         <button
           type="button"
           onClick={() => open('ns')}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
-                     border border-blue-200 bg-blue-50 text-blue-700 text-[10px]
-                     font-medium hover:bg-blue-100"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md
+                     border border-blue-300 bg-blue-50 text-blue-700 text-xs
+                     font-semibold hover:bg-blue-100 hover:border-blue-500
+                     active:bg-blue-200 transition"
           title="Notesheet Side — open the noting scan in a new tab"
         >
-          <FileText className="w-3 h-3" /> NS
+          <FileText className="w-4 h-4" /> NS
         </button>
       )}
       {hasCs && (
         <button
           type="button"
           onClick={() => open('cs')}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
-                     border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px]
-                     font-medium hover:bg-emerald-100"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md
+                     border border-emerald-300 bg-emerald-50 text-emerald-700 text-xs
+                     font-semibold hover:bg-emerald-100 hover:border-emerald-500
+                     active:bg-emerald-200 transition"
           title="Correspondence Side — open the correspondence scan in a new tab"
         >
-          <FileText className="w-3 h-3" /> CS
+          <FileText className="w-4 h-4" /> CS
         </button>
       )}
     </div>
